@@ -65,27 +65,36 @@ def process_incoming_message(message_data: Dict, phone_number: str, db: Session)
         logger.error(f"Error processing incoming message: {str(e)}")
         db.rollback()
 
-def verify_webhook(mode: str, token: str, challenge: str, verify_token: str) -> tuple[str, int]:
+def verify_webhook(mode: str, token: str, challenge: str) -> tuple[str | int, int]:
     """Handle WhatsApp Cloud API webhook verification"""
-    if mode == 'subscribe' and token == verify_token:
+    VERIFY_TOKEN = "HAPPY"  # In production, use environment variable
+    if mode == 'subscribe' and token == VERIFY_TOKEN:
         logger.info("Webhook verified successfully!")
         return challenge, 200
     else:
         logger.warning("Webhook verification failed.")
         return 'Forbidden', 403
 
-@router.get("")  # Changed from "/webhook" to "" since we're using prefix
-async def verify_webhook_endpoint(
-    hub_mode: str = None,
-    hub_verify_token: str = None,
-    hub_challenge: str = None,
-    verify_token: str = "HAPPY"  # In production, use environment variable
+@router.get("")
+async def webhook_verification(
+    hub_mode: str | None = None,
+    hub_verify_token: str | None = None,
+    hub_challenge: str | None = None
 ):
-    """Handle webhook verification requests"""
-    response = verify_webhook(hub_mode, hub_verify_token, hub_challenge, verify_token)
-    return response[0], response[1]
+    """Handle incoming webhook verification requests"""
+    mode = hub_mode
+    token = hub_verify_token
+    challenge = hub_challenge
 
-@router.post("")  # Changed from "/webhook" to "" since we're using prefix
+    if not all([mode, token, challenge]):
+        raise HTTPException(status_code=400, detail="Missing required parameters")
+
+    response, status_code = verify_webhook(mode, token, challenge)
+    if status_code != 200:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return int(response) if isinstance(response, str) else response
+
+@router.post("")
 async def webhook_endpoint(
     request: Request,
     db: Session = Depends(get_db)
@@ -94,7 +103,6 @@ async def webhook_endpoint(
     try:
         data = await request.json()
         logger.debug(f"Received webhook data: {data}")
-
         if not data:
             raise HTTPException(status_code=400, detail="No data provided")
 
