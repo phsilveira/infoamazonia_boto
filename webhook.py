@@ -1,17 +1,16 @@
 from fastapi import APIRouter, Request, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import Dict, Optional
+from typing import Dict
 from datetime import datetime
 import logging
 from database import get_db
 import models
-from config import settings, get_redis # This import might be removed or modified
+from config import settings
 from services.chatbot import ChatBot
 from services.whatsapp import send_message
 from services.chatgpt import ChatGPTService
 from utils.message_loader import message_loader
 import os
-from fastapi import FastAPI # Added import for FastAPI app
 
 # Configure logging
 logging.basicConfig(level=settings.LOG_LEVEL)
@@ -21,15 +20,6 @@ router = APIRouter(prefix="/webhook", tags=["webhook"])
 
 # Initialize ChatGPT service
 chatgpt_service = ChatGPTService(os.environ.get('OPENAI_API_KEY'))
-
-def verify_webhook(mode: str, token: str, challenge: str) -> Dict[str, str]:
-    """Handle WhatsApp Cloud API webhook verification"""
-    if mode == 'subscribe' and token == settings.WEBHOOK_VERIFY_TOKEN:
-        logger.info("Webhook verified successfully!")
-        return {"challenge": challenge}
-
-    logger.warning("Webhook verification failed.")
-    raise HTTPException(status_code=403, detail="Forbidden")
 
 @router.get("")
 async def verify_webhook_endpoint(request: Request):
@@ -42,16 +32,26 @@ async def verify_webhook_endpoint(request: Request):
     logger.setLevel(logging.INFO)
     logger.info(f"Webhook verification request: {mode}, {token}, {challenge}")
 
-    try:
-        response = verify_webhook(mode, token, challenge)
-        return response.get("challenge")
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        logger.error(f"Error in webhook verification: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+    # Validate all required parameters are present
+    if not all([mode, token, challenge]):
+        logger.warning("Missing required parameters")
+        raise HTTPException(status_code=400, detail="Missing parameters")
 
-async def process_webhook_message(data: Dict, db: Session, app: FastAPI): # Added app parameter
+    # Verify the token and mode
+    if mode != 'subscribe' or token != settings.WEBHOOK_VERIFY_TOKEN:
+        logger.warning("Webhook verification failed")
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    try:
+        # Convert challenge to integer and return
+        challenge_int = int(challenge)
+        logger.info("Webhook verified successfully!")
+        return challenge_int
+    except ValueError:
+        logger.error("Invalid challenge value")
+        raise HTTPException(status_code=400, detail="Invalid challenge value")
+
+async def process_webhook_message(data: Dict, db: Session, request: Request) -> Dict:
     """Process webhook messages asynchronously"""
     try:
         phone_number = data.get('phone_number')
@@ -62,7 +62,7 @@ async def process_webhook_message(data: Dict, db: Session, app: FastAPI): # Adde
             logger.error("Missing required fields in webhook data")
             return {"status": "error", "message": "Missing required fields"}
 
-        # Get Redis client from app state
+        app = request.app
         if not app.state.redis:
             logger.error("Redis client not available")
             return {"status": "error", "message": "Redis connection not available"}
@@ -101,48 +101,11 @@ async def process_webhook_message(data: Dict, db: Session, app: FastAPI): # Adde
         logger.error(f"Error in process_webhook_message: {str(e)}")
         return {"status": "error", "message": str(e)}
 
-async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> tuple[str, str]:
-    """Process a message and return the response and new state"""
-    try:
-        current_state = chatbot.state
-
-        # Map states to their handler functions
-        state_handlers = {
-            'start': handle_start_state,
-            'register': handle_register_state,
-            'menu_state': handle_menu_state,
-            'get_user_location': handle_location_state,
-            'get_user_subject': handle_subject_state,
-            'get_user_schedule': handle_schedule_state,
-            'about': handle_about_state,
-        }
-
-        # Get the appropriate handler for the current state
-        handler = state_handlers.get(current_state)
-        if handler:
-            if handler == handle_start_state:
-                return await handler(chatbot, phone_number)
-            elif handler == handle_register_state:
-                return await handler(chatbot, phone_number, message)
-            elif handler == handle_menu_state:
-                return await handler(chatbot, message)
-            elif handler == handle_about_state:
-                return await handler(chatbot)
-            else:
-                return await handler(chatbot, phone_number, message)
-
-        return message_loader.get_message('error.invalid_state'), chatbot.state
-
-    except Exception as e:
-        logger.error(f"Error processing message: {str(e)}")
-        return message_loader.get_message('error.process_message', error=str(e)), 'start'
-
-@router.post("")
+@router.post("", response_model=None)
 async def webhook_endpoint(
     background_tasks: BackgroundTasks,
     request: Request,
-    db: Session = Depends(get_db),
-    app: FastAPI = Depends() # Added app dependency
+    db: Session = Depends(get_db)
 ):
     """Handle incoming webhook requests"""
     try:
@@ -176,7 +139,7 @@ async def webhook_endpoint(
                                         process_webhook_message,
                                         webhook_data,
                                         db,
-                                        app # Pass the app instance
+                                        request
                                     )
 
         return {"status": "success", "message": "Webhook received and being processed"}
@@ -216,6 +179,42 @@ def handle_message_status(status: Dict, db: Session) -> None:
     except Exception as e:
         logger.error(f"Error processing message status: {str(e)}")
         db.rollback()
+
+async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> tuple[str, str]:
+    """Process a message and return the response and new state"""
+    try:
+        current_state = chatbot.state
+
+        # Map states to their handler functions
+        state_handlers = {
+            'start': handle_start_state,
+            'register': handle_register_state,
+            'menu_state': handle_menu_state,
+            'get_user_location': handle_location_state,
+            'get_user_subject': handle_subject_state,
+            'get_user_schedule': handle_schedule_state,
+            'about': handle_about_state,
+        }
+
+        # Get the appropriate handler for the current state
+        handler = state_handlers.get(current_state)
+        if handler:
+            if handler == handle_start_state:
+                return await handler(chatbot, phone_number)
+            elif handler == handle_register_state:
+                return await handler(chatbot, phone_number, message)
+            elif handler == handle_menu_state:
+                return await handler(chatbot, message)
+            elif handler == handle_about_state:
+                return await handler(chatbot)
+            else:
+                return await handler(chatbot, phone_number, message)
+
+        return message_loader.get_message('error.invalid_state'), chatbot.state
+
+    except Exception as e:
+        logger.error(f"Error processing message: {str(e)}")
+        return message_loader.get_message('error.process_message', error=str(e)), 'start'
 
 async def handle_start_state(chatbot: ChatBot, phone_number: str) -> tuple[str, str]:
     return message_loader.get_message('start'), 'menu_state'

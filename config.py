@@ -37,9 +37,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
     # Redis Configuration
-    REDIS_HOST: str = os.getenv("REDIS_HOST", "0.0.0.0")
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "0.0.0.0")  
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
+    REDIS_PASSWORD: Optional[str] = os.getenv("REDIS_PASSWORD")
 
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
@@ -59,14 +60,28 @@ settings = get_settings()
 
 # Create Redis instance
 async def get_redis():
+    """
+    Create and return a Redis client instance.
+    Includes retry logic and better error handling.
+    """
     try:
         redis_client = redis.Redis(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
             db=settings.REDIS_DB,
-            decode_responses=True
+            password=settings.REDIS_PASSWORD,
+            decode_responses=True,
+            socket_timeout=5,
+            retry_on_timeout=True,
+            health_check_interval=30
         )
+        # Test the connection
+        await redis_client.ping()
+        logger.info("Successfully connected to Redis")
         return redis_client
+    except redis.ConnectionError as e:
+        logger.error(f"Failed to connect to Redis: {e}")
+        return None
     except Exception as e:
-        logger.error(f"Failed to create Redis client: {e}")
+        logger.error(f"Unexpected error creating Redis client: {e}")
         return None

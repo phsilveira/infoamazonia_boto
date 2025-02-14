@@ -26,18 +26,28 @@ models.Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize Redis connection
-    try:
-        redis_client = await get_redis()
-        if redis_client:
-            await redis_client.ping()
-            logger.info("Redis connection established")
-            app.state.redis = redis_client
-        else:
-            raise Exception("Failed to create Redis client")
-    except Exception as e:
-        logger.error(f"Redis connection failed: {e}")
-        app.state.redis = None
+    # Initialize Redis connection with retries
+    max_retries = 3
+    retry_delay = 2  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            redis_client = await get_redis()
+            if redis_client:
+                await redis_client.ping()
+                logger.info("Redis connection established")
+                app.state.redis = redis_client
+                break
+            else:
+                raise Exception("Failed to create Redis client")
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger.warning(f"Redis connection attempt {attempt + 1} failed: {e}. Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                logger.error(f"All Redis connection attempts failed: {e}")
+                app.state.redis = None
 
     # Start the scheduler
     start_scheduler()
@@ -45,7 +55,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Cleanup
-    if app.state.redis:
+    if hasattr(app.state, 'redis') and app.state.redis:
         await app.state.redis.close()
         logger.info("Redis connection closed")
 
