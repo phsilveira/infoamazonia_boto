@@ -1,0 +1,108 @@
+You are tasked with developing a Fastapi-based web application dashboard tailored for administrative management. The dashboard should include the following features and adhere to the outlined specifications:
+
+**Core Features:**
+
+1.	**WhatsApp API Metrics Monitoring:**
+
+•	Integrate with the WhatsApp API to fetch and display metrics including:
+
+•	Number of users.
+
+•	Engagement data (e.g., interactions per message, types of interactions).
+
+•	Develop a user-friendly interface to visualize these metrics in real-time.
+
+•	Allow filters (e.g., by date, interaction type).
+
+2.	**User Management:**
+
+•	Create a user management module with functionalities for:
+
+•	Editing user preferences. (user key will be the phone number)
+
+•	Deleting users upon request.
+
+•	Implement search and filter capabilities for the user list.
+
+3.	**News Source URL Management:**
+
+•	Develop a section for managing news source URLs:
+
+•	Add or remove news source URLs for automated news collection.
+
+•	Include validations for URL input to ensure proper formatting.
+
+•	Display a table with existing sources and actions for editing or deleting.
+
+4.	**Message Sending via WhatsApp Bot:**
+
+•	Implement a feature for the InfoAmazonia team to:
+
+•	Send messages to user groups via the WhatsApp Bot.
+
+•	Include message templates, personalization options, and scheduling capabilities.
+
+5.	**Engagement Metrics Extraction:**
+
+•	Extract engagement metrics such as:
+
+•	Click-through rates (CTR).
+
+•	Subscriptions in this week.
+
+•	New subscriptions.
+
+•	Messages sent and received.
+
+•	Include data validation steps to ensure accuracy.
+
+6.	**Metrics Visualization:**
+
+•	Create dashboards to visualize engagement metrics.
+
+•	Use charts (e.g., line, bar, pie) for presenting trends and comparisons.
+
+**Technical Requirements:**
+
+7. **Project Setup**
+
+•	Add a fake data in all models 
+
+•	Follow the snippet provided to build the first version of the fastapi-admin with auth
+
+•	Use the same model structure provided in context
+
+•	**Backend:**
+
+•	FastApi framework for API integration and backend logic. use fastapi-admin abstraction to code the crud features for simplification
+
+•	SQLAlchemy for database management (PostgreSQL).
+
+•	Use flask-admin library
+
+•	**Frontend:**
+
+•	Use flask-admin library
+
+•	Use templates with Jinja2 for server-side rendering.
+
+•	Bootstrap or Tailwind CSS for a responsive UI design.
+
+•	Chart.js or Plotly for data visualization.
+
+•	**Authentication:**
+
+•	Implement user authentication.
+
+•	Role-based access control for admin and team members.
+
+•	**Deployment:**
+
+•	Host the application on a cloud platform (e.g., Railway).
+
+•	Use Docker for containerization and easy deployment.
+
+
+**Expected Outcome:**
+
+A functional and visually appealing FastApi web app dashboard for InfoAmazonia’s administrative tasks, enabling seamless monitoring, management, and engagement functionalities.
