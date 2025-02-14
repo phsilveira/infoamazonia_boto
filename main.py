@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
@@ -11,16 +12,50 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from middleware import auth_middleware
 from scheduler import start_scheduler
-from config import settings
+from config import settings, get_redis
+import redis.asyncio as redis
+import logging
 import asyncio
+
+# Configure logging
+logging.basicConfig(level=settings.LOG_LEVEL)
+logger = logging.getLogger(__name__)
 
 # Create all database tables
 models.Base.metadata.create_all(bind=engine)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize Redis connection
+    try:
+        redis_client = await get_redis()
+        if redis_client:
+            await redis_client.ping()
+            logger.info("Redis connection established")
+            app.state.redis = redis_client
+        else:
+            raise Exception("Failed to create Redis client")
+    except Exception as e:
+        logger.error(f"Redis connection failed: {e}")
+        app.state.redis = None
+
+    # Start the scheduler
+    start_scheduler()
+
+    yield
+
+    # Cleanup
+    if app.state.redis:
+        await app.state.redis.close()
+        logger.info("Redis connection closed")
+
 app = FastAPI(
     title="InfoAmazonia Admin Dashboard",
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
+    lifespan=lifespan
 )
+
+# Mount static files and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -30,11 +65,6 @@ app.middleware("http")(auth_middleware)
 # Include routers
 app.include_router(admin_router)
 app.include_router(webhook_router)
-
-@app.on_event("startup")
-async def startup_event():
-    # Start the scheduler when the application starts
-    start_scheduler()
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):

@@ -1,0 +1,217 @@
+# tasks/tasks.py
+import os
+import requests
+import logging
+from flask import current_app
+from celery_app import celery
+from app.services.chatbot import ChatBot
+from app.services.whatsapp import send_message
+from app.services.chatgpt import ChatGPTService
+from app.utils.message_loader import message_loader
+
+logger = logging.getLogger(__name__)
+
+# Initialize ChatGPT service
+chatgpt_service = ChatGPTService(os.environ.get('OPENAI_API_KEY'))
+
+def handle_start_state(chatbot: ChatBot, phone_number: str) -> tuple:
+    """Handle the start state logic"""
+    if chatbot.is_new_user(phone_number):
+        chatbot.verify_user(phone_number)
+        return message_loader.get_message('welcome.new_user'), chatbot.state
+    else:
+        chatbot.show_menu()
+        return message_loader.get_message('menu.main'), chatbot.state
+
+def handle_register_state(chatbot: ChatBot, phone_number: str, message: str) -> tuple:
+    """Handle the register state logic"""
+    try:
+        chatbot.register_user(phone_number, message)
+        chatbot.show_menu()
+        return message_loader.get_message('menu.main'), chatbot.state
+    except Exception as e:
+        return message_loader.get_message('error.registration_failed', error=str(e)), chatbot.state
+
+def handle_menu_state(chatbot: ChatBot, message: str) -> tuple:
+    """Handle the menu state logic with more flexible input handling"""
+    message = message.lower().strip()
+    if message in ['1', 'subscribe', 'inscrever', 'notícias']:
+        chatbot.select_subscribe()
+        return message_loader.get_message('location.request'), chatbot.state
+    elif message in ['2', 'about', 'sobre', 'info']:
+        chatbot.select_about()
+        return message_loader.get_message('about.info'), chatbot.state
+    else:
+        return message_loader.get_message('menu.invalid_option'), chatbot.state
+
+def handle_location_state(chatbot: ChatBot, phone_number: str, message: str) -> tuple:
+    """Handle the location state logic with ChatGPT validation"""
+    user = chatbot.get_user(phone_number)
+    if not user:
+        return message_loader.get_message('error.user_not_found'), chatbot.state
+
+    # First validate and correct location using ChatGPT
+    try:
+        # Try to parse as a confirmation first
+        confirmation_response = chatgpt_service.parse_confirmation(message)
+        if confirmation_response is not None:
+            if confirmation_response:  # User wants to add more
+                return message_loader.get_message('location.add_more'), chatbot.state
+            else:  # User doesn't want to add more
+                chatbot.proceed_to_subjects()
+                return message_loader.get_message('subject.request'), "get_user_subject"
+
+        # If not a clear yes/no, treat as location input
+        is_valid, corrected_location = chatgpt_service.validate_location(message)
+        if not is_valid:
+            return message_loader.get_message('location.invalid', message=corrected_location), chatbot.state
+
+        # Save the validated location
+        chatbot.save_location(user.id, corrected_location)
+        return message_loader.get_message('location.saved', location=corrected_location), chatbot.state
+    except Exception as e:
+        logger.error(f"Error in handle_location_state: {str(e)}")
+        return message_loader.get_message('error.save_location', error=str(e)), chatbot.state
+
+def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str) -> tuple:
+    """Handle the subject state logic with ChatGPT validation"""
+    user = chatbot.get_user(phone_number)
+    if not user:
+        return message_loader.get_message('error.user_not_found'), chatbot.state
+
+    try:
+        # Try to parse as a confirmation first
+        confirmation_response = chatgpt_service.parse_confirmation(message)
+        if confirmation_response is not None:
+            if confirmation_response:  # User wants to add more
+                return message_loader.get_message('subject.add_more'), chatbot.state
+            else:  # User doesn't want to add more
+                chatbot.proceed_to_schedule()
+                return message_loader.get_message('schedule.request'), "get_user_schedule"
+
+        # If not a clear yes/no, treat as subject input
+        is_valid, corrected_subject = chatgpt_service.validate_subject(message)
+        if not is_valid:
+            return message_loader.get_message('subject.invalid', message=corrected_subject), chatbot.state
+
+        # Save the validated subject
+        chatbot.save_subject(user.id, corrected_subject)
+        return message_loader.get_message('subject.saved', subject=corrected_subject), chatbot.state
+    except Exception as e:
+        logger.error(f"Error in handle_subject_state: {str(e)}")
+        return message_loader.get_message('error.save_subject', error=str(e)), chatbot.state
+
+def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: str) -> tuple:
+    """Handle the schedule state logic with more flexible input handling"""
+    user = chatbot.get_user(phone_number)
+    if not user:
+        return message_loader.get_message('error.user_not_found'), chatbot.state
+
+    # Map various schedule inputs to standard values
+    schedule_map = {
+        '1': 'daily',
+        'daily': 'daily',
+        'dia': 'daily',
+        'diário': 'daily',
+        '2': 'weekly',
+        'weekly': 'weekly',
+        'semana': 'weekly',
+        'semanal': 'weekly',
+        '3': 'monthly',
+        'monthly': 'monthly',
+        'mes': 'monthly',
+        'mensal': 'monthly'
+    }
+
+    schedule = schedule_map.get(message.lower().strip())
+
+    if not schedule:
+        return message_loader.get_message('schedule.invalid_option'), chatbot.state
+
+    try:
+        chatbot.save_schedule(user.id, schedule)
+        chatbot.end_conversation()
+        return message_loader.get_message('schedule.confirmation', schedule=schedule), chatbot.state
+    except Exception as e:
+        return message_loader.get_message('error.save_schedule', error=str(e)), chatbot.state
+
+def handle_about_state(chatbot: ChatBot) -> tuple:
+    """Handle the about state logic"""
+    chatbot.end_conversation()
+    return message_loader.get_message('about.return'), chatbot.state
+
+def process_message(phone_number: str, message: str, current_state: str = None) -> tuple:
+    """
+    Core message processing logic used by both direct requests and webhook
+    Returns tuple of (response_message, new_state)
+    """
+    try:
+        chatbot = ChatBot()
+        if current_state:
+            chatbot.set_state(current_state)
+
+        # Map states to their handler functions
+        state_handlers = {
+            'start': handle_start_state,
+            'register': handle_register_state,
+            'menu_state': handle_menu_state,
+            'get_user_location': handle_location_state,
+            'get_user_subject': handle_subject_state,
+            'get_user_schedule': handle_schedule_state,
+            'about': handle_about_state,
+        }
+
+        # Get the appropriate handler for the current state
+        handler = state_handlers.get(chatbot.state)
+        if handler:
+            if handler == handle_start_state:
+                return handler(chatbot, phone_number)
+            elif handler == handle_register_state:
+                return handler(chatbot, phone_number, message)
+            elif handler == handle_menu_state:
+                return handler(chatbot, message)
+            elif handler == handle_about_state:
+                return handler(chatbot)
+            else:
+                return handler(chatbot, phone_number, message)
+
+        return message_loader.get_message('error.invalid_state'), chatbot.state
+
+    except Exception as e:
+        logger.error(f"Error processing message: {str(e)}")
+        return message_loader.get_message('error.process_message', error=str(e)), 'start'
+
+@celery.task(bind=True, max_retries=3)
+def process_webhook_message(self, data):
+    """Process webhook messages asynchronously"""
+    try:
+        phone_number = data.get('phone_number')
+        message = data.get('message')
+        current_state = data.get('current_state')
+
+        if not phone_number or not message:
+            return {"status": "error", "message": "Missing required fields"}
+
+        # Process the message using the unified processing function
+        response_message, new_state = process_message(phone_number, message, current_state)
+
+        # Update Redis cache with new state
+        if current_app.redis:
+            try:
+                current_app.redis.setex(f"state:{phone_number}", 300, new_state)
+                logger.debug(f"Updated Redis state for {phone_number}: {new_state}")
+            except Exception as e:
+                logger.error(f"Redis error while setting state in webhook: {e}")
+
+        # Send response using unified message sending function
+        result = send_message(phone_number, response_message)
+        if result['status'] != 'success':
+            raise Exception(result['message'])
+
+        return {"status": "success", "message": "Message processed and sent"}
+
+    except requests.exceptions.RequestException as exc:
+        raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+    except Exception as e:
+        logger.error(f"Error in process_webhook_message: {str(e)}")
+        return {"status": "error", "message": str(e)}

@@ -8,8 +8,10 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     phone_number = Column(String, unique=True, index=True)
+    name = Column(String)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    schedule = Column(String)  # daily, weekly, monthly
     preferences = relationship("UserPreference", back_populates="user")
 
 class UserPreference(Base):
@@ -20,6 +22,22 @@ class UserPreference(Base):
     notification_frequency = Column(String)
     topics = Column(String)
     user = relationship("User", back_populates="preferences")
+
+class Location(Base):
+    __tablename__ = "locations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    location_name = Column(String)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Subject(Base):
+    __tablename__ = "subjects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    subject_name = Column(String)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class NewsSource(Base):
     __tablename__ = "news_sources"
