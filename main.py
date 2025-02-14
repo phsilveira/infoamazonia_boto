@@ -5,18 +5,22 @@ from sqlalchemy.orm import Session
 import models, schemas, auth
 from database import engine, get_db
 from admin import router as admin_router
-from webhook import router as webhook_router  # Add this line
+from webhook import router as webhook_router
 from datetime import timedelta
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from middleware import auth_middleware
 from scheduler import start_scheduler
+from config import settings
 import asyncio
 
 # Create all database tables
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="InfoAmazonia Admin Dashboard")
+app = FastAPI(
+    title="InfoAmazonia Admin Dashboard",
+    debug=settings.DEBUG
+)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -25,7 +29,7 @@ app.middleware("http")(auth_middleware)
 
 # Include routers
 app.include_router(admin_router)
-app.include_router(webhook_router)  # Add this line
+app.include_router(webhook_router)
 
 @app.on_event("startup")
 async def startup_event():
@@ -51,7 +55,7 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
         data={"sub": admin.username}, expires_delta=access_token_expires
     )

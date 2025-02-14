@@ -5,12 +5,40 @@ from datetime import datetime
 import logging
 from database import get_db
 import models
+from config import settings
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhook", tags=["webhook"])
+
+def verify_webhook(mode: str, token: str, challenge: str) -> Dict[str, str]:
+    """Handle WhatsApp Cloud API webhook verification"""
+    if mode == 'subscribe' and token == settings.WEBHOOK_VERIFY_TOKEN:
+        logger.info("Webhook verified successfully!")
+        return {"challenge": challenge, "status_code": "200"}
+    else:
+        logger.warning("Webhook verification failed.")
+        return {"error": "Forbidden", "status_code": "403"}
+
+@router.get("")
+async def verify_webhook_endpoint(
+    request: Request
+):
+    """Handle incoming webhook requests for both official and unofficial API formats"""
+    if request.method == 'GET':
+        mode = request.query_params.get('hub.mode')
+        token = request.query_params.get('hub.verify_token')
+        challenge = request.query_params.get('hub.challenge')
+        # Ensure INFO log level is set for console logging
+        logger.setLevel(logging.INFO)
+        logger.info(f"Webhook verification request: {mode}, {token}, {challenge}")
+
+        response = verify_webhook(mode, token, challenge)
+        if response.get("status_code") == "403":
+            raise HTTPException(status_code=403, detail=response.get("error"))
+        return response.get("challenge")
 
 def handle_message_status(status: Dict, db: Session) -> None:
     """Process and store message status updates"""
@@ -65,32 +93,6 @@ def process_incoming_message(message_data: Dict, phone_number: str, db: Session)
         logger.error(f"Error processing incoming message: {str(e)}")
         db.rollback()
 
-def verify_webhook(mode: str, token: str, challenge: str) -> Dict[str, str]:
-    """Handle WhatsApp Cloud API webhook verification"""
-    if mode == 'subscribe' and token == "SAD":
-        logger.info("Webhook verified successfully!")
-        return {"challenge": challenge, "status_code": "200"}
-    else:
-        logger.warning("Webhook verification failed.")
-        return {"error": "Forbidden", "status_code": "403"}
-
-@router.get("")
-async def verify_webhook_endpoint(
-    request: Request
-):
-    """Handle incoming webhook requests for both official and unofficial API formats"""
-    if request.method == 'GET':
-        mode = request.query_params.get('hub.mode')
-        token = request.query_params.get('hub.verify_token')
-        challenge = request.query_params.get('hub.challenge')
-        # Ensure INFO log level is set for console logging
-        logger.setLevel(logging.INFO)
-        logger.info(f"Webhook verification request: {mode}, {token}, {challenge}")
-
-        response = verify_webhook(mode, token, challenge)
-        if response.get("status_code") == "403":
-            raise HTTPException(status_code=403, detail=response.get("error"))
-        return response.get("challenge")
 
 @router.post("")
 async def webhook_endpoint(
@@ -101,6 +103,7 @@ async def webhook_endpoint(
     try:
         data = await request.json()
         logger.debug(f"Received webhook data: {data}")
+        
         if not data:
             raise HTTPException(status_code=400, detail="No data provided")
 
