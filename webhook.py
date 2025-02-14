@@ -62,18 +62,18 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
             logger.error("Missing required fields in webhook data")
             return {"status": "error", "message": "Missing required fields"}
 
-        app = request.app
-        if not app.state.redis:
-            logger.error("Redis client not available")
-            return {"status": "error", "message": "Redis connection not available"}
-
-        # Get current state from Redis
-        try:
-            current_state = await app.state.redis.get(f"state:{phone_number}")
-            if current_state:
-                logger.debug(f"Retrieved state for {phone_number}: {current_state}")
-        except Exception as e:
-            logger.error(f"Redis error while getting state: {e}")
+        # Get Redis client from app state with proper error handling
+        redis_client = getattr(request.app.state, 'redis', None)
+        if redis_client:
+            try:
+                # Get current state from Redis
+                current_state = await redis_client.get(f"state:{phone_number}")
+                if current_state:
+                    logger.debug(f"Retrieved state for {phone_number}: {current_state}")
+            except Exception as e:
+                logger.warning(f"Redis operation failed, continuing without state: {e}")
+        else:
+            logger.warning("Redis client not available, continuing without state")
 
         # Initialize chatbot and process message
         chatbot = ChatBot(db)
@@ -83,12 +83,13 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
         # Process the message using the unified processing function
         response_message, new_state = await process_message(phone_number, message, chatbot)
 
-        # Update Redis cache with new state
-        try:
-            await app.state.redis.setex(f"state:{phone_number}", 300, new_state)
-            logger.debug(f"Updated Redis state for {phone_number}: {new_state}")
-        except Exception as e:
-            logger.error(f"Redis error while setting state: {e}")
+        # Try to update Redis cache with new state, but don't fail if Redis is unavailable
+        if redis_client:
+            try:
+                await redis_client.setex(f"state:{phone_number}", 300, new_state)
+                logger.debug(f"Updated Redis state for {phone_number}: {new_state}")
+            except Exception as e:
+                logger.warning(f"Failed to update Redis state: {e}")
 
         # Send response
         result = await send_message(phone_number, response_message, db)
