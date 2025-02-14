@@ -74,17 +74,17 @@ def verify_webhook(mode: str, token: str, challenge: str, verify_token: str) -> 
         logger.warning("Webhook verification failed.")
         return 'Forbidden', 403
 
-@router.get("")
+@router.get("/webhook")
 async def verify_webhook_endpoint(
     mode: str = None,
     token: str = None,
     challenge: str = None,
-    verify_token: str = "your-verify-token"  # In production, use environment variable
+    verify_token: str = "HAPPY"  # In production, use environment variable
 ):
     """Handle webhook verification requests"""
     return verify_webhook(mode, token, challenge, verify_token)
 
-@router.post("")
+@router.post("/webhook")
 async def webhook_endpoint(
     request: Request,
     db: Session = Depends(get_db)
