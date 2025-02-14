@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -7,8 +7,8 @@ from database import engine, get_db
 from admin import router as admin_router
 from datetime import timedelta
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
-from fastapi import Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from middleware import auth_middleware
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -16,8 +16,18 @@ app = FastAPI(title="InfoAmazonia Admin Dashboard")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# Add middleware
+app.middleware("http")(auth_middleware)
+
 # Include admin router
 app.include_router(admin_router)
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse(
+        "admin/login.html",
+        {"request": request}
+    )
 
 @app.post("/token")
 async def login_for_access_token(
@@ -35,14 +45,22 @@ async def login_for_access_token(
     access_token = auth.create_access_token(
         data={"sub": admin.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+    return response
 
 @app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
+async def root(request: Request, current_admin: models.Admin = Depends(auth.get_current_admin)):
     return templates.TemplateResponse(
         "admin/index.html",
-        {"request": request}
+        {"request": request, "admin": current_admin}
     )
+
+@app.get("/logout")
+async def logout():
+    response = RedirectResponse(url="/login")
+    response.delete_cookie("access_token")
+    return response
 
 if __name__ == "__main__":
     import uvicorn
