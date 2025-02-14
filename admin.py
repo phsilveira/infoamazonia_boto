@@ -39,10 +39,14 @@ async def list_news_sources(
         {"request": request, "sources": sources}
     )
 
-@router.get("/metrics", response_model=List[schemas.Metrics])
+@router.get("/metrics", response_class=HTMLResponse)
 async def get_metrics(
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
-    metrics = db.query(models.Metrics).all()
-    return metrics
+    metrics = db.query(models.Metrics).order_by(models.Metrics.date.desc()).all()
+    return templates.TemplateResponse(
+        "admin/metrics.html",
+        {"request": request, "metrics": metrics}
+    )
