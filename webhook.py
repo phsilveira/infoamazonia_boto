@@ -74,17 +74,18 @@ def verify_webhook(mode: str, token: str, challenge: str, verify_token: str) -> 
         logger.warning("Webhook verification failed.")
         return 'Forbidden', 403
 
-@router.get("/webhook")
+@router.get("")  # Changed from "/webhook" to "" since we're using prefix
 async def verify_webhook_endpoint(
-    mode: str = None,
-    token: str = None,
-    challenge: str = None,
+    hub_mode: str = None,
+    hub_verify_token: str = None,
+    hub_challenge: str = None,
     verify_token: str = "HAPPY"  # In production, use environment variable
 ):
     """Handle webhook verification requests"""
-    return verify_webhook(mode, token, challenge, verify_token)
+    response = verify_webhook(hub_mode, hub_verify_token, hub_challenge, verify_token)
+    return response[0], response[1]
 
-@router.post("/webhook")
+@router.post("")  # Changed from "/webhook" to "" since we're using prefix
 async def webhook_endpoint(
     request: Request,
     db: Session = Depends(get_db)
@@ -93,7 +94,7 @@ async def webhook_endpoint(
     try:
         data = await request.json()
         logger.debug(f"Received webhook data: {data}")
-        
+
         if not data:
             raise HTTPException(status_code=400, detail="No data provided")
 
