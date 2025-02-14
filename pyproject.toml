@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "apscheduler>=3.11.0",
     "email-validator>=2.2.0",
     "fastapi>=0.115.8",
     "fastapi-admin>=1.0.4",
@@ -17,6 +18,7 @@ dependencies = [
     "pydantic>=2.10.6",
     "python-jose>=3.3.0",
     "python-multipart>=0.0.20",
+    "pytz>=2025.1",
     "sqlalchemy>=2.0.38",
     "uvicorn>=0.34.0",
 ]

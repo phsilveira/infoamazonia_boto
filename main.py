@@ -9,6 +9,8 @@ from datetime import timedelta
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from middleware import auth_middleware
+from scheduler import start_scheduler
+import asyncio
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -21,6 +23,11 @@ app.middleware("http")(auth_middleware)
 
 # Include admin router
 app.include_router(admin_router)
+
+@app.on_event("startup")
+async def startup_event():
+    # Start the scheduler when the application starts
+    start_scheduler()
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):

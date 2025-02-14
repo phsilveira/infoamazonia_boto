@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Float
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Float, Text, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -50,3 +50,25 @@ class Metrics(Base):
     messages_sent = Column(Integer)
     messages_received = Column(Integer)
     click_through_rate = Column(Float)
+
+class MessageTemplate(Base):
+    __tablename__ = "message_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True)
+    content = Column(Text)
+    variables = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+
+class ScheduledMessage(Base):
+    __tablename__ = "scheduled_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    template_id = Column(Integer, ForeignKey("message_templates.id"))
+    scheduled_time = Column(DateTime)
+    target_groups = Column(JSON)  # Store target user groups
+    personalization_data = Column(JSON)  # Store variables for template
+    status = Column(String)  # pending, sent, failed
+    created_at = Column(DateTime, default=datetime.utcnow)
+    template = relationship("MessageTemplate")
