@@ -25,15 +25,19 @@ async def list_users(
         {"request": request, "users": users}
     )
 
-@router.get("/news-sources", response_model=List[schemas.NewsSource])
+@router.get("/news-sources", response_class=HTMLResponse)
 async def list_news_sources(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
     sources = db.query(models.NewsSource).offset(skip).limit(limit).all()
-    return sources
+    return templates.TemplateResponse(
+        "admin/news-sources.html",
+        {"request": request, "sources": sources}
+    )
 
 @router.get("/metrics", response_model=List[schemas.Metrics])
 async def get_metrics(
