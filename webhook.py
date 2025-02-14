@@ -65,34 +65,32 @@ def process_incoming_message(message_data: Dict, phone_number: str, db: Session)
         logger.error(f"Error processing incoming message: {str(e)}")
         db.rollback()
 
-def verify_webhook(mode: str, token: str, challenge: str) -> tuple[str | int, int]:
+def verify_webhook(mode: str, token: str, challenge: str) -> Dict[str, str]:
     """Handle WhatsApp Cloud API webhook verification"""
-    VERIFY_TOKEN = "HAPPY"  # In production, use environment variable
-    if mode == 'subscribe' and token == VERIFY_TOKEN:
+    if mode == 'subscribe' and token == "SAD":
         logger.info("Webhook verified successfully!")
-        return challenge, 200
+        return {"challenge": challenge, "status_code": "200"}
     else:
         logger.warning("Webhook verification failed.")
-        return 'Forbidden', 403
+        return {"error": "Forbidden", "status_code": "403"}
 
 @router.get("")
-async def webhook_verification(
-    hub_mode: str | None = None,
-    hub_verify_token: str | None = None,
-    hub_challenge: str | None = None
+async def verify_webhook_endpoint(
+    request: Request
 ):
-    """Handle incoming webhook verification requests"""
-    mode = hub_mode
-    token = hub_verify_token
-    challenge = hub_challenge
+    """Handle incoming webhook requests for both official and unofficial API formats"""
+    if request.method == 'GET':
+        mode = request.query_params.get('hub.mode')
+        token = request.query_params.get('hub.verify_token')
+        challenge = request.query_params.get('hub.challenge')
+        # Ensure INFO log level is set for console logging
+        logger.setLevel(logging.INFO)
+        logger.info(f"Webhook verification request: {mode}, {token}, {challenge}")
 
-    if not all([mode, token, challenge]):
-        raise HTTPException(status_code=400, detail="Missing required parameters")
-
-    response, status_code = verify_webhook(mode, token, challenge)
-    if status_code != 200:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    return int(response) if isinstance(response, str) else response
+        response = verify_webhook(mode, token, challenge)
+        if response.get("status_code") == "403":
+            raise HTTPException(status_code=403, detail=response.get("error"))
+        return response.get("challenge")
 
 @router.post("")
 async def webhook_endpoint(
