@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Float, Text, JSON
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Float, Text, JSON, func
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -72,3 +72,23 @@ class ScheduledMessage(Base):
     status = Column(String)  # pending, sent, failed
     created_at = Column(DateTime, default=datetime.utcnow)
     template = relationship("MessageTemplate")
+
+class Message(Base):
+    __tablename__ = 'messages'
+
+    id = Column(Integer, primary_key=True)
+    whatsapp_message_id = Column(String(100), unique=True, nullable=False)
+    phone_number = Column(String(20), nullable=False)
+    message_type = Column(String(20), nullable=False)  # 'incoming', 'outgoing'
+    message_content = Column(Text)
+    status = Column(String(20))  # sent, delivered, read, failed
+    status_timestamp = Column(DateTime)
+    created_at = Column(DateTime, server_default=func.now())
+
+    # If the message failed, store the error details
+    error_code = Column(Integer)
+    error_title = Column(String(200))
+    error_message = Column(Text)
+
+    def __repr__(self):
+        return f'<Message {self.whatsapp_message_id}>'

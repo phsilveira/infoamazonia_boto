@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 import models, schemas, auth
 from database import engine, get_db
 from admin import router as admin_router
+from webhook import router as webhook_router  # Add this line
 from datetime import timedelta
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -12,6 +13,7 @@ from middleware import auth_middleware
 from scheduler import start_scheduler
 import asyncio
 
+# Create all database tables
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="InfoAmazonia Admin Dashboard")
@@ -21,8 +23,9 @@ templates = Jinja2Templates(directory="templates")
 # Add middleware
 app.middleware("http")(auth_middleware)
 
-# Include admin router
+# Include routers
 app.include_router(admin_router)
+app.include_router(webhook_router)  # Add this line
 
 @app.on_event("startup")
 async def startup_event():
