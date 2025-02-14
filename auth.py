@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 import models
-from database import get_db
+from database import get_db, SessionLocal
 
 SECRET_KEY = "your-secret-key-here"  # In production, use environment variable
 ALGORITHM = "HS256"
@@ -40,6 +40,17 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def verify_token(token: str, db: Session):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        admin = db.query(models.Admin).filter(models.Admin.username == username).first()
+        return admin
+    except JWTError:
+        return None
+
 async def get_current_admin(request: Request, db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -48,13 +59,9 @@ async def get_current_admin(request: Request, db: Session = Depends(get_db)):
     )
     try:
         token = get_token_from_cookie(request)
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        admin = verify_token(token, db)
+        if admin is None:
             raise credentials_exception
+        return admin
     except JWTError:
         raise credentials_exception
-    admin = db.query(models.Admin).filter(models.Admin.username == username).first()
-    if admin is None:
-        raise credentials_exception
-    return admin
