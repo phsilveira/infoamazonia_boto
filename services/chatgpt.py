@@ -6,11 +6,11 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 class ChatGPTService:
-    def __init__(self, api_key: str):
+    def __init__(self, ):
         self.api_key = api_key
         self.api_url = "https://api.openai.com/v1/chat/completions"
         self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
             "Content-Type": "application/json"
         }
 

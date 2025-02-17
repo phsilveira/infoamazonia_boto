@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhook", tags=["webhook"])
 
 # Initialize ChatGPT service
-chatgpt_service = ChatGPTService(os.environ.get('OPENAI_API_KEY'))
+chatgpt_service = ChatGPTService()
 
 @router.get("")
 async def verify_webhook_endpoint(request: Request):
