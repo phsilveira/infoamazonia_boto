@@ -33,6 +33,12 @@ async def handle_menu_state(chatbot: ChatBot, message: str) -> Tuple[str, str]:
     elif message in ['2', 'about', 'sobre', 'info']:
         chatbot.select_about()
         return message_loader.get_message('about.info'), chatbot.state
+    elif message in ['3', 'resumo', 'artigo']:
+        chatbot.select_article_summary()
+        return message_loader.get_message('menu.article_summary'), chatbot.state
+    elif message in ['4', 'sugestão', 'pauta']:
+        chatbot.select_news_suggestion()
+        return message_loader.get_message('menu.news_suggestion'), chatbot.state
     else:
         return message_loader.get_message('menu.invalid_option'), chatbot.state
 
@@ -131,3 +137,18 @@ async def handle_about_state(chatbot: ChatBot) -> Tuple[str, str]:
     """Handle the about state logic"""
     chatbot.end_conversation()
     return message_loader.get_message('about.return'), chatbot.state
+
+async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: str) -> Tuple[str, str]:
+    """Handle the term info state logic"""
+    chatbot.end_conversation()
+    return message_loader.get_message('menu.implementation_soon'), chatbot.state
+
+async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, message: str) -> Tuple[str, str]:
+    """Handle the article summary state logic"""
+    chatbot.end_conversation()
+    return message_loader.get_message('menu.implementation_soon'), chatbot.state
+
+async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, message: str) -> Tuple[str, str]:
+    """Handle the news suggestion state logic"""
+    chatbot.end_conversation()
+    return message_loader.get_message('menu.implementation_soon'), chatbot.state
