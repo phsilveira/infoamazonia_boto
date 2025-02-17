@@ -236,7 +236,7 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> 
             elif handler == handle_about_state:
                 return await handler(chatbot)
             else:
-                return await handler(chatbot, phone_number, message)
+                return await handler(chatbot, phone_number, message, chatgpt_service)
 
         return message_loader.get_message('error.invalid_state'), chatbot.state
 

@@ -36,7 +36,7 @@ async def handle_menu_state(chatbot: ChatBot, message: str) -> Tuple[str, str]:
     else:
         return message_loader.get_message('menu.invalid_option'), chatbot.state
 
-async def handle_location_state(chatbot: ChatBot, phone_number: str, message: str) -> Tuple[str, str]:
+async def handle_location_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> Tuple[str, str]:
     """Handle the location state logic with ChatGPT validation"""
     user = chatbot.get_user(phone_number)
     if not user:
@@ -65,7 +65,7 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
         logger.error(f"Error in handle_location_state: {str(e)}")
         return message_loader.get_message('error.save_location', error=str(e)), chatbot.state
 
-async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str) -> Tuple[str, str]:
+async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> Tuple[str, str]:
     """Handle the subject state logic with ChatGPT validation"""
     user = chatbot.get_user(phone_number)
     if not user:
