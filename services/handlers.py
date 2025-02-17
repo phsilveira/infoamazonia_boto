@@ -93,7 +93,7 @@ async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str
         logger.error(f"Error in handle_subject_state: {str(e)}")
         return message_loader.get_message('error.save_subject', error=str(e)), chatbot.state
 
-async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: str) -> Tuple[str, str]:
+async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> Tuple[str, str]:
     """Handle the schedule state logic with more flexible input handling"""
     user = chatbot.get_user(phone_number)
     if not user:

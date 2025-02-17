@@ -13,9 +13,12 @@ menu:
     Aqui você pode:
 
     1️⃣ Inscrever-se para receber notícias da Amazônia 🌍
-    2️⃣ Saber mais sobre o projeto InfoAmazonia ℹ️
+    2️⃣ Tirar dúvidas sobre um termo 🔍
+    3️⃣ Pedir um resumo de artigo 📄
+    4️⃣ Enviar sugestão de pauta 📨
+    5️⃣ Saber mais sobre o projeto InfoAmazonia ℹ️
 
-    ⚙️ Digite o número da opção que deseja acessar ou escreva 'inscrever' ou 'sobre'.
+    ⚙️ Digite o número da opção que deseja acessar. 
 
   invalid_option: "Opção inválida. Por favor, selecione:\n1. Inscrever-se\n2. Sobre o chatbot"
 

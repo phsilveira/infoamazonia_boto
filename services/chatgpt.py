@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class ChatGPTService:
     def __init__(self, ):
-        self.api_key = api_key
+        # self.api_key = api_key
         self.api_url = "https://api.openai.com/v1/chat/completions"
         self.headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
@@ -50,11 +50,27 @@ class ChatGPTService:
 
         return is_valid, corrected_location
 
-    async def validate_subject(self, subject: str) -> Tuple[bool, str]:
+    async def validate_subject(self, subject: str) -> tuple[bool, str]:
         """Validate and categorize a subject related to Amazon"""
         messages = [
             {"role": "system", "content": "You are a helpful assistant that validates and categorizes subjects related to the Amazon rainforest."},
-            {"role": "user", "content": f"Is '{subject}' a valid subject related to the Amazon rainforest? Examples and validation rules..."}
+            {"role": "user", "content": f"""Is ‘{subject}’ a valid subject related to the Amazon rainforest?
+    •\tExamples of valid subjects:
+    1.\tConservação e clima
+    2.\tPovos originários e territórios
+    3.\tPolítica e economia amazônica
+    4.\tBiodiversidade e saúde ambiental
+    5.\tSaúde e educação na Amazônia
+    6.\tMineração em terras indígenas
+etc.
+    •\tInstructions for validation:
+    •\tIf the input is a number (1-6), map it to the corresponding example subject above.
+    •\tIf the input is a subject text, check its relevance to the examples provided.
+    •\tIf valid but needs correction, provide the corrected version of the subject.
+    •\tIf invalid, explain why it does not match any valid subject.
+
+Response format:
+VALID|INVALID|subject_name|explanation"""}
         ]
 
         response = await self._make_request(messages)
