@@ -52,7 +52,7 @@ async def verify_webhook_endpoint(request: Request):
         raise HTTPException(status_code=400, detail="Invalid challenge value")
 
 async def process_webhook_message(data: Dict, db: Session, request: Request) -> Dict:
-    """Process webhook messages asynchronously"""
+    """Process webhook messages asynchronously with improved error handling"""
     try:
         phone_number = data.get('phone_number')
         message = data.get('message')
@@ -91,15 +91,33 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
             except Exception as e:
                 logger.warning(f"Failed to update Redis state: {e}")
 
-        # Send response
-        result = await send_message(phone_number, response_message, db)
-        if result['status'] != 'success':
-            raise Exception(result['message'])
+        # Send response with transaction handling
+        try:
+            result = await send_message(phone_number, response_message, db)
+            if result['status'] != 'success':
+                raise Exception(result['message'])
 
-        return {"status": "success", "message": "Message processed and sent"}
+            # If everything succeeded, commit the transaction
+            try:
+                db.commit()
+            except Exception as e:
+                logger.error(f"Failed to commit transaction: {e}")
+                db.rollback()
+                raise
+
+            return {"status": "success", "message": "Message processed and sent"}
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error sending message: {e}")
+            raise
 
     except Exception as e:
         logger.error(f"Error in process_webhook_message: {str(e)}")
+        # Ensure the transaction is rolled back in case of any error
+        try:
+            db.rollback()
+        except:
+            pass
         return {"status": "error", "message": str(e)}
 
 @router.post("", response_model=None)

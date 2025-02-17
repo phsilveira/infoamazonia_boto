@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     API_URL: str = os.getenv("API_URL", "https://graph.facebook.com/v12.0/")
     API_TOKEN: str = os.getenv("API_TOKEN", "")
     NUMBER_ID: str = os.getenv("NUMBER_ID", "")
-    USE_OFFICIAL_API: bool = os.getenv("USE_OFFICIAL_API", "False") == "True"
+    USE_OFFICIAL_API: bool = os.getenv("USE_OFFICIAL_API", "True") == "True"
 
     # Unofficial API Configuration
     EXTERNAL_SERVICE_URL: str = os.getenv("EXTERNAL_SERVICE_URL", "")
