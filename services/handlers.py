@@ -46,14 +46,13 @@ async def handle_menu_state(chatbot: ChatBot, message: str) -> Tuple[str, str]:
         return message_loader.get_message('menu.invalid_option'), chatbot.state
 
 async def handle_location_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> Tuple[str, str]:
-    """Handle the location state logic with ChatGPT validation"""
+    """Handle the location state logic with location service validation"""
     user = chatbot.get_user(phone_number)
     if not user:
         return message_loader.get_message('error.user_not_found'), chatbot.state
 
-    # First validate and correct location using ChatGPT
+    # Try to parse as a confirmation first
     try:
-        # Try to parse as a confirmation first
         confirmation_response = chatgpt_service.parse_confirmation(message)
         if confirmation_response is not None:
             if confirmation_response:  # User wants to add more
@@ -62,17 +61,43 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
                 chatbot.proceed_to_subjects()
                 return message_loader.get_message('subject.request'), "get_user_subject"
 
-        # If not a clear yes/no, treat as location input
-        is_valid, corrected_location = await chatgpt_service.validate_location(message)
-        if not is_valid:
-            return message_loader.get_message('location.invalid', message=corrected_location), chatbot.state
+        # If not a confirmation, validate and get location details using our new service
+        from services.location import validate_brazilian_location, get_location_details
 
-        # Save the validated location
-        chatbot.save_location(user.id, corrected_location)
-        return message_loader.get_message('location.saved', location=corrected_location), chatbot.state
+        is_valid, corrected_name, region_type = await validate_brazilian_location(message)
+        if not is_valid:
+            return message_loader.get_message('location.invalid', message=corrected_name), chatbot.state
+
+        # Get location details including coordinates
+        location_details = await get_location_details(corrected_name)
+
+        # Save the validated location with coordinates
+        from models import Location
+        from database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            location = Location(
+                location_name=location_details["corrected_name"],
+                latitude=location_details["latitude"],
+                longitude=location_details["longitude"],
+                user_id=user.id
+            )
+            db.add(location)
+            db.commit()
+            db.refresh(location)
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error saving location: {str(e)}")
+            return message_loader.get_message('error.save_location', error=str(e)), chatbot.state
+        finally:
+            db.close()
+
+        return message_loader.get_message('location.saved', location=location_details["corrected_name"]), chatbot.state
+
     except Exception as e:
         logger.error(f"Error in handle_location_state: {str(e)}")
-        return message_loader.get_message('error.save_location', error=str(e)), chatbot.state
+        return message_loader.get_message('error.process_message', error=str(e)), chatbot.state
 
 async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> Tuple[str, str]:
     """Handle the subject state logic with ChatGPT validation"""

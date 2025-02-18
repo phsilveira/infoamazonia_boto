@@ -113,3 +113,54 @@ async def schedule_new_message(
     schedule_message(db, scheduled_message.id, scheduled_message.scheduled_time)
 
     return RedirectResponse(url="/admin/messages", status_code=status.HTTP_302_FOUND)
+
+@router.get("/users/{user_id}", response_class=HTMLResponse)
+async def get_user(
+    request: Request,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Get user's locations
+    locations = db.query(models.Location).filter(models.Location.user_id == user_id).all()
+
+    return templates.TemplateResponse(
+        "admin/user_detail.html",
+        {"request": request, "user": user, "locations": locations}
+    )
+
+@router.post("/users/{user_id}/location", response_class=HTMLResponse)
+async def add_user_location(
+    request: Request,
+    user_id: int,
+    location_name: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    from services.location import validate_brazilian_location, get_location_details
+
+    try:
+        # Validate and get location details
+        is_valid, corrected_name, _ = await validate_brazilian_location(location_name)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid location: {location_name}")
+
+        location_details = await get_location_details(corrected_name)
+
+        # Save location
+        location = models.Location(
+            location_name=location_details["corrected_name"],
+            latitude=location_details["latitude"],
+            longitude=location_details["longitude"],
+            user_id=user_id
+        )
+        db.add(location)
+        db.commit()
+
+        return RedirectResponse(url=f"/admin/users/{user_id}", status_code=status.HTTP_302_FOUND)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
