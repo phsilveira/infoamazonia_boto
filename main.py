@@ -7,6 +7,7 @@ import models, schemas, auth
 from database import engine, get_db
 from admin import router as admin_router
 from webhook import router as webhook_router
+from routers.location import router as location_router
 from datetime import timedelta
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -75,6 +76,7 @@ app.middleware("http")(auth_middleware)
 # Include routers
 app.include_router(admin_router)
 app.include_router(webhook_router)
+app.include_router(location_router)
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
