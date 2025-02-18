@@ -16,6 +16,22 @@ class User(UserBase):
     class Config:
         orm_mode = True
 
+class LocationBase(BaseModel):
+    location_name: str
+    user_id: Optional[int] = None
+
+class LocationCreate(LocationBase):
+    pass
+
+class Location(LocationBase):
+    id: int
+    latitude: float
+    longitude: float
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
 class NewsSourceBase(BaseModel):
     url: HttpUrl
     name: str

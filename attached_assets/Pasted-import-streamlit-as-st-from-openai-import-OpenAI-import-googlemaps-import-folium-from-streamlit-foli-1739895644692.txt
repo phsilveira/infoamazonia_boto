@@ -1,0 +1,146 @@
+import streamlit as st
+from openai import OpenAI
+import googlemaps
+import folium
+from streamlit_folium import folium_static
+
+# Load credentials from Streamlit secrets
+openai_api_key = st.secrets["openai"]["api_key"]
+googlemaps_api_key = st.secrets["googlemaps"]["api_key"]
+
+
+client = OpenAI(api_key=openai_api_key)
+gmaps = googlemaps.Client(key=googlemaps_api_key)
+
+def validate_brazilian_location(user_input, system_prompt):
+    """Validates if the user input is a valid Brazilian city or region name.
+
+    Args:
+        user_input: The text expression to validate.
+
+    Returns:
+        True and the corrected region name if the location is valid (even with typos),
+        False and the original input if the location is completely invalid.
+    """
+    completion = client.chat.completions.create(
+        model="gpt-4o",  # or "gpt-4o" if available
+        messages=[
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {"role": "user", "content": user_input}
+        ]
+    )
+    response = completion.choices[0].message.content
+    is_valid, corrected_name, region_type = response.split(";", 2)
+
+    # Return True if valid (even if corrected), False only if completely invalid
+    return (True, corrected_name, region_type) if is_valid == "T" else (False, user_input, 'inexistente')
+
+def get_address_details_with_validation(location_text, country=None, region=None, system_prompt=None):
+    if country == "BR":
+        is_valid, corrected_name, region_type = validate_brazilian_location(location_text, system_prompt=system_prompt)
+        if not is_valid:
+            return {"error": f"'{location_text}' is not a valid Brazilian location."}
+        location_text = corrected_name
+
+    geocode_result = gmaps.geocode(location_text, components={'country': country} if country else None, region=region)
+
+    if geocode_result:
+        location = geocode_result[0]['geometry']['location']
+        address = geocode_result[0]['formatted_address']
+        return {
+            "address": address,
+            "latitude": location['lat'],
+            "longitude": location['lng']
+        }
+    else:
+        error_msg = "[Google Maps]Location not found"
+        if country:
+            error_msg += f" in {country}."
+        return {"error": error_msg}
+
+def create_map_with_circle(address_details, radius=50):
+    latitude = address_details['latitude']
+    longitude = address_details['longitude']
+    address = address_details['address']
+
+    m = folium.Map(location=[latitude, longitude], zoom_start=10)
+    folium.Marker(location=[latitude, longitude], popup=address).add_to(m)
+    folium.Circle(
+        location=[latitude, longitude],
+        radius=radius*1000,
+        color="blue",
+        fill=True,
+        fill_color="blue",
+        fill_opacity=0.2,
+    ).add_to(m)
+
+    return m
+
+st.header("Infoamazonia")
+st.subheader("Geographic Region Search")
+
+location = st.text_input("Enter a location:")
+
+system_prompt = st.text_area(
+    "System Prompt", 
+    value="""Você é um sistema responsável por validar e corrigir nomes de regiões e localidades brasileiras da Amazonia legal.
+Seu objetivo é analisar se o usuário digitou o nome correto e completo de uma região, considerando critérios oficiais e possíveis variações.
+
+Critérios de Validação:
+	1.	Nomes Oficiais: Baseie-se nos nomes oficiais definidos pelo IBGE ou outras instituições relevantes.
+	2.	Abreviações Comuns: Aceite abreviações amplamente reconhecidas, mas prefira corrigir para o nome completo.
+	3.	Sinônimos: Considere nomes alternativos ou sinônimos reconhecidos para a mesma localidade ou região.
+	4.	Erros de Digitação: Identifique e sugira correções para erros ortográficos ou variações de escrita.
+	5.	Menor Nível Geográfico: A menor unidade válida é um município. Caso o termo se refira a algo menor, como um distrito, associe-o ao município correspondente.
+
+Regras de Saída:
+	•	Retorne T (verdadeiro) para as seguintes categorias, mesmo com erros corrigidos:
+	•	Nome de município brasileiro.
+	•	Nome de estado brasileiro.
+	•	Nome de uma das cinco grandes regiões do Brasil (ex.: Região Norte).
+	•	Nome de uma Região Geográfica Intermediária ou Imediata reconhecida pelo IBGE.
+	•	Nome de uma região hidrográfica, formação geológica, área protegida ou unidade de conservação oficial.
+	•	Nomes de rios, ilhas, ou formações naturais reconhecidas no Brasil.
+	•	Retorne F (falso) caso o nome seja inválido ou não corresponda a uma categoria válida.
+	•	Forneça o nome corrigido, se aplicável, e a classificação atribuída.
+
+Formato de Saída:
+	•	T;<Nome Corrigido>;<Classificação> para entradas válidas.
+	•	F;<Nome Corrigido>;<Classificação> para entradas inválidas ou não reconhecidas.
+
+Exemplos de Entrada e Saída:
+	1.	Entrada: Manaus
+Saída: T;Manaus;Município
+	2.	Entrada: amazonas
+Saída: T;Amazonas;Estado
+	3.	Entrada: Regiao Nordeste
+Saída: T;Região Nordeste;Região Geográfica
+	4.	Entrada: Lugar Inexistente
+Saída: F;Lugar Inexistente;Inexistente
+
+Condições Específicas:
+	1.	Se a entrada for uma localidade não oficial (ex.: “Grande Manaus”), retorne o nome oficial mais próximo.
+	2.	Caso a entrada seja válida, mas incompleta ou imprecisa (ex.: “Vale MA”), corrija-a para o nome completo oficial (ex.: “Vale do Maranhão”).
+	3.	Para erros ortográficos (ex.: “Manuas”), corrija para o nome oficial (ex.: “Manaus”).
+"""
+)
+
+radius = st.slider("Select the radius of interest (in km):", min_value=10, max_value=200, step=10, value=50)
+
+if st.button("Search"):
+    is_valid, corrected_name, region_type = validate_brazilian_location(location, system_prompt=system_prompt)
+    if not is_valid:
+        st.error(f"'{location}' is not a valid Brazilian location.")
+    
+    else:
+        st.success(f"Valid location: {corrected_name} ({region_type})")
+        
+        address_details = get_address_details_with_validation(location, system_prompt=system_prompt)
+        if "error" not in address_details:
+            map_object = create_map_with_circle(address_details, radius=radius)
+            folium_static(map_object)
+        else:
+            st.error(address_details['error'])

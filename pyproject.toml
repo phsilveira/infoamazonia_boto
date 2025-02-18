@@ -27,4 +27,6 @@ dependencies = [
     "pyyaml>=6.0.2",
     "httpx>=0.28.1",
     "twilio>=9.4.5",
+    "googlemaps>=4.10.0",
+    "openai>=1.63.2",
 ]
