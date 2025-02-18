@@ -1,11 +1,13 @@
-import os
+
+import logging
 from typing import Tuple, Dict, Optional
 from openai import OpenAI
 import googlemaps
 from fastapi import HTTPException
+from config import settings
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-gmaps = googlemaps.Client(key=os.getenv("GOOGLEMAPS_API_KEY"))
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
+gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
 
 SYSTEM_PROMPT = """Você é um sistema responsável por validar e corrigir nomes de regiões e localidades brasileiras da Amazonia legal.
 Seu objetivo é analisar se o usuário digitou o nome correto e completo de uma região, considerando critérios oficiais e possíveis variações.
