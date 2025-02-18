@@ -5,24 +5,27 @@ import os
 from sqlalchemy.pool import QueuePool
 from urllib.parse import urlparse
 
-SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./app.db")
+# Get environment mode
+ENV_MODE = os.environ.get("ENV_MODE", "development")
 
-# Parse the URL to check if it's PostgreSQL
-url = urlparse(SQLALCHEMY_DATABASE_URL)
-is_postgresql = url.scheme in ('postgres', 'postgresql')
+# Set database URL based on environment
+if ENV_MODE == "production":
+    SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost/infoamazonia")
+else:
+    # Use SQLite for development
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./dev.db"
 
 # Configure engine based on database type
-if is_postgresql:
+if ENV_MODE == "production":
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         poolclass=QueuePool,
         pool_size=5,
         max_overflow=10,
         pool_timeout=30,
-        pool_recycle=1800,  # Recycle connections after 30 minutes
-        pool_pre_ping=True,  # Enable connection testing before usage
+        pool_recycle=1800,
+        pool_pre_ping=True,
         connect_args={
-            "sslmode": "require",
             "connect_timeout": 10,
             "keepalives": 1,
             "keepalives_idle": 30,
@@ -31,7 +34,11 @@ if is_postgresql:
         }
     )
 else:
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+    # SQLite configuration - note: check_same_thread needed for SQLite
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        connect_args={"check_same_thread": False}
+    )
 
 # Configure session with expire_on_commit=False to prevent detached instance errors
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
