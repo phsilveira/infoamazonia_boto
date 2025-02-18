@@ -17,7 +17,10 @@ from services.handlers import (
     handle_location_state,
     handle_subject_state,
     handle_schedule_state,
-    handle_about_state
+    handle_about_state,
+    handle_term_info_state,
+    handle_article_summary_state,
+    handle_news_suggestion_state
 )
 import os
 
@@ -222,6 +225,9 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> 
             'get_user_subject': handle_subject_state,
             'get_user_schedule': handle_schedule_state,
             'about': handle_about_state,
+            'get_term_info': handle_term_info_state,
+            'get_article_summary': handle_article_summary_state,
+            'get_news_suggestion': handle_news_suggestion_state,
         }
 
         # Get the appropriate handler for the current state
@@ -243,29 +249,3 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> 
     except Exception as e:
         logger.error(f"Error processing message: {str(e)}")
         return message_loader.get_message('error.process_message', error=str(e)), 'start'
-
-# async def handle_start_state(chatbot: ChatBot, phone_number: str) -> tuple[str, str]:
-#     return message_loader.get_message('start'), 'menu_state'
-
-# async def handle_register_state(chatbot: ChatBot, phone_number: str, message: str) -> tuple[str, str]:
-#     #Process registration logic here
-#     return message_loader.get_message('registration_success'), 'menu_state'
-
-# async def handle_menu_state(chatbot: ChatBot, message: str) -> tuple[str, str]:
-#     #Process menu logic here
-#     return message_loader.get_message('menu'), 'menu_state'
-
-# async def handle_location_state(chatbot: ChatBot, phone_number: str, message: str) -> tuple[str, str]:
-#     #Process location logic here
-#     return message_loader.get_message('location_received'), 'menu_state'
-
-# async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str) -> tuple[str, str]:
-#     #Process subject logic here
-#     return message_loader.get_message('subject_received'), 'menu_state'
-
-# async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: str) -> tuple[str, str]:
-#     #Process schedule logic here
-#     return message_loader.get_message('schedule_received'), 'menu_state'
-
-# async def handle_about_state(chatbot: ChatBot) -> tuple[str, str]:
-#     return message_loader.get_message('about'), 'menu_state'
