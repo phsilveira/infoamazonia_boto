@@ -182,10 +182,10 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
     db = next(get_db())
     try:
         import httpx
-        api_url = "https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/search/term"
+        api_url = "https://infoamazonia-rag.replit.app/api/v1/search/term"
         payload = {"query": message, "generate_summary": True}
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(api_url, json=payload)
             data = response.json()
 
