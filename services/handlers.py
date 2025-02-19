@@ -171,7 +171,7 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
     try:
         import httpx
 
-        api_url = "https://aa109676-f2b5-40ce-9ab8-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/search/term"
+        api_url = "https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/search/term"
         payload = {
             "query": message,
             "generate_summary": True

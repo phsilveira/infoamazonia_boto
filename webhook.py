@@ -20,7 +20,8 @@ from services.handlers import (
     handle_about_state,
     handle_term_info_state,
     handle_article_summary_state,
-    handle_news_suggestion_state
+    handle_news_suggestion_state,
+    handle_feedback_state
 )
 import os
 
