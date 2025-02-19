@@ -182,14 +182,14 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
             data = response.json()
             
             if data.get("success") and data.get("summary"):
-                chatbot.end_conversation()
-                return data["summary"], chatbot.state
+                chatbot.state = "term_info_feedback"
+                return f"{data['summary']}\n\n{message_loader.get_message('term_info.feedback')}", chatbot.state
             else:
-                return "Desculpe, não consegui encontrar informações sobre esse termo.", chatbot.state
+                return message_loader.get_message('term_info.error'), chatbot.state
                 
     except Exception as e:
         logger.error(f"Error in term info handler: {str(e)}")
-        return "Desculpe, ocorreu um erro ao processar sua solicitação.", chatbot.state
+        return message_loader.get_message('term_info.api_error'), chatbot.state
 
 async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> Tuple[str, str]:
     """Handle the article summary state logic"""

@@ -28,6 +28,12 @@ menu:
     Queimadas na Amazônia
     O que é desmatamento ilegal? 
     Qual o impacto do aquecimento global na Amazônia?
+  term_info_error: "Desculpe, não consegui encontrar informações sobre esse termo."
+  term_info_api_error: "Desculpe, ocorreu um erro ao processar sua solicitação."
+  term_info_feedback: |
+    👍 Essa explicação ajudou?
+    1️⃣ Sim
+    2️⃣ Não
   article_summary: "Por favor, compartilhe o link do artigo que você gostaria de resumir:"
   news_suggestion: "Compartilhe sua sugestão de pauta:"
   implementation_soon: "Obrigado! Em breve implementaremos esta funcionalidade."
