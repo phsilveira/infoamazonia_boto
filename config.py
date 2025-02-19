@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # OpenAI Configuration
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
+    # Google Maps
+    GOOGLEMAPS_API_KEY: str = os.getenv("GOOGLEMAPS_API_KEY", "")
+
     # Redis Configuration
     REDIS_HOST: str = os.getenv("REDIS_HOST", "0.0.0.0")  
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
