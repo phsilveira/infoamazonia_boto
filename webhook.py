@@ -70,13 +70,20 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
         phone_number = data.get('phone_number')
         message = data.get('message')
         current_state = None
+        redis_client = request.app.state.redis
 
-        if not phone_number or not message:
-            logger.error("Missing required fields in webhook data")
-            return {"status": "error", "message": "Missing required fields"}
+        # Check if there's an ongoing processing for this phone number using Redis
+        if redis_client:
+            is_processing = await redis_client.get(f"processing:{phone_number}")
+            if is_processing:
+                await send_message(phone_number, "Estamos processando sua solicitação, aguarde", db)
+                return {"status": "success", "message": "Processing notification sent"}
+
+            # Mark this phone number as being processed with 5 minute expiry
+            await redis_client.setex(f"processing:{phone_number}", 300, "1")
 
         # Get Redis client from app state with proper error handling
-        redis_client = getattr(request.app.state, 'redis', None)
+
         if redis_client:
             try:
                 # Get current state from Redis
@@ -132,6 +139,11 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
         except:
             pass
         return {"status": "error", "message": str(e)}
+    finally:
+        # Clean up processing state from Redis
+        if redis_client:
+            await redis_client.delete(f"processing:{phone_number}")
+
 
 @router.post("", response_model=None)
 async def webhook_endpoint(
