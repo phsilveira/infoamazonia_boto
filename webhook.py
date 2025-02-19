@@ -212,8 +212,8 @@ def handle_message_status(status: Dict, db: Session) -> None:
         logger.error(f"Error processing message status: {str(e)}")
         db.rollback()
 
-async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> tuple[str, str]:
-    """Process a message and return the response and new state"""
+async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> str:
+    """Process a message and return the new state"""
     try:
         current_state = chatbot.state
 
@@ -240,14 +240,21 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> 
             elif handler == handle_register_state:
                 return await handler(chatbot, phone_number, message)
             elif handler == handle_menu_state:
-                return await handler(chatbot, message)
+                return await handler(chatbot, phone_number, message)
             elif handler == handle_about_state:
-                return await handler(chatbot)
+                return await handler(chatbot, phone_number)
             else:
                 return await handler(chatbot, phone_number, message, chatgpt_service)
 
-        return message_loader.get_message('error.invalid_state'), chatbot.state
+        # Handle invalid state
+        await send_message(phone_number, message_loader.get_message('error.invalid_state'), next(get_db()))
+        return chatbot.state
 
     except Exception as e:
         logger.error(f"Error processing message: {str(e)}")
-        return message_loader.get_message('error.process_message', error=str(e)), 'start'
+        await send_message(
+            phone_number,
+            message_loader.get_message('error.process_message', error=str(e)),
+            next(get_db())
+        )
+        return 'start'
