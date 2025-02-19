@@ -94,7 +94,7 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
             chatbot.set_state(current_state)
 
         # Process the message using the unified processing function
-        response_message, new_state = await process_message(phone_number, message, chatbot)
+        new_state = await process_message(phone_number, message, chatbot)
 
         # Try to update Redis cache with new state, but don't fail if Redis is unavailable
         if redis_client:
@@ -106,7 +106,7 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
 
         # Send response with transaction handling
         try:
-            result = await send_message(phone_number, response_message, db)
+            result = {"status": "success", "message": "Message processed"}
             if result['status'] != 'success':
                 raise Exception(result['message'])
 
