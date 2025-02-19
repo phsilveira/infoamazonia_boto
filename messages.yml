@@ -21,7 +21,13 @@ menu:
     ⚙️ Digite o número da opção que deseja acessar. 
 
   invalid_option: "Opção inválida. Por favor, selecione uma opção válida do menu."
-  term_info: "Digite o termo que você gostaria de entender melhor:"
+  term_info: |
+    📚 Você escolheu: Tirar dúvidas sobre um termo.
+
+    👉 Digite um termo ou questão que você deseja entender melhor. Exemplos:
+    Queimadas na Amazônia
+    O que é desmatamento ilegal? 
+    Qual o impacto do aquecimento global na Amazônia?
   article_summary: "Por favor, compartilhe o link do artigo que você gostaria de resumir:"
   news_suggestion: "Compartilhe sua sugestão de pauta:"
   implementation_soon: "Obrigado! Em breve implementaremos esta funcionalidade."
