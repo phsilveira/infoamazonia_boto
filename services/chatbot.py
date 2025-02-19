@@ -7,7 +7,7 @@ from utils.message_loader import message_loader
 logger = logging.getLogger(__name__)
 
 class ChatBot:
-    states = ['start', 'register', 'menu_state', 'get_user_location', 'get_user_subject', 'get_user_schedule', 'about', 'get_term_info', 'term_info_feedback', 'get_article_summary', 'get_news_suggestion']
+    states = ['start', 'register', 'menu_state', 'get_user_location', 'get_user_subject', 'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 'get_news_suggestion']
 
     def __init__(self, db: Session):
         self.db = db
