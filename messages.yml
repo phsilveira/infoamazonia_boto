@@ -21,19 +21,20 @@ menu:
     ⚙️ Digite o número da opção que deseja acessar. 
 
   invalid_option: "Opção inválida. Por favor, selecione uma opção válida do menu."
-  term_info: |
-    📚 Você escolheu: Tirar dúvidas sobre um termo.
+  term_info:
+    prompt: |
+      📚 Você escolheu: Tirar dúvidas sobre um termo.
 
-    👉 Digite um termo ou questão que você deseja entender melhor. Exemplos:
-    Queimadas na Amazônia
-    O que é desmatamento ilegal? 
-    Qual o impacto do aquecimento global na Amazônia?
-  term_info_error: "Desculpe, não consegui encontrar informações sobre esse termo."
-  term_info_api_error: "Desculpe, ocorreu um erro ao processar sua solicitação."
-  term_info_feedback: |
-    👍 Essa explicação ajudou?
-    1️⃣ Sim
-    2️⃣ Não
+      👉 Digite um termo ou questão que você deseja entender melhor. Exemplos:
+      Queimadas na Amazônia
+      O que é desmatamento ilegal? 
+      Qual o impacto do aquecimento global na Amazônia?
+    error: "Desculpe, não consegui encontrar informações sobre esse termo."
+    api_error: "Desculpe, ocorreu um erro ao processar sua solicitação."
+    feedback: |
+      👍 Essa explicação ajudou?
+      1️⃣ Sim
+      2️⃣ Não
   article_summary: "Por favor, compartilhe o link do artigo que você gostaria de resumir:"
   news_suggestion: "Compartilhe sua sugestão de pauta:"
   implementation_soon: "Obrigado! Em breve implementaremos esta funcionalidade."
