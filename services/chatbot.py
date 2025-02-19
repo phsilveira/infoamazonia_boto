@@ -7,7 +7,7 @@ from utils.message_loader import message_loader
 logger = logging.getLogger(__name__)
 
 class ChatBot:
-    states = ['start', 'register', 'menu_state', 'get_user_location', 'get_user_subject', 'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 'get_news_suggestion']
+    states = ['start', 'register', 'menu_state', 'get_user_location', 'get_user_subject', 'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 'get_news_suggestion', 'feedback_state']
 
     def __init__(self, db: Session):
         self.db = db
@@ -66,8 +66,13 @@ class ChatBot:
             dest='get_news_suggestion'
         )
         self.machine.add_transition(
+            trigger='get_feedback',
+            source='get_term_info',
+            dest='feedback_state'
+        )
+        self.machine.add_transition(
             trigger='end_conversation',
-            source=['register', 'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 'get_news_suggestion'],
+            source=['register', 'get_user_schedule', 'about', 'feedback_state', 'get_article_summary', 'get_news_suggestion'],
             dest='start'
         )
 

@@ -170,26 +170,33 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
     """Handle the term info state logic"""
     try:
         import httpx
-        
-        api_url = "https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/search/term"
+
+        api_url = "https://aa109676-f2b5-40ce-9ab8-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/search/term"
         payload = {
             "query": message,
             "generate_summary": True
         }
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(api_url, json=payload)
             data = response.json()
-            
+
             if data.get("success") and data.get("summary"):
-                chatbot.end_conversation()
+                chatbot.get_feedback()
                 return data["summary"], chatbot.state
             else:
                 return "Desculpe, não consegui encontrar informações sobre esse termo.", chatbot.state
-                
+
     except Exception as e:
         logger.error(f"Error in term info handler: {str(e)}")
         return "Desculpe, ocorreu um erro ao processar sua solicitação.", chatbot.state
+
+async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> Tuple[str, str]:
+    """Handle the feedback state logic"""
+    if message.strip() in ['1', '2']:
+        chatbot.end_conversation()
+        return message_loader.get_message('menu.main'), chatbot.state
+    return "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", chatbot.state
 
 async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> Tuple[str, str]:
     """Handle the article summary state logic"""

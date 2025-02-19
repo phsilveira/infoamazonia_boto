@@ -98,7 +98,7 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
         # Try to update Redis cache with new state, but don't fail if Redis is unavailable
         if redis_client:
             try:
-                await redis_client.setex(f"state:{phone_number}", 300, new_state)
+                await redis_client.setex(f"state:{phone_number}", 1*60, new_state)
                 logger.debug(f"Updated Redis state for {phone_number}: {new_state}")
             except Exception as e:
                 logger.warning(f"Failed to update Redis state: {e}")
@@ -226,6 +226,7 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> 
             'get_user_schedule': handle_schedule_state,
             'about': handle_about_state,
             'get_term_info': handle_term_info_state,
+            'feedback_state': handle_feedback_state,
             'get_article_summary': handle_article_summary_state,
             'get_news_suggestion': handle_news_suggestion_state,
         }
