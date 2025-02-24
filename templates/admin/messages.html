@@ -20,6 +20,37 @@
     </nav>
 
     <div class="container mt-4">
+        <div class="row mb-4">
+            <!-- Send WhatsApp Template Message Section -->
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Send WhatsApp Template Message</h5>
+                        <form method="post" action="/admin/messages/send-template" class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Template Name</label>
+                                <input type="text" class="form-control" name="template_name" required 
+                                       placeholder="e.g., hello_world">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Language Code</label>
+                                <input type="text" class="form-control" name="language_code" 
+                                       value="en_US" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Phone Number</label>
+                                <input type="text" class="form-control" name="phone_number" required 
+                                       placeholder="Format: +1234567890">
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">Send Template Message</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <!-- Message Templates Section -->
             <div class="col-md-6">

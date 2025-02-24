@@ -10,6 +10,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from datetime import datetime
 from scheduler import schedule_message
 import json
+import httpx
+import logging
+from config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory="templates")
@@ -228,3 +233,72 @@ async def list_interactions(
         "admin/interactions.html",
         {"request": request, "interactions": interactions}
     )
+
+@router.post("/messages/send-template", response_class=HTMLResponse)
+async def send_template_message(
+    request: Request,
+    template_name: str = Form(...),
+    language_code: str = Form(...),
+    phone_number: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        # WhatsApp API configuration
+        whatsapp_api_url = f"https://graph.facebook.com/v17.0/{settings.WHATSAPP_PHONE_NUMBER_ID}/messages"
+        headers = {
+            "Authorization": f"Bearer {settings.WHATSAPP_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
+        # Prepare the message payload
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": phone_number,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {
+                    "code": language_code
+                }
+            }
+        }
+
+        # Send the request to WhatsApp API
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                whatsapp_api_url,
+                headers=headers,
+                json=payload
+            )
+            response_data = response.json()
+
+        if response.status_code == 200:
+            # Log the successful message
+            message = models.Message(
+                whatsapp_message_id=response_data.get('messages', [{}])[0].get('id', 'unknown'),
+                phone_number=phone_number,
+                message_type='outgoing',
+                message_content=f"Template: {template_name}",
+                status='sent'
+            )
+            db.add(message)
+            db.commit()
+
+            return RedirectResponse(
+                url="/admin/messages",
+                status_code=status.HTTP_302_FOUND
+            )
+        else:
+            error_message = response_data.get('error', {}).get('message', 'Unknown error')
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"WhatsApp API error: {error_message}"
+            )
+
+    except Exception as e:
+        logger.error(f"Error sending template message: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send template message: {str(e)}"
+        )
