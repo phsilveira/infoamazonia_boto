@@ -175,6 +175,17 @@ async def webhook_endpoint(
                         if 'messages' in value:
                             for message_data in value['messages']:
                                 if message_data['type'] == 'text':
+                                    # Log incoming message
+                                    incoming_message = models.Message(
+                                        whatsapp_message_id=message_data['id'],
+                                        phone_number=message_data['from'],
+                                        message_type='incoming',
+                                        message_content=message_data['text']['body'],
+                                        status='received'
+                                    )
+                                    db.add(incoming_message)
+                                    db.commit()
+
                                     webhook_data = {
                                         'phone_number': message_data['from'],
                                         'message': message_data['text']['body']
