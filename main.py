@@ -10,13 +10,15 @@ from webhook import router as webhook_router
 from routers.location import router as location_router
 from datetime import timedelta
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from middleware import auth_middleware
 from scheduler import start_scheduler
 from config import settings, get_redis
 import redis.asyncio as redis
 import logging
 import asyncio
+from datetime import datetime, timedelta
+from sqlalchemy import func, desc
 
 # Configure logging
 logging.basicConfig(level=settings.LOG_LEVEL)
@@ -117,6 +119,79 @@ async def logout():
     response = RedirectResponse(url="/login")
     response.delete_cookie("access_token")
     return response
+
+@app.get("/api/dashboard/stats")
+async def get_dashboard_stats(db: Session = Depends(get_db)):
+    try:
+        # Get latest metrics
+        latest_metrics = db.query(models.Metrics).order_by(desc(models.Metrics.date)).first()
+
+        # Get total and active users
+        total_users = db.query(func.count(models.User.id)).scalar()
+        active_users = db.query(func.count(models.User.id)).filter(models.User.is_active == True).scalar()
+
+        # Get messages count for last 24 hours
+        last_24h = datetime.utcnow() - timedelta(days=1)
+        messages_sent = db.query(func.count(models.Message.id))\
+            .filter(models.Message.message_type == 'outgoing')\
+            .filter(models.Message.created_at >= last_24h)\
+            .scalar()
+
+        # Calculate click rate from latest metrics if available
+        click_rate = latest_metrics.click_through_rate if latest_metrics else 0
+
+        return {
+            "total_users": total_users,
+            "active_users": active_users,
+            "messages_sent": messages_sent,
+            "click_rate": f"{click_rate:.1f}%"
+        }
+    except Exception as e:
+        logger.error(f"Error fetching dashboard stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to fetch dashboard statistics"}
+        )
+
+@app.get("/api/dashboard/recent-users")
+async def get_recent_users(db: Session = Depends(get_db)):
+    try:
+        recent_users = db.query(models.User)\
+            .order_by(desc(models.User.created_at))\
+            .limit(5)\
+            .all()
+
+        return [{
+            "phone_number": user.phone_number,
+            "joined": user.created_at.strftime("%Y-%m-%d %H:%M"),
+            "status": "Active" if user.is_active else "Inactive"
+        } for user in recent_users]
+    except Exception as e:
+        logger.error(f"Error fetching recent users: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to fetch recent users"}
+        )
+
+@app.get("/api/dashboard/news-sources")
+async def get_news_sources(db: Session = Depends(get_db)):
+    try:
+        sources = db.query(models.NewsSource)\
+            .order_by(desc(models.NewsSource.created_at))\
+            .limit(5)\
+            .all()
+
+        return [{
+            "name": source.name,
+            "status": "Active" if source.is_active else "Inactive",
+            "last_update": source.created_at.strftime("%Y-%m-%d %H:%M")
+        } for source in sources]
+    except Exception as e:
+        logger.error(f"Error fetching news sources: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to fetch news sources"}
+        )
 
 if __name__ == "__main__":
     import uvicorn

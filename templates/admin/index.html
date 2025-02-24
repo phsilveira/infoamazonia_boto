@@ -53,7 +53,7 @@
                     <div class="card-body">
                         <h6 class="card-title text-muted">Total Users</h6>
                         <h2 class="mb-0" id="totalUsers">--</h2>
-                        <small class="text-success">+5.3% this week</small>
+                        <small id="totalUsersChange" class="text-success">Loading...</small>
                     </div>
                 </div>
             </div>
@@ -62,7 +62,7 @@
                     <div class="card-body">
                         <h6 class="card-title text-muted">Active Users</h6>
                         <h2 class="mb-0" id="activeUsers">--</h2>
-                        <small class="text-success">+2.1% this week</small>
+                        <small id="activeUsersChange" class="text-success">Loading...</small>
                     </div>
                 </div>
             </div>
@@ -80,7 +80,7 @@
                     <div class="card-body">
                         <h6 class="card-title text-muted">Click Rate</h6>
                         <h2 class="mb-0" id="clickRate">--</h2>
-                        <small class="text-success">+1.2% vs last week</small>
+                        <small id="clickRateChange" class="text-success">Loading...</small>
                     </div>
                 </div>
             </div>
@@ -127,9 +127,7 @@
                                 </thead>
                                 <tbody id="recentUsersTable">
                                     <tr>
-                                        <td>Loading...</td>
-                                        <td></td>
-                                        <td></td>
+                                        <td colspan="3" class="text-center">Loading...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -152,9 +150,7 @@
                                 </thead>
                                 <tbody id="newsSourcesTable">
                                     <tr>
-                                        <td>Loading...</td>
-                                        <td></td>
-                                        <td></td>
+                                        <td colspan="3" class="text-center">Loading...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -172,7 +168,55 @@
         // Initialize Feather icons
         document.addEventListener('DOMContentLoaded', function() {
             feather.replace();
+            // Initial data load
+            loadDashboardData();
+            // Refresh data every 30 seconds
+            setInterval(loadDashboardData, 30000);
         });
+
+        async function loadDashboardData() {
+            try {
+                // Fetch all dashboard data in parallel
+                const [statsResponse, usersResponse, sourcesResponse] = await Promise.all([
+                    fetch('/api/dashboard/stats'),
+                    fetch('/api/dashboard/recent-users'),
+                    fetch('/api/dashboard/news-sources')
+                ]);
+
+                const stats = await statsResponse.json();
+                const users = await usersResponse.json();
+                const sources = await sourcesResponse.json();
+
+                // Update stats
+                document.getElementById('totalUsers').textContent = stats.total_users;
+                document.getElementById('activeUsers').textContent = stats.active_users;
+                document.getElementById('messagesSent').textContent = stats.messages_sent;
+                document.getElementById('clickRate').textContent = stats.click_rate;
+
+                // Update recent users table
+                const userRows = users.map(user => `
+                    <tr>
+                        <td>${user.phone_number}</td>
+                        <td>${user.joined}</td>
+                        <td><span class="badge bg-${user.status === 'Active' ? 'success' : 'secondary'}">${user.status}</span></td>
+                    </tr>
+                `).join('');
+                document.getElementById('recentUsersTable').innerHTML = userRows || '<tr><td colspan="3" class="text-center">No recent users</td></tr>';
+
+                // Update news sources table
+                const sourceRows = sources.map(source => `
+                    <tr>
+                        <td>${source.name}</td>
+                        <td><span class="badge bg-${source.status === 'Active' ? 'success' : 'secondary'}">${source.status}</span></td>
+                        <td>${source.last_update}</td>
+                    </tr>
+                `).join('');
+                document.getElementById('newsSourcesTable').innerHTML = sourceRows || '<tr><td colspan="3" class="text-center">No news sources</td></tr>';
+
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
     </script>
 </body>
 </html>
