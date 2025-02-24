@@ -90,7 +90,8 @@ about:
     1️⃣ Compartilhe essa iniciativa com sua rede! 
     2️⃣ Voltar ao menu inicial 
 
-  return: "Retornando ao início. Digite qualquer mensagem para começar."
+# return
+return: "Retornando ao início. Digite qualquer mensagem para começar."
 
 # Error messages
 error:

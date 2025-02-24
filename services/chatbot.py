@@ -67,12 +67,12 @@ class ChatBot:
         )
         self.machine.add_transition(
             trigger='get_feedback',
-            source='get_term_info',
+            source=['get_term_info','get_article_summary'],
             dest='feedback_state'
         )
         self.machine.add_transition(
             trigger='end_conversation',
-            source=['register', 'get_user_schedule', 'about', 'feedback_state', 'get_article_summary', 'get_news_suggestion'],
+            source=['register', 'get_user_schedule', 'about', 'feedback_state', 'get_news_suggestion'],
             dest='start'
         )
 

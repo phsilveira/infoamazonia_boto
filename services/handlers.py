@@ -166,6 +166,7 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
         chatbot.save_schedule(user.id, schedule)
         chatbot.end_conversation()
         await send_message(phone_number, message_loader.get_message('schedule.confirmation', schedule=schedule), db)
+        await send_message(phone_number, message_loader.get_message('return'), next(get_db()))
     except Exception as e:
         await send_message(phone_number, message_loader.get_message('error.save_schedule', error=str(e)), db)
     
@@ -174,7 +175,7 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
 async def handle_about_state(chatbot: ChatBot, phone_number: str) -> str:
     """Handle the about state logic"""
     chatbot.end_conversation()
-    await send_message(phone_number, message_loader.get_message('about.return'), next(get_db()))
+    await send_message(phone_number, message_loader.get_message('return'), next(get_db()))
     return chatbot.state
 
 async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
@@ -192,6 +193,7 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
             if data.get("success") and data.get("summary"):
                 chatbot.get_feedback()
                 await send_message(phone_number, data["summary"], db)
+                await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
             else:
                 await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse termo.", db)
 
@@ -205,16 +207,37 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
     """Handle the feedback state logic"""
     if message.strip() in ['1', '2']:
         chatbot.end_conversation()
-        await send_message(phone_number, message_loader.get_message('menu.main'), next(get_db()))
+        await send_message(phone_number, message_loader.get_message('return'), next(get_db()))
+        # await send_message(phone_number, message _loader.get_message('menu.main'), next(get_db()))
     else:
         await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
     return chatbot.state
 
 async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
-    """Handle the article summary state logic"""
-    chatbot.end_conversation()
-    await send_message(phone_number, message_loader.get_message('menu.implementation_soon'), next(get_db()))
+    """Handle the article info state logic"""
+    db = next(get_db())
+    try:
+        import httpx
+        api_url = "https://infoamazonia-rag.replit.app/api/v1/search/articles"
+        payload = {"query": message}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(api_url, json=payload)
+            data = response.json()
+
+            if data.get("success"):
+                chatbot.get_feedback()
+                await send_message(phone_number, data["results"][0]["summary_content"], db)
+                await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
+            else:
+                await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse termo.", db)
+
+    except Exception as e:
+        logger.error(f"Error in term info handler: {str(e)}")
+        await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
+
     return chatbot.state
+
 
 async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
     """Handle the news suggestion state logic"""
