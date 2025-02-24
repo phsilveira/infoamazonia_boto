@@ -80,7 +80,7 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
                 return {"status": "success", "message": "Processing notification sent"}
 
             # Mark this phone number as being processed with 5 minute expiry
-            await redis_client.setex(f"processing:{phone_number}", 300, "1")
+            await redis_client.setex(f"processing:{phone_number}", 60*10, "1")
 
         # Get Redis client from app state with proper error handling
 
@@ -106,7 +106,7 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
         # Try to update Redis cache with new state, but don't fail if Redis is unavailable
         if redis_client:
             try:
-                await redis_client.setex(f"state:{phone_number}", 1*60, new_state)
+                await redis_client.setex(f"state:{phone_number}", 10*60, new_state)
                 logger.debug(f"Updated Redis state for {phone_number}: {new_state}")
             except Exception as e:
                 logger.warning(f"Failed to update Redis state: {e}")
