@@ -1,26 +1,34 @@
+
 {% extends "admin/base.html" %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-2xl font-bold mb-4">User Details</h2>
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">User Details</h2>
+            <a href="/admin/users" class="text-blue-500 hover:text-blue-700">← Back to Users</a>
+        </div>
         
-        <div class="mb-6">
-            <h3 class="text-lg font-semibold mb-2">Basic Information</h3>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
+        <div class="bg-gray-50 rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold mb-4">Basic Information</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-4 bg-white rounded shadow">
                     <p class="text-gray-600">Name</p>
                     <p class="font-medium">{{ user.name }}</p>
                 </div>
-                <div>
+                <div class="p-4 bg-white rounded shadow">
                     <p class="text-gray-600">Phone Number</p>
                     <p class="font-medium">{{ user.phone_number }}</p>
                 </div>
-                <div>
+                <div class="p-4 bg-white rounded shadow">
                     <p class="text-gray-600">Status</p>
-                    <p class="font-medium">{{ "Active" if user.is_active else "Inactive" }}</p>
+                    <p class="font-medium">
+                        <span class="px-2 py-1 rounded-full text-sm {{ 'bg-green-100 text-green-800' if user.is_active else 'bg-red-100 text-red-800' }}">
+                            {{ "Active" if user.is_active else "Inactive" }}
+                        </span>
+                    </p>
                 </div>
-                <div>
+                <div class="p-4 bg-white rounded shadow">
                     <p class="text-gray-600">Created At</p>
                     <p class="font-medium">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
                 </div>
@@ -28,17 +36,32 @@
         </div>
 
         <div class="mb-6">
-            <h3 class="text-lg font-semibold mb-2">Subjects of Interest</h3>
-            <div class="grid grid-cols-1 gap-2">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Subjects of Interest</h3>
+                <button onclick="document.getElementById('addSubjectModal').classList.remove('hidden')"
+                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Add Subject
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {% if subjects %}
                     {% for subject in subjects %}
-                        <div class="bg-gray-50 p-2 rounded">
-                            <p>{{ subject.subject_name }}</p>
-                            <small class="text-gray-500">Added: {{ subject.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                        <div class="bg-white p-4 rounded shadow flex justify-between items-center">
+                            <div>
+                                <p class="font-medium">{{ subject.subject_name }}</p>
+                                <small class="text-gray-500">Added: {{ subject.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                            </div>
+                            <form method="POST" action="/admin/users/{{ user.id }}/subjects/{{ subject.id }}/delete" class="inline">
+                                <button type="submit" class="text-red-500 hover:text-red-700">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </form>
                         </div>
                     {% endfor %}
                 {% else %}
-                    <p class="text-gray-500">No subjects selected</p>
+                    <p class="text-gray-500 col-span-2">No subjects selected</p>
                 {% endif %}
             </div>
         </div>
@@ -52,20 +75,31 @@
                 </button>
             </div>
             
-            {% if locations %}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {% for location in locations %}
-                <div class="border rounded-lg p-4">
-                    <p class="font-medium">{{ location.location_name }}</p>
-                    <p class="text-sm text-gray-600">Latitude: {{ location.latitude }}</p>
-                    <p class="text-sm text-gray-600">Longitude: {{ location.longitude }}</p>
-                    <p class="text-xs text-gray-500">Added: {{ location.created_at.strftime('%Y-%m-%d') }}</p>
-                </div>
-                {% endfor %}
+                {% if locations %}
+                    {% for location in locations %}
+                        <div class="bg-white p-4 rounded shadow">
+                            <div class="flex justify-between">
+                                <div>
+                                    <p class="font-medium">{{ location.location_name }}</p>
+                                    <p class="text-sm text-gray-600">Latitude: {{ location.latitude }}</p>
+                                    <p class="text-sm text-gray-600">Longitude: {{ location.longitude }}</p>
+                                    <p class="text-xs text-gray-500">Added: {{ location.created_at.strftime('%Y-%m-%d') }}</p>
+                                </div>
+                                <form method="POST" action="/admin/users/{{ user.id }}/locations/{{ location.id }}/delete" class="inline">
+                                    <button type="submit" class="text-red-500 hover:text-red-700">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-500 col-span-2">No locations added yet.</p>
+                {% endif %}
             </div>
-            {% else %}
-            <p class="text-gray-600">No locations added yet.</p>
-            {% endif %}
         </div>
     </div>
 
@@ -73,25 +107,42 @@
     <div id="addLocationModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div class="mt-3">
-                <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Add New Location</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900">Add New Location</h3>
+                    <button onclick="document.getElementById('addLocationModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
                 <form method="POST" action="/admin/users/{{ user.id }}/location">
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="location_name">
-                            Location Name
-                        </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                               id="location_name" name="location_name" type="text" required>
+                    <input type="text" name="location_name" placeholder="Enter location name" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <div class="mt-4 flex justify-end">
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Add Location</button>
                     </div>
-                    <div class="flex justify-end gap-4">
-                        <button type="button"
-                                onclick="document.getElementById('addLocationModal').classList.add('hidden')"
-                                class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            Add
-                        </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Subject Modal -->
+    <div id="addSubjectModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900">Add New Subject</h3>
+                    <button onclick="document.getElementById('addSubjectModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form method="POST" action="/admin/users/{{ user.id }}/subjects">
+                    <input type="text" name="subject_name" placeholder="Enter subject name" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <div class="mt-4 flex justify-end">
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Add Subject</button>
                     </div>
                 </form>
             </div>

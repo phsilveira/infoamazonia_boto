@@ -134,6 +134,53 @@ async def get_user(
         {"request": request, "user": user, "locations": locations, "subjects": subjects}
     )
 
+@router.post("/users/{user_id}/subjects", response_class=HTMLResponse)
+async def add_user_subject(
+    request: Request,
+    user_id: int,
+    subject_name: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        subject = models.Subject(
+            subject_name=subject_name,
+            user_id=user_id
+        )
+        db.add(subject)
+        db.commit()
+        return RedirectResponse(url=f"/admin/users/{user_id}", status_code=status.HTTP_302_FOUND)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/users/{user_id}/subjects/{subject_id}/delete", response_class=HTMLResponse)
+async def delete_user_subject(
+    request: Request,
+    user_id: int,
+    subject_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    subject = db.query(models.Subject).filter(models.Subject.id == subject_id, models.Subject.user_id == user_id).first()
+    if subject:
+        db.delete(subject)
+        db.commit()
+    return RedirectResponse(url=f"/admin/users/{user_id}", status_code=status.HTTP_302_FOUND)
+
+@router.post("/users/{user_id}/locations/{location_id}/delete", response_class=HTMLResponse)
+async def delete_user_location(
+    request: Request,
+    user_id: int,
+    location_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    location = db.query(models.Location).filter(models.Location.id == location_id, models.Location.user_id == user_id).first()
+    if location:
+        db.delete(location)
+        db.commit()
+    return RedirectResponse(url=f"/admin/users/{user_id}", status_code=status.HTTP_302_FOUND)
+
 @router.post("/users/{user_id}/location", response_class=HTMLResponse)
 async def add_user_location(
     request: Request,
