@@ -185,6 +185,12 @@ async def webhook_endpoint(
                                         db,
                                         request
                                     )
+                                else:
+                                    await send_message(
+                                        message_data['from'],
+                                        "Desculpe, no momento só aceitamos mensagens de texto.",
+                                        db
+                                    )
 
         return {"status": "success", "message": "Webhook received and being processed"}
 
