@@ -1,3 +1,4 @@
+
 import logging
 from services.chatbot import ChatBot
 from services.chatgpt import ChatGPTService
@@ -225,24 +226,6 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
             data = response.json()
 
             if data.get("success") and data.get('count') > 0:
-                # Get user if exists
-                user = chatbot.get_user(phone_number)
-                user_id = user.id if user else None
-
-                # Create user interaction record
-                interaction = UserInteraction(
-                    user_id=user_id,
-                    phone_number=phone_number,
-                    category='article',
-                    query=message,
-                    response=data["results"][0]["summary_content"]
-                )
-                db.add(interaction)
-                db.commit()
-
-                # Store interaction ID in chatbot state for feedback
-                chatbot.set_current_interaction_id(interaction.id)
-
                 chatbot.get_feedback()
                 await send_message(phone_number, data["results"][0]["summary_content"], db)
                 await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
@@ -250,7 +233,7 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
                 await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse termo.", db)
 
     except Exception as e:
-        logger.error(f"Error in article summary handler: {str(e)}")
+        logger.error(f"Error in term info handler: {str(e)}")
         await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
 
     return chatbot.state
@@ -258,30 +241,6 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
 
 async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
     """Handle the news suggestion state logic"""
-    db = next(get_db())
-    try:
-        # Get user if exists
-        user = chatbot.get_user(phone_number)
-        user_id = user.id if user else None
-
-        # Create user interaction record for news suggestion
-        interaction = UserInteraction(
-            user_id=user_id,
-            phone_number=phone_number,
-            category='news_suggestion',
-            query=message,
-            response=message_loader.get_message('menu.implementation_soon')
-        )
-        db.add(interaction)
-        db.commit()
-
-        # Store interaction ID in chatbot state for potential future feedback
-        chatbot.set_current_interaction_id(interaction.id)
-
-        chatbot.end_conversation()
-        await send_message(phone_number, message_loader.get_message('menu.implementation_soon'), next(get_db()))
-    except Exception as e:
-        logger.error(f"Error in news suggestion handler: {str(e)}")
-        await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
-
+    chatbot.end_conversation()
+    await send_message(phone_number, message_loader.get_message('menu.implementation_soon'), next(get_db()))
     return chatbot.state
