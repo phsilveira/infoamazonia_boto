@@ -125,12 +125,13 @@ async def get_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Get user's locations
+    # Get user's locations and subjects
     locations = db.query(models.Location).filter(models.Location.user_id == user_id).all()
+    subjects = db.query(models.Subject).filter(models.Subject.user_id == user_id).all()
 
     return templates.TemplateResponse(
         "admin/user_detail.html",
-        {"request": request, "user": user, "locations": locations}
+        {"request": request, "user": user, "locations": locations, "subjects": subjects}
     )
 
 @router.post("/users/{user_id}/location", response_class=HTMLResponse)

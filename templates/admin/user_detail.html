@@ -28,6 +28,22 @@
         </div>
 
         <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">Subjects of Interest</h3>
+            <div class="grid grid-cols-1 gap-2">
+                {% if subjects %}
+                    {% for subject in subjects %}
+                        <div class="bg-gray-50 p-2 rounded">
+                            <p>{{ subject.subject_name }}</p>
+                            <small class="text-gray-500">Added: {{ subject.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-500">No subjects selected</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mb-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Locations</h3>
                 <button onclick="document.getElementById('addLocationModal').classList.remove('hidden')"
