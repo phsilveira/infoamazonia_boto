@@ -40,7 +40,7 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
     """Handle the menu state logic with more flexible input handling"""
     message = message.lower().strip()
     db = next(get_db())
-    
+
     if message in ['1', 'subscribe', 'inscrever', 'notícias']:
         chatbot.select_subscribe()
         await send_message(phone_number, message_loader.get_message('location.request'), db)
@@ -58,7 +58,7 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
         await send_message(phone_number, message_loader.get_message('about.info'), db)
     else:
         await send_message(phone_number, message_loader.get_message('menu.invalid_option'), db)
-    
+
     return chatbot.state
 
 async def handle_location_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
@@ -192,8 +192,26 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
             data = response.json()
 
             if data.get("success") and data.get("summary"):
-                chatbot.get_feedback()
+                # Get user if exists
+                user = chatbot.get_user(phone_number)
+                user_id = user.id if user else None
+
+                # Create user interaction record
+                interaction = UserInteraction(
+                    user_id=user_id,
+                    phone_number=phone_number,
+                    category='term',
+                    query=message,
+                    response=data["summary"]
+                )
+                db.add(interaction)
+                db.commit()
+
+                # Store interaction ID in chatbot state for feedback
+                chatbot.set_current_interaction_id(interaction.id)
+
                 await send_message(phone_number, data["summary"], db)
+                chatbot.get_feedback()
                 await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
             else:
                 await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse termo.", db)
@@ -201,17 +219,37 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
     except Exception as e:
         logger.error(f"Error in term info handler: {str(e)}")
         await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
-    
+
     return chatbot.state
 
 async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
     """Handle the feedback state logic"""
-    if message.strip() in ['1', '2']:
-        chatbot.end_conversation()
-        await send_message(phone_number, message_loader.get_message('return'), next(get_db()))
-        # await send_message(phone_number, message _loader.get_message('menu.main'), next(get_db()))
-    else:
-        await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
+    db = next(get_db())
+    try:
+        message = message.strip()
+        if message in ['1', '2']:
+            # Get the interaction ID from chatbot state
+            interaction_id = chatbot.get_current_interaction_id()
+            if interaction_id:
+                interaction = db.query(UserInteraction).filter(UserInteraction.id == interaction_id).first()
+                if interaction:
+                    interaction.feedback = message == '1'  # True for '1', False for '2'
+                    interaction.updated_at = datetime.utcnow()
+                    db.commit()
+                    logger.info(f"Updated feedback for interaction {interaction_id}: {interaction.feedback}")
+                else:
+                    logger.error(f"Interaction {interaction_id} not found")
+            else:
+                logger.error("No interaction ID in chatbot state")
+
+            chatbot.end_conversation()
+            await send_message(phone_number, message_loader.get_message('return'), db)
+        else:
+            await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", db)
+    except Exception as e:
+        logger.error(f"Error in feedback handler: {str(e)}")
+        await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
+
     return chatbot.state
 
 async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
@@ -245,18 +283,17 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
                 # Store interaction ID in chatbot state for feedback
                 chatbot.set_current_interaction_id(interaction.id)
 
-                chatbot.get_feedback()
                 await send_message(phone_number, data["results"][0]["summary_content"], db)
+                chatbot.get_feedback()
                 await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
             else:
-                await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse termo.", db)
+                await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse artigo.", db)
 
     except Exception as e:
         logger.error(f"Error in article summary handler: {str(e)}")
         await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
 
     return chatbot.state
-
 
 async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
     """Handle the news suggestion state logic"""
@@ -281,7 +318,7 @@ async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, mess
         chatbot.set_current_interaction_id(interaction.id)
 
         chatbot.end_conversation()
-        await send_message(phone_number, message_loader.get_message('menu.implementation_soon'), next(get_db()))
+        await send_message(phone_number, message_loader.get_message('menu.implementation_soon'), db)
     except Exception as e:
         logger.error(f"Error in news suggestion handler: {str(e)}")
         await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
