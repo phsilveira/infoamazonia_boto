@@ -176,32 +176,48 @@
                 </div>
                 <div class="modal-body">
                     <form method="post" action="/admin/messages/schedule">
+                        <!-- Hidden template_id field for hello_world template -->
+                        <input type="hidden" name="template_id" value="{{ hello_world_template.id if hello_world_template else '' }}">
+
                         <div class="mb-3">
-                            <label class="form-label">Template</label>
-                            <select class="form-control" name="template_id" required>
-                                {% for template in message_templates %}
-                                <option value="{{ template.id }}">{{ template.name }}</option>
-                                {% endfor %}
+                            <label class="form-label">Schedule Type</label>
+                            <select class="form-control" name="schedule_type" required>
+                                <option value="daily">Daily (9:00 AM SP)</option>
+                                <option value="weekly">Weekly (Monday 9:00 AM SP)</option>
+                                <option value="monthly">Monthly (1st day 9:00 AM SP)</option>
+                                <option value="just_in_time">Just in time</option>
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Scheduled Time</label>
-                            <input type="datetime-local" class="form-control" name="scheduled_time" required>
+
+                        <div class="mb-3" id="dateTimeField">
+                            <label class="form-label">Date (Only for Just in time)</label>
+                            <input type="date" class="form-control" name="scheduled_date">
                         </div>
+
                         <div class="mb-3">
-                            <label class="form-label">Target Groups (JSON)</label>
-                            <input type="text" class="form-control" name="target_groups" value="[]" required>
+                            <label class="form-label">Target Group (User Schedule)</label>
+                            <select class="form-control" name="target_group" required>
+                                <option value="daily">Daily Users</option>
+                                <option value="weekly">Weekly Users</option>
+                                <option value="monthly">Monthly Users</option>
+                                <option value="all">All Users</option>
+                            </select>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Personalization Data (JSON)</label>
-                            <input type="text" class="form-control" name="personalization_data" value="{}" required>
-                        </div>
+
                         <button type="submit" class="btn btn-primary">Schedule Message</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+        // Show/hide date field based on schedule type
+        document.querySelector('select[name="schedule_type"]').addEventListener('change', function() {
+            const dateField = document.getElementById('dateTimeField');
+            dateField.style.display = this.value === 'just_in_time' ? 'block' : 'none';
+        });
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

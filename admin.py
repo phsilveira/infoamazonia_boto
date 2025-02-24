@@ -7,7 +7,7 @@ from database import get_db
 from auth import get_current_admin
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
-from datetime import datetime
+from datetime import datetime, timezone
 from scheduler import schedule_message
 import json
 import httpx
@@ -98,26 +98,33 @@ async def create_template(
 async def schedule_new_message(
     request: Request,
     template_id: int = Form(...),
-    scheduled_time: str = Form(...),
-    target_groups: str = Form(...),
-    personalization_data: str = Form(...),
+    schedule_type: str = Form(...),
+    scheduled_date: str = Form(None),
+    target_group: str = Form(...),
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
-    scheduled_message = models.ScheduledMessage(
-        template_id=template_id,
-        scheduled_time=datetime.fromisoformat(scheduled_time),
-        target_groups=json.loads(target_groups),
-        personalization_data=json.loads(personalization_data),
-        status="pending"
-    )
-    db.add(scheduled_message)
-    db.commit()
+    try:
+        # Create scheduled message record
+        scheduled_message = models.ScheduledMessage(
+            template_id=template_id,
+            scheduled_time=datetime.now(tz=timezone.utc),  # Use UTC for scheduling
+            target_groups={"target_group": target_group},
+            status="pending"
+        )
+        db.add(scheduled_message)
+        db.commit()
 
-    # Schedule the message
-    schedule_message(db, scheduled_message.id, scheduled_message.scheduled_time)
+        # Schedule the message
+        schedule_message(db, scheduled_message.id, schedule_type, scheduled_date)
 
-    return RedirectResponse(url="/admin/messages", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(url="/admin/messages", status_code=status.HTTP_302_FOUND)
+    except Exception as e:
+        logger.error(f"Error scheduling message: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to schedule message: {str(e)}"
+        )
 
 @router.get("/users/{user_id}", response_class=HTMLResponse)
 async def get_user(
