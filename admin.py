@@ -245,9 +245,9 @@ async def send_template_message(
 ):
     try:
         # WhatsApp API configuration
-        whatsapp_api_url = f"https://graph.facebook.com/v17.0/{settings.WHATSAPP_PHONE_NUMBER_ID}/messages"
+        whatsapp_api_url = f"https://graph.facebook.com/v17.0/{settings.NUMBER_ID}/messages"
         headers = {
-            "Authorization": f"Bearer {settings.WHATSAPP_ACCESS_TOKEN}",
+            "Authorization": f"Bearer {settings.API_TOKEN}",
             "Content-Type": "application/json"
         }
 

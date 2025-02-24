@@ -29,8 +29,13 @@
                         <form method="post" action="/admin/messages/send-template" class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Template Name</label>
-                                <input type="text" class="form-control" name="template_name" required 
-                                       placeholder="e.g., hello_world">
+                                <select class="form-control" name="template_name" required>
+                                    {% for template in message_templates %}
+                                        {% if template.is_active %}
+                                            <option value="{{ template.name }}">{{ template.name }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Language Code</label>
