@@ -13,7 +13,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     schedule = Column(String)  # daily, weekly, monthly
     preferences = relationship("UserPreference", back_populates="user")
-    interactions = relationship("UserInteraction", backref="user")
+    interactions = relationship("UserInteraction", back_populates="user")
 
 class UserPreference(Base):
     __tablename__ = "user_preferences"
@@ -114,7 +114,6 @@ class Message(Base):
     def __repr__(self):
         return f'<Message {self.whatsapp_message_id}>'
 
-
 class UserInteraction(Base):
     __tablename__ = "user_interactions"
 
@@ -128,7 +127,7 @@ class UserInteraction(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user = relationship("User", backref="interactions")
+    user = relationship("User", back_populates="interactions")
 
     def __repr__(self):
         return f'<UserInteraction {self.category}:{self.query}>'
