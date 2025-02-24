@@ -1,4 +1,3 @@
-
 import logging
 from services.chatbot import ChatBot
 from services.chatgpt import ChatGPTService
@@ -6,6 +5,8 @@ from utils.message_loader import message_loader
 from typing import Tuple
 from services.whatsapp import send_message
 from database import get_db
+from models import UserInteraction
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +192,24 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
             data = response.json()
 
             if data.get("success") and data.get("summary"):
+                # Get user if exists
+                user = chatbot.get_user(phone_number)
+                user_id = user.id if user else None
+
+                # Create user interaction record
+                interaction = UserInteraction(
+                    user_id=user_id,
+                    phone_number=phone_number,
+                    category='term',
+                    query=message,
+                    response=data["summary"]
+                )
+                db.add(interaction)
+                db.commit()
+
+                # Store interaction ID in chatbot state for feedback
+                chatbot.set_current_interaction_id(interaction.id)
+
                 chatbot.get_feedback()
                 await send_message(phone_number, data["summary"], db)
                 await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
@@ -200,17 +219,31 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
     except Exception as e:
         logger.error(f"Error in term info handler: {str(e)}")
         await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
-    
+
     return chatbot.state
 
 async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
     """Handle the feedback state logic"""
-    if message.strip() in ['1', '2']:
-        chatbot.end_conversation()
-        await send_message(phone_number, message_loader.get_message('return'), next(get_db()))
-        # await send_message(phone_number, message _loader.get_message('menu.main'), next(get_db()))
-    else:
-        await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
+    db = next(get_db())
+    try:
+        if message.strip() in ['1', '2']:
+            # Get the interaction ID from chatbot state
+            interaction_id = chatbot.get_current_interaction_id()
+            if interaction_id:
+                interaction = db.query(UserInteraction).filter(UserInteraction.id == interaction_id).first()
+                if interaction:
+                    interaction.feedback = message.strip() == '1'  # True for '1', False for '2'
+                    interaction.updated_at = datetime.utcnow()
+                    db.commit()
+
+            chatbot.end_conversation()
+            await send_message(phone_number, message_loader.get_message('return'), next(get_db()))
+        else:
+            await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
+    except Exception as e:
+        logger.error(f"Error in feedback handler: {str(e)}")
+        await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
+
     return chatbot.state
 
 async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:

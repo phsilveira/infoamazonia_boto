@@ -11,6 +11,7 @@ class ChatBot:
 
     def __init__(self, db: Session):
         self.db = db
+        self.current_interaction_id = None  # Add interaction ID tracking
         self.machine = Machine(
             model=self,
             states=ChatBot.states,
@@ -141,3 +142,11 @@ class ChatBot:
         except Exception as e:
             self.db.rollback()
             raise e
+
+    def set_current_interaction_id(self, interaction_id: int):
+        """Set the current interaction ID"""
+        self.current_interaction_id = interaction_id
+
+    def get_current_interaction_id(self) -> int:
+        """Get the current interaction ID"""
+        return self.current_interaction_id

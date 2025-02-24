@@ -82,3 +82,21 @@ class Metrics(MetricsBase):
 
     class Config:
         orm_mode = True
+
+class UserInteractionBase(BaseModel):
+    phone_number: str
+    category: str
+    query: str
+    response: str
+    feedback: Optional[bool] = None
+
+class UserInteractionCreate(UserInteractionBase):
+    user_id: Optional[int] = None
+
+class UserInteraction(UserInteractionBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

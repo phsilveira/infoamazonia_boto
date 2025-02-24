@@ -13,6 +13,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     schedule = Column(String)  # daily, weekly, monthly
     preferences = relationship("UserPreference", back_populates="user")
+    interactions = relationship("UserInteraction", backref="user")
 
 class UserPreference(Base):
     __tablename__ = "user_preferences"
@@ -112,3 +113,22 @@ class Message(Base):
 
     def __repr__(self):
         return f'<Message {self.whatsapp_message_id}>'
+
+
+class UserInteraction(Base):
+    __tablename__ = "user_interactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    phone_number = Column(String(20), nullable=False)
+    category = Column(String(20), nullable=False)  # 'term', 'article', 'news_suggestion'
+    query = Column(Text, nullable=False)  # The user's input/question
+    response = Column(Text, nullable=False)  # The system's response
+    feedback = Column(Boolean, nullable=True)  # User's feedback (True/False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", backref="interactions")
+
+    def __repr__(self):
+        return f'<UserInteraction {self.category}:{self.query}>'
