@@ -120,7 +120,7 @@
                                     <tr>
                                         <td>{{ message.template.name }}</td>
                                         <td>{{ message.scheduled_time.strftime('%Y-%m-%d %H:%M') }}</td>
-                                        <td>{{ message.target_groups }}</td>
+                                        <td>{{ message.target_groups.get('target_group', 'all') }}</td>
                                         <td>
                                             <span class="badge bg-{{ message.status == 'sent' and 'success' or 'warning' }}">
                                                 {{ message.status }}

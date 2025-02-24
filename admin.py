@@ -66,13 +66,16 @@ async def messages_page(
     current_admin: models.Admin = Depends(get_current_admin)
 ):
     templates_list = db.query(models.MessageTemplate).all()
-    scheduled_messages = db.query(models.ScheduledMessage).all()
+    scheduled_messages = db.query(models.ScheduledMessage).order_by(models.ScheduledMessage.scheduled_time.desc()).all()
+    hello_world_template = db.query(models.MessageTemplate).filter(models.MessageTemplate.name == "hello_world").first()
+
     return templates.TemplateResponse(
         "admin/messages.html",
         {
             "request": request,
             "message_templates": templates_list,
-            "scheduled_messages": scheduled_messages
+            "scheduled_messages": scheduled_messages,
+            "hello_world_template": hello_world_template
         }
     )
 
