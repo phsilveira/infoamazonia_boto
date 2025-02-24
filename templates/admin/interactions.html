@@ -1,0 +1,88 @@
+{% extends "admin/base.html" %}
+
+{% block title %}User Interactions - InfoAmazonia Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-6">User Interactions</h2>
+        
+        <div class="overflow-x-auto">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Phone Number</th>
+                        <th>Category</th>
+                        <th>Query</th>
+                        <th>Response</th>
+                        <th>Feedback</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for interaction in interactions %}
+                    <tr>
+                        <td>{{ interaction.id }}</td>
+                        <td>
+                            {% if interaction.user %}
+                            <a href="/admin/users/{{ interaction.user.id }}" class="text-blue-500 hover:text-blue-700">
+                                {{ interaction.user.name or interaction.user.phone_number }}
+                            </a>
+                            {% else %}
+                            Anonymous
+                            {% endif %}
+                        </td>
+                        <td>{{ interaction.phone_number }}</td>
+                        <td>
+                            <span class="badge {% if interaction.category == 'term' %}bg-primary
+                                         {% elif interaction.category == 'article' %}bg-success
+                                         {% else %}bg-info{% endif %}">
+                                {{ interaction.category }}
+                            </span>
+                        </td>
+                        <td>{{ interaction.query }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#responseModal{{ interaction.id }}">
+                                View Response
+                            </button>
+                        </td>
+                        <td>
+                            {% if interaction.feedback == True %}
+                            <span class="badge bg-success">👍 Helpful</span>
+                            {% elif interaction.feedback == False %}
+                            <span class="badge bg-danger">👎 Not Helpful</span>
+                            {% else %}
+                            <span class="badge bg-secondary">No Feedback</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ interaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    </tr>
+
+                    <!-- Response Modal for each interaction -->
+                    <div class="modal fade" id="responseModal{{ interaction.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Response Details</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="text-muted mb-2">Query:</p>
+                                    <p class="mb-4">{{ interaction.query }}</p>
+                                    <p class="text-muted mb-2">Response:</p>
+                                    <p style="white-space: pre-wrap;">{{ interaction.response }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

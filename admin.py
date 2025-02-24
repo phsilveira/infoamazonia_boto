@@ -212,3 +212,19 @@ async def add_user_location(
         return RedirectResponse(url=f"/admin/users/{user_id}", status_code=status.HTTP_302_FOUND)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/interactions", response_class=HTMLResponse)
+async def list_interactions(
+    request: Request,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    interactions = db.query(models.UserInteraction).order_by(
+        models.UserInteraction.created_at.desc()
+    ).offset(skip).limit(limit).all()
+    return templates.TemplateResponse(
+        "admin/interactions.html",
+        {"request": request, "interactions": interactions}
+    )
