@@ -5,6 +5,8 @@ from utils.message_loader import message_loader
 from typing import Tuple
 from services.whatsapp import send_message
 from database import get_db
+from models import UserInteraction
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
