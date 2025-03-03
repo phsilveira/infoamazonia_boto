@@ -6,83 +6,118 @@
 <div class="container mx-auto px-4 py-8">
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-2xl font-bold mb-6">User Interactions</h2>
-        
-        <div class="overflow-x-auto">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>User</th>
-                        <th>Phone Number</th>
-                        <th>Category</th>
-                        <th>Query</th>
-                        <th>Response</th>
-                        <th>Feedback</th>
-                        <th>Created At</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for interaction in interactions %}
-                    <tr>
-                        <td>{{ interaction.id }}</td>
-                        <td>
-                            {% if interaction.user %}
-                            <a href="/admin/users/{{ interaction.user.id }}" class="text-blue-500 hover:text-blue-700">
-                                {{ interaction.user.name or interaction.user.phone_number }}
-                            </a>
-                            {% else %}
-                            Anonymous
-                            {% endif %}
-                        </td>
-                        <td>{{ interaction.phone_number }}</td>
-                        <td>
-                            <span class="badge {% if interaction.category == 'term' %}bg-primary
-                                         {% elif interaction.category == 'article' %}bg-success
-                                         {% else %}bg-info{% endif %}">
-                                {{ interaction.category }}
-                            </span>
-                        </td>
-                        <td>{{ interaction.query }}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#responseModal{{ interaction.id }}">
-                                View Response
-                            </button>
-                        </td>
-                        <td>
-                            {% if interaction.feedback == True %}
-                            <span class="badge bg-success">👍 Helpful</span>
-                            {% elif interaction.feedback == False %}
-                            <span class="badge bg-danger">👎 Not Helpful</span>
-                            {% else %}
-                            <span class="badge bg-secondary">No Feedback</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ interaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                    </tr>
 
-                    <!-- Response Modal for each interaction -->
-                    <div class="modal fade" id="responseModal{{ interaction.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Response Details</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs mb-4" id="interactionTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="term-tab" data-bs-toggle="tab" data-bs-target="#term" type="button" role="tab">
+                    Term Explanations
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="article-tab" data-bs-toggle="tab" data-bs-target="#article" type="button" role="tab">
+                    Article Summaries
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="news-tab" data-bs-toggle="tab" data-bs-target="#news" type="button" role="tab">
+                    News Suggestions
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab content -->
+        <div class="tab-content" id="interactionTabContent">
+            {% for category in ['term', 'article', 'news_suggestion'] %}
+            <div class="tab-pane fade {% if category == 'term' %}show active{% endif %}" 
+                 id="{{ category.split('_')[0] }}" role="tabpanel">
+                <div class="overflow-x-auto">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Phone Number</th>
+                                <th>Query</th>
+                                <th>Response</th>
+                                <th>Feedback</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for interaction in interactions %}
+                                {% if interaction.category == category %}
+                                <tr>
+                                    <td>
+                                        {% if interaction.user %}
+                                        <a href="/admin/users/{{ interaction.user.id }}" class="text-blue-500 hover:text-blue-700">
+                                            {{ interaction.user.name or interaction.user.phone_number }}
+                                        </a>
+                                        {% else %}
+                                        Anonymous
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ interaction.phone_number }}</td>
+                                    <td>{{ interaction.query }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#responseModal{{ interaction.id }}">
+                                            View Response
+                                        </button>
+                                    </td>
+                                    <td>
+                                        {% if interaction.feedback == True %}
+                                        <span class="badge bg-success">👍 Helpful</span>
+                                        {% elif interaction.feedback == False %}
+                                        <span class="badge bg-danger">👎 Not Helpful</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">No Feedback</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ interaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                </tr>
+
+                                <!-- Response Modal -->
+                                <div class="modal fade" id="responseModal{{ interaction.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Response Details</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p class="text-muted mb-2">Query:</p>
+                                                <p class="mb-4">{{ interaction.query }}</p>
+                                                <p class="text-muted mb-2">Response:</p>
+                                                <p style="white-space: pre-wrap;">{{ interaction.response }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="modal-body">
-                                    <p class="text-muted mb-2">Query:</p>
-                                    <p class="mb-4">{{ interaction.query }}</p>
-                                    <p class="text-muted mb-2">Response:</p>
-                                    <p style="white-space: pre-wrap;">{{ interaction.response }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </tbody>
-            </table>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize Bootstrap tabs
+    document.addEventListener('DOMContentLoaded', function() {
+        var triggerTabList = [].slice.call(document.querySelectorAll('#interactionTabs button'))
+        triggerTabList.forEach(function(triggerEl) {
+            var tabTrigger = new bootstrap.Tab(triggerEl)
+            triggerEl.addEventListener('click', function(event) {
+                event.preventDefault()
+                tabTrigger.show()
+            })
+        })
+    });
+</script>
 {% endblock %}
