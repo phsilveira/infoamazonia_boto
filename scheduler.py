@@ -146,7 +146,7 @@ async def update_user_status():
     try:
         # Get a database session
         db = SessionLocal()
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = datetime.utcnow() - timedelta(hours=1)
         
         # Get all active users
         active_users = db.query(models.User).filter(models.User.is_active == True).all()
@@ -188,7 +188,7 @@ def start_scheduler():
     # Add job to update user status daily at midnight
     scheduler.add_job(
         update_user_status,
-        trigger=CronTrigger(hour=0, minute=0),
+        trigger=CronTrigger(hour=10, minute=43),
         id='update_user_status',
         replace_existing=True
     )
