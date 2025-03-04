@@ -62,7 +62,7 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
     return chatbot.state
 
 async def handle_location_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
-    """Handle the location state logic"""
+    """Handle the location state logic with support for multiple locations"""
     db = next(get_db())
     user = chatbot.get_user(phone_number)
     if not user:
@@ -80,30 +80,51 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
                 return "get_user_subject"
 
         from services.location import validate_brazilian_location, get_location_details
-        is_valid, corrected_name, region_type = await validate_brazilian_location(message)
-        
-        if not is_valid:
-            await send_message(phone_number, message_loader.get_message('location.invalid', message=corrected_name), db)
+        validation_results = await validate_brazilian_location(message)
+
+        # Check if any locations are valid
+        if not any(result[0] for result in validation_results):
+            invalid_locations = [result[1] for result in validation_results]
+            await send_message(
+                phone_number, 
+                message_loader.get_message('location.invalid', message=", ".join(invalid_locations)), 
+                db
+            )
             return chatbot.state
 
-        location_details = await get_location_details(corrected_name)
-        from models import Location
+        # Get details for all valid locations
+        locations_details = await get_location_details(message)
+
+        # Save all valid locations
+        saved_locations = []
+        for location_detail in locations_details:
+            try:
+                from models import Location
+                location = Location(
+                    location_name=location_detail["corrected_name"],
+                    latitude=location_detail["latitude"],
+                    longitude=location_detail["longitude"],
+                    user_id=user.id
+                )
+                db.add(location)
+                saved_locations.append(location_detail["corrected_name"])
+            except Exception as e:
+                logger.error(f"Error saving location {location_detail['corrected_name']}: {str(e)}")
+                continue
 
         try:
-            location = Location(
-                location_name=location_details["corrected_name"],
-                latitude=location_details["latitude"],
-                longitude=location_details["longitude"],
-                user_id=user.id
-            )
-            db.add(location)
             db.commit()
-            db.refresh(location)
-            
-            await send_message(phone_number, message_loader.get_message('location.saved', location=location_details["corrected_name"]), db)
+            # Notify about saved locations
+            if saved_locations:
+                locations_str = ", ".join(saved_locations)
+                await send_message(
+                    phone_number, 
+                    message_loader.get_message('location.saved_multiple', locations=locations_str), 
+                    db
+                )
         except Exception as e:
             db.rollback()
-            logger.error(f"Error saving location: {str(e)}")
+            logger.error(f"Error committing locations: {str(e)}")
             await send_message(phone_number, message_loader.get_message('error.save_location', error=str(e)), db)
 
     except Exception as e:
