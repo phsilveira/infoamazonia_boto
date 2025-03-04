@@ -20,8 +20,11 @@ import asyncio
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc
 
-# Configure logging
-logging.basicConfig(level=settings.LOG_LEVEL)
+# Configure logging with more detail
+logging.basicConfig(
+    level=settings.LOG_LEVEL,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Create all database tables
@@ -29,32 +32,19 @@ models.Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize Redis connection with retries
-    max_retries = 3
-    retry_delay = 2  # seconds
+    logger.info("Starting application initialization...")
+    try:
+        # Simplified Redis connection
+        app.state.redis = None
+        redis_client = await get_redis()
+        if redis_client:
+            await redis_client.ping()
+            logger.info("Redis connection established")
+            app.state.redis = redis_client
+    except Exception as e:
+        logger.error(f"Redis connection failed: {e}")
 
-    for attempt in range(max_retries):
-        try:
-            redis_client = await get_redis()
-            if redis_client:
-                await redis_client.ping()
-                logger.info("Redis connection established")
-                app.state.redis = redis_client
-                break
-            else:
-                raise Exception("Failed to create Redis client")
-        except Exception as e:
-            if attempt < max_retries - 1:
-                logger.warning(f"Redis connection attempt {attempt + 1} failed: {e}. Retrying in {retry_delay} seconds...")
-                await asyncio.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-            else:
-                logger.error(f"All Redis connection attempts failed: {e}")
-                app.state.redis = None
-
-    # Start the scheduler
-    start_scheduler()
-
+    logger.info("Application initialization completed")
     yield
 
     # Cleanup
@@ -68,6 +58,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    logger.info("Health check endpoint called")
+    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
 # Mount static files and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -79,6 +75,18 @@ app.middleware("http")(auth_middleware)
 app.include_router(admin_router)
 app.include_router(webhook_router)
 app.include_router(location_router)
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize scheduler after server startup"""
+    logger.info("Server startup event triggered")
+    try:
+        # Defer scheduler initialization slightly to ensure server is ready
+        await asyncio.sleep(1)
+        asyncio.create_task(start_scheduler())
+        logger.info("Scheduler initialization scheduled in background")
+    except Exception as e:
+        logger.error(f"Failed to schedule scheduler initialization: {e}")
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -195,4 +203,5 @@ async def get_news_sources(db: Session = Depends(get_db)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    logger.info("Starting server on port 5000...")
+    uvicorn.run("main:app", host="0.0.0.0", port=5000, reload=True, log_level="info")

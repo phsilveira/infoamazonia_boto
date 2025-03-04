@@ -82,6 +82,30 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
         from services.location import validate_brazilian_location, get_location_details
         validation_results = await validate_brazilian_location(message)
 
+        # Check if it's the "all locations" case
+        if len(validation_results) == 1 and validation_results[0][1] == "ALL_LOCATIONS":
+            try:
+                from models import Location
+                location = Location(
+                    location_name="All Locations",
+                    latitude=None,
+                    longitude=None,
+                    user_id=user.id
+                )
+                db.add(location)
+                db.commit()
+                await send_message(
+                    phone_number, 
+                    message_loader.get_message('location.saved_all'), 
+                    db
+                )
+                return chatbot.state
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Error saving 'All Locations': {str(e)}")
+                await send_message(phone_number, message_loader.get_message('error.save_location', error=str(e)), db)
+                return chatbot.state
+
         # Check if any locations are valid
         if not any(result[0] for result in validation_results):
             invalid_locations = [result[1] for result in validation_results]

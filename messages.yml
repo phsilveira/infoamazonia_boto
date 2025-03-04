@@ -35,12 +35,19 @@ menu:
 # Location messages
 location:
   request: |
-    📍 Primeiro, digite uma localização de interesse. Pode ser uma cidade, uma região ou área temática específica.
-    Exemplos: Belém, Baixo Solimões, Bacia do Xingu e Altamira, Amazonas ou se preferir pode pedir para enviar todos os locais.  
+    📍 Primeiro, digite uma ou mais localizações de interesse, separadas por vírgula. 
+    Pode ser uma cidade, uma região ou área temática específica.
+
+    Exemplos: 
+    - Belém, Baixo Solimões, Bacia do Xingu
+    - Altamira, Amazonas
+    - Digite "todas as localizações" para receber informações de toda a região
 
   saved: "Ok, vamos te enviar conteúdos de '{location}'. Gostaria de adicionar novos locais? (Sim/Não)"
-  add_more: "Digite uma nova localização de interesse."
-  invalid: "{message} não é um local válido. Por favor, tente novamente."
+  saved_multiple: "Ok, vamos te enviar conteúdos das seguintes localizações: {locations}. Gostaria de adicionar mais locais? (Sim/Não)"
+  saved_all: "Ok, você receberá conteúdos de todas as localizações da Amazônia Legal. Gostaria de adicionar locais específicos também? (Sim/Não)"
+  add_more: "Digite uma nova localização ou mais localizações separadas por vírgula."
+  invalid: "As seguintes localizações não são válidas: {message}. Por favor, tente novamente."
 
 # Subject messages
 subject:
