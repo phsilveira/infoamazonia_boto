@@ -4,6 +4,41 @@
 
 {% block content %}
 <h2>User Management</h2>
+
+<!-- Filters Section -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Search Phone Number</label>
+                <input type="text" class="form-control" name="phone_number" value="{{ request.query_params.get('phone_number', '') }}" 
+                       placeholder="Enter phone number...">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">All</option>
+                    <option value="active" {% if request.query_params.get('status') == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if request.query_params.get('status') == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Sort By</label>
+                <select class="form-select" name="sort">
+                    <option value="created_at_desc" {% if request.query_params.get('sort') == 'created_at_desc' %}selected{% endif %}>Newest First</option>
+                    <option value="created_at_asc" {% if request.query_params.get('sort') == 'created_at_asc' %}selected{% endif %}>Oldest First</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">Apply</button>
+                {% if request.query_params %}
+                <a href="/admin/users" class="btn btn-outline-secondary">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="table-responsive">
     <table class="table table-striped">
         <thead>
@@ -30,7 +65,6 @@
                 <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                 <td>
                     <a href="/admin/users/{{ user.id }}" class="btn btn-sm btn-primary">View/Edit</a>
-                    <button class="btn btn-sm btn-danger">Delete</button>
                 </td>
             </tr>
             {% endfor %}

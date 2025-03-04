@@ -22,12 +22,34 @@ templates = Jinja2Templates(directory="templates")
 @router.get("/users", response_class=HTMLResponse)
 async def list_users(
     request: Request,
+    phone_number: str = None,
+    status: str = None,
+    sort: str = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
-    users = db.query(models.User).offset(skip).limit(limit).all()
+    query = db.query(models.User)
+
+    # Apply phone number search
+    if phone_number:
+        query = query.filter(models.User.phone_number.ilike(f"%{phone_number}%"))
+
+    # Apply status filter
+    if status == 'active':
+        query = query.filter(models.User.is_active == True)
+    elif status == 'inactive':
+        query = query.filter(models.User.is_active == False)
+
+    # Apply sorting
+    if sort == 'created_at_asc':
+        query = query.order_by(models.User.created_at.asc())
+    else:  # Default to newest first
+        query = query.order_by(models.User.created_at.desc())
+
+    users = query.offset(skip).limit(limit).all()
+
     return templates.TemplateResponse(
         "admin/users.html",
         {"request": request, "users": users}
