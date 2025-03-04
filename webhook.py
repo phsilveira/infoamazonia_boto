@@ -213,19 +213,19 @@ def handle_message_status(status: Dict, db: Session) -> None:
     """Process and store message status updates"""
     try:
         whatsapp_message_id = status['id']
-        message = db.query(models.Message).filter_by(whatsapp_message_id=whatsapp_message_id).first()
+        # message = db.query(models.Message).filter_by(whatsapp_message_id=whatsapp_message_id).first()
 
-        if not message:
-            message = models.Message(
-                whatsapp_message_id=whatsapp_message_id,
-                phone_number=status['recipient_id'],
-                message_type='outgoing',
-                status=status['status'],
-                status_timestamp=datetime.fromtimestamp(int(status['timestamp']))
-            )
-        else:
-            message.status = status['status']
-            message.status_timestamp = datetime.fromtimestamp(int(status['timestamp']))
+        # if not message:
+        message = models.Message(
+            whatsapp_message_id=whatsapp_message_id,
+            phone_number=status['recipient_id'],
+            message_type='outgoing',
+            status=status['status'],
+            status_timestamp=datetime.fromtimestamp(int(status['timestamp']))
+        )
+        # else:
+        #     message.status = status['status']
+        #     message.status_timestamp = datetime.fromtimestamp(int(status['timestamp']))
 
         # Handle failed messages
         if status['status'] == 'failed' and 'errors' in status:

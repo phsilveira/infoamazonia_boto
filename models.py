@@ -98,7 +98,7 @@ class Message(Base):
     __tablename__ = 'messages'
 
     id = Column(Integer, primary_key=True)
-    whatsapp_message_id = Column(String(100), unique=True, nullable=False)
+    whatsapp_message_id = Column(String(100), nullable=False)
     phone_number = Column(String(20), nullable=False)
     message_type = Column(String(20), nullable=False)  # 'incoming', 'outgoing'
     message_content = Column(Text)

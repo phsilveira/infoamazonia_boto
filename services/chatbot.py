@@ -93,10 +93,10 @@ class ChatBot:
             logger.error(f"Error checking user: {e}")
             return True
 
-    def register_user(self, phone_number: str, name: str):
+    def register_user(self, phone_number: str):
         """Register a new user with the given phone number and name"""
         try:
-            new_user = models.User(phone_number=phone_number, name=name)
+            new_user = models.User(phone_number=phone_number, )
             self.db.add(new_user)
             self.db.commit()
             return new_user
