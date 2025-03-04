@@ -36,7 +36,7 @@ menu:
 location:
   request: |
     📍 Primeiro, digite uma localização de interesse. Pode ser uma cidade, uma região ou área temática específica.
-    Exemplos: Belém, Baixo Solimões, Bacia do Xingu e Altamira, Amazonas.  
+    Exemplos: Belém, Baixo Solimões, Bacia do Xingu e Altamira, Amazonas ou se preferir pode pedir para enviar todos os locais.  
 
   saved: "Ok, vamos te enviar conteúdos de '{location}'. Gostaria de adicionar novos locais? (Sim/Não)"
   add_more: "Digite uma nova localização de interesse."
@@ -48,11 +48,12 @@ subject:
     📰 Sobre quais temas você gostaria de receber notícias?  
 
     Escolha entre as opções abaixo ou digite o tema que te interessa:  
-    1️⃣ Conservação e clima
-    2️⃣ Povos originários e territórios
-    3️⃣ Política e economia amazônica
-    4️⃣ Biodiversidade e saúde ambiental
-    5️⃣ Saúde e educação na Amazônia
+    1️⃣ Todos os assuntos
+    2️⃣ Conservação e clima
+    3️⃣ Povos originários e territórios
+    4️⃣ Política e economia amazônica
+    5️⃣ Biodiversidade e saúde ambiental
+    6️⃣ Saúde e educação na Amazônia
     Ou digite outro tema. Exemplo: Mineração em terras indígenas
 
   saved: "Ok, vamos te enviar conteúdos de '{subject}'. Gostaria de adicionar novos temas? (Sim/Não)"

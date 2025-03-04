@@ -56,15 +56,16 @@ class ChatGPTService:
             {"role": "system", "content": "You are a helpful assistant that validates and categorizes subjects related to the Amazon rainforest."},
             {"role": "user", "content": f"""Is ‘{subject}’ a valid subject related to the Amazon rainforest?
     •\tExamples of valid subjects:
-    1.\tConservação e clima
-    2.\tPovos originários e territórios
-    3.\tPolítica e economia amazônica
-    4.\tBiodiversidade e saúde ambiental
-    5.\tSaúde e educação na Amazônia
-    6.\tMineração em terras indígenas
+    1.\tTodos assuntos
+    2.\tConservação e clima
+    3.\tPovos originários e territórios
+    4.\tPolítica e economia amazônica
+    5.\tBiodiversidade e saúde ambiental
+    6.\tSaúde e educação na Amazônia
+    7.\tMineração em terras indígenas
 etc.
     •\tInstructions for validation:
-    •\tIf the input is a number (1-6), map it to the corresponding example subject above.
+    •\tIf the input is a number (1-7), map it to the corresponding example subject above.
     •\tIf the input is a subject text, check its relevance to the examples provided.
     •\tIf valid but needs correction, provide the corrected version of the subject.
     •\tIf invalid, explain why it does not match any valid subject.
