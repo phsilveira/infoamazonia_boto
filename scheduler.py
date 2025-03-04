@@ -4,6 +4,7 @@ from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
 import logging
 from datetime import datetime, timedelta
+import time
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, not_
@@ -12,12 +13,30 @@ import httpx
 from config import settings
 from database import SessionLocal
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with custom formatter to include timezone
+sp_timezone = timezone('America/Sao_Paulo')
+class TimezoneFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        # Convert time to Brazil/Sao Paulo timezone
+        dt = datetime.fromtimestamp(record.created).astimezone(sp_timezone)
+        if datefmt:
+            return dt.strftime(datefmt)
+        return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+
+formatter = TimezoneFormatter(
+    fmt='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S %Z'
+)
+
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
+# Configure root logger
+logging.basicConfig(level=logging.INFO, handlers=[handler])
 logger = logging.getLogger(__name__)
 
 # Create scheduler with Brazil/Sao Paulo timezone
-scheduler = AsyncIOScheduler(timezone=timezone('America/Sao_Paulo'))
+scheduler = AsyncIOScheduler(timezone=sp_timezone)
 
 async def send_whatsapp_message(db: Session, message_id: int):
     """Send WhatsApp template message to specified users"""
@@ -165,14 +184,17 @@ async def update_user_status():
             if not latest_message:
                 user.is_active = False
                 updated_count += 1
-                logger.info(f"Marking user {user.phone_number} as inactive due to 30+ days of inactivity")
+                current_time = datetime.now(sp_timezone)
+                logger.info(f"[{current_time}] Marking user {user.phone_number} as inactive due to 30+ days of inactivity")
         
         # Commit changes
         if updated_count > 0:
             db.commit()
-            logger.info(f"Updated {updated_count} users to inactive status")
+            current_time = datetime.now(sp_timezone)
+            logger.info(f"[{current_time}] Updated {updated_count} users to inactive status")
         else:
-            logger.info("No inactive users found")
+            current_time = datetime.now(sp_timezone)
+            logger.info(f"[{current_time}] No inactive users found")
             
     except Exception as e:
         logger.error(f"Error updating user status: {str(e)}")
@@ -194,4 +216,5 @@ def start_scheduler():
     )
     
     scheduler.start()
-    logger.info("Scheduler started with Brazil/Sao Paulo timezone")
+    current_time = datetime.now(sp_timezone)
+    logger.info(f"[{current_time}] Scheduler started with Brazil/Sao Paulo timezone")
