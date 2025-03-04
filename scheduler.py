@@ -162,11 +162,12 @@ async def update_user_status():
     Check for users who haven't sent any messages in the last 30 days
     and mark them as inactive
     """
-    logger.info("Updating user status...")
+    current_time = datetime.now(sp_timezone)
+    logger.info(f"[{current_time}] Starting user status update check...")
     try:
         # Get a database session
         db = SessionLocal()
-        thirty_days_ago = datetime.utcnow() - timedelta(hours=1)
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
         
         # Get all active users
         active_users = db.query(models.User).filter(models.User.is_active == True).all()
@@ -211,11 +212,22 @@ def start_scheduler():
     # Add job to update user status daily at midnight
     scheduler.add_job(
         update_user_status,
-        trigger=CronTrigger(hour=11, minute=5),
+        trigger=CronTrigger(hour=11, minute=15),  # Run at 11:15 AM Brazil time
         id='update_user_status',
+        replace_existing=True,
+        misfire_grace_time=300  # Allow 5 minutes of misfire grace time
+    )
+    
+    # Also add a job to run shortly after startup for testing
+    scheduler.add_job(
+        update_user_status,
+        trigger=DateTrigger(run_date=datetime.now(sp_timezone) + timedelta(seconds=30)),
+        id='update_user_status_test',
         replace_existing=True
     )
     
     scheduler.start()
     current_time = datetime.now(sp_timezone)
     logger.info(f"[{current_time}] Scheduler started with Brazil/Sao Paulo timezone")
+    logger.info(f"[{current_time}] User status update scheduled for 11:15 AM daily")
+    logger.info(f"[{current_time}] Test run scheduled for 30 seconds from now")
