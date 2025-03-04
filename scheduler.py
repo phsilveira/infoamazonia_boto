@@ -3,11 +3,14 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
+from sqlalchemy import func, and_, not_
 import models
 import httpx
 from config import settings
+from database import SessionLocal
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -135,7 +138,60 @@ def schedule_message(db: Session, message_id: int, schedule_type: str, scheduled
     )
     logger.info(f"Message {message_id} scheduled with type {schedule_type}")
 
+async def update_user_status():
+    """
+    Check for users who haven't sent any messages in the last 30 days
+    and mark them as inactive
+    """
+    try:
+        # Get a database session
+        db = SessionLocal()
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        
+        # Get all active users
+        active_users = db.query(models.User).filter(models.User.is_active == True).all()
+        
+        updated_count = 0
+        
+        for user in active_users:
+            # Check if user has any incoming messages in the last 30 days
+            latest_message = db.query(models.Message).filter(
+                models.Message.phone_number == user.phone_number,
+                models.Message.message_type == 'incoming',
+                models.Message.created_at >= thirty_days_ago
+            ).first()
+            
+            # If no recent messages, mark user as inactive
+            if not latest_message:
+                user.is_active = False
+                updated_count += 1
+                logger.info(f"Marking user {user.phone_number} as inactive due to 30+ days of inactivity")
+        
+        # Commit changes
+        if updated_count > 0:
+            db.commit()
+            logger.info(f"Updated {updated_count} users to inactive status")
+        else:
+            logger.info("No inactive users found")
+            
+    except Exception as e:
+        logger.error(f"Error updating user status: {str(e)}")
+        if 'db' in locals():
+            db.rollback()
+    finally:
+        if 'db' in locals():
+            db.close()
+
+
 def start_scheduler():
     """Start the scheduler"""
+    # Add job to update user status daily at midnight
+    scheduler.add_job(
+        update_user_status,
+        trigger=CronTrigger(hour=0, minute=0),
+        id='update_user_status',
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info("Scheduler started with Brazil/Sao Paulo timezone")
