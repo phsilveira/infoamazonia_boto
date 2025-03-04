@@ -162,6 +162,7 @@ async def update_user_status():
     Check for users who haven't sent any messages in the last 30 days
     and mark them as inactive
     """
+    logger.info("Updating user status...")
     try:
         # Get a database session
         db = SessionLocal()
@@ -210,7 +211,7 @@ def start_scheduler():
     # Add job to update user status daily at midnight
     scheduler.add_job(
         update_user_status,
-        trigger=CronTrigger(hour=10, minute=43),
+        trigger=CronTrigger(hour=11, minute=5),
         id='update_user_status',
         replace_existing=True
     )
