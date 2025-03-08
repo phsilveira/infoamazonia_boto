@@ -5,7 +5,7 @@ from utils.message_loader import message_loader
 from typing import Tuple
 from services.whatsapp import send_message
 from database import get_db
-from models import UserInteraction
+from models import UserInteraction, Location, User
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,6 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
         # Handle "all locations" case
         if len(validation_results) == 1 and validation_results[0][1] == "ALL_LOCATIONS":
             try:
-                from models import Location
                 location = Location(
                     location_name="All Locations",
                     latitude=None,
@@ -118,31 +117,36 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
         locations_details = await get_location_details(message)
         saved_locations = []
 
-        for location_detail in locations_details:
-            location = Location(
-                location_name=location_detail["corrected_name"],
-                latitude=location_detail["latitude"],
-                longitude=location_detail["longitude"],
-                user_id=user.id
-            )
-            db.add(location)
-            saved_locations.append(location_detail["corrected_name"])
+        try:
+            for location_detail in locations_details:
+                location = Location(
+                    location_name=location_detail["corrected_name"],
+                    latitude=location_detail["latitude"],
+                    longitude=location_detail["longitude"],
+                    user_id=user.id
+                )
+                db.add(location)
+                saved_locations.append(location_detail["corrected_name"])
 
-        db.commit()
+            db.commit()
 
-        # Notify about saved locations
-        if len(saved_locations) == 1:
-            await send_message(
-                phone_number, 
-                message_loader.get_message('location.saved', location=saved_locations[0]), 
-                db
-            )
-        else:
-            await send_message(
-                phone_number, 
-                message_loader.get_message('location.saved_multiple', locations=", ".join(saved_locations)), 
-                db
-            )
+            # Notify about saved locations
+            if len(saved_locations) == 1:
+                await send_message(
+                    phone_number, 
+                    message_loader.get_message('location.saved', location=saved_locations[0]), 
+                    db
+                )
+            else:
+                await send_message(
+                    phone_number, 
+                    message_loader.get_message('location.saved_multiple', locations=", ".join(saved_locations)), 
+                    db
+                )
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error saving locations: {str(e)}")
+            await send_message(phone_number, message_loader.get_message('error.save_location', error=str(e)), db)
 
     except Exception as e:
         logger.error(f"Error in handle_location_state: {str(e)}")
