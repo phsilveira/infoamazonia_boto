@@ -248,7 +248,18 @@ async def add_user_location(
         if not any(result[0] for result in validation_results):
             invalid_locations = [result[1] for result in validation_results]
             error_message = f"Invalid location(s): {', '.join(invalid_locations)}"
-            raise HTTPException(status_code=400, detail=error_message)
+            # Return to the same page with error message
+            return templates.TemplateResponse(
+                "admin/user_detail.html",
+                {
+                    "request": request,
+                    "user": db.query(models.User).filter(models.User.id == user_id).first(),
+                    "locations": db.query(models.Location).filter(models.Location.user_id == user_id).all(),
+                    "subjects": db.query(models.Subject).filter(models.Subject.user_id == user_id).all(),
+                    "error": error_message,
+                    "show_location_modal": True
+                }
+            )
 
         # Get details for all valid locations
         locations_details = await get_location_details(location_name)
@@ -275,18 +286,45 @@ async def add_user_location(
                 return RedirectResponse(url=f"/admin/users/{user_id}", status_code=status.HTTP_302_FOUND)
             except Exception as e:
                 db.rollback()
-                raise HTTPException(status_code=500, detail=f"Database error while saving locations: {str(e)}")
+                error_message = f"Database error while saving locations: {str(e)}"
+                return templates.TemplateResponse(
+                    "admin/user_detail.html",
+                    {
+                        "request": request,
+                        "user": db.query(models.User).filter(models.User.id == user_id).first(),
+                        "locations": db.query(models.Location).filter(models.Location.user_id == user_id).all(),
+                        "subjects": db.query(models.Subject).filter(models.Subject.user_id == user_id).all(),
+                        "error": error_message,
+                        "show_location_modal": True
+                    }
+                )
         else:
-            raise HTTPException(status_code=500, detail="Failed to save any locations")
+            error_message = "Failed to save any locations"
+            return templates.TemplateResponse(
+                "admin/user_detail.html",
+                {
+                    "request": request,
+                    "user": db.query(models.User).filter(models.User.id == user_id).first(),
+                    "locations": db.query(models.Location).filter(models.Location.user_id == user_id).all(),
+                    "subjects": db.query(models.Subject).filter(models.Subject.user_id == user_id).all(),
+                    "error": error_message,
+                    "show_location_modal": True
+                }
+            )
 
-    except HTTPException as he:
-        # Re-raise HTTP exceptions to maintain their status codes
-        raise he
     except Exception as e:
         logger.error(f"Error in add_user_location: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to add location: {str(e)}"
+        error_message = f"Failed to add location: {str(e)}"
+        return templates.TemplateResponse(
+            "admin/user_detail.html",
+            {
+                "request": request,
+                "user": db.query(models.User).filter(models.User.id == user_id).first(),
+                "locations": db.query(models.Location).filter(models.Location.user_id == user_id).all(),
+                "subjects": db.query(models.Subject).filter(models.Subject.user_id == user_id).all(),
+                "error": error_message,
+                "show_location_modal": True
+            }
         )
 
 @router.get("/interactions", response_class=HTMLResponse)
