@@ -62,6 +62,9 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
     """Handle the location state logic"""
     db = next(get_db())
     user = chatbot.get_user(phone_number)
+    if not user:
+        await send_message(phone_number, message_loader.get_message('error.user_not_found'), db)
+        return chatbot.state
 
     try:
         confirmation_response = chatgpt_service.parse_confirmation(message)
@@ -93,7 +96,10 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
                     message_loader.get_message('location.saved_all'), 
                     db
                 )
-                return chatbot.state
+                # Proceed directly to subjects state
+                chatbot.proceed_to_subjects()
+                await send_message(phone_number, message_loader.get_message('subject.request'), next(get_db()))
+                return "get_user_subject"
             except Exception as e:
                 db.rollback()
                 logger.error(f"Error saving 'All Locations': {str(e)}")
@@ -141,6 +147,9 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
                     message_loader.get_message('location.saved_multiple', locations=", ".join(saved_locations)), 
                     db
                 )
+            # Ask if user wants to add more locations
+            await send_message(phone_number, message_loader.get_message('location.add_more'), next(get_db()))
+
         except Exception as e:
             db.rollback()
             logger.error(f"Error saving locations: {str(e)}")
