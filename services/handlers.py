@@ -13,15 +13,12 @@ logger = logging.getLogger(__name__)
 async def handle_start_state(chatbot: ChatBot, phone_number: str) -> str:
     """Handle the start state logic"""
     if chatbot.is_new_user(phone_number):
-        chatbot.verify_user(phone_number)
-        # message = message_loader.get_message('welcome.new_user')
-        # await send_message(phone_number, message, next(get_db()))
-        return chatbot.state
-    else:
-        chatbot.show_menu()
-        message = message_loader.get_message('menu.main')
-        await send_message(phone_number, message, next(get_db()))
-        return chatbot.state
+        chatbot.register_user(phone_number)    
+
+    chatbot.show_menu()
+    message = message_loader.get_message('menu.main')
+    await send_message(phone_number, message, next(get_db()))
+    return chatbot.state
 
 async def handle_register_state(chatbot: ChatBot, phone_number: str, message: str) -> str:
     """Handle the register state logic"""

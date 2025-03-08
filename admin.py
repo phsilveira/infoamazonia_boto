@@ -230,25 +230,64 @@ async def add_user_location(
 
     try:
         # Validate and get location details
-        is_valid, corrected_name, _ = await validate_brazilian_location(location_name)
-        if not is_valid:
-            raise HTTPException(status_code=400, detail=f"Invalid location: {location_name}")
+        validation_results = await validate_brazilian_location(location_name)
 
-        location_details = await get_location_details(corrected_name)
+        # Check if it's the "all locations" case first
+        if len(validation_results) == 1 and validation_results[0][1] == "ALL_LOCATIONS":
+            location = models.Location(
+                location_name="All Locations",
+                latitude=None,
+                longitude=None,
+                user_id=user_id
+            )
+            db.add(location)
+            db.commit()
+            return RedirectResponse(url=f"/admin/users/{user_id}", status_code=status.HTTP_302_FOUND)
 
-        # Save location
-        location = models.Location(
-            location_name=location_details["corrected_name"],
-            latitude=location_details["latitude"],
-            longitude=location_details["longitude"],
-            user_id=user_id
-        )
-        db.add(location)
-        db.commit()
+        # Check if any of the locations are valid
+        if not any(result[0] for result in validation_results):
+            invalid_locations = [result[1] for result in validation_results]
+            error_message = f"Invalid location(s): {', '.join(invalid_locations)}"
+            raise HTTPException(status_code=400, detail=error_message)
 
-        return RedirectResponse(url=f"/admin/users/{user_id}", status_code=status.HTTP_302_FOUND)
+        # Get details for all valid locations
+        locations_details = await get_location_details(location_name)
+        saved_count = 0
+
+        # Save all valid locations
+        for location_detail in locations_details:
+            try:
+                location = models.Location(
+                    location_name=location_detail["corrected_name"],
+                    latitude=location_detail["latitude"],
+                    longitude=location_detail["longitude"],
+                    user_id=user_id
+                )
+                db.add(location)
+                saved_count += 1
+            except Exception as e:
+                logger.error(f"Error saving location {location_detail['corrected_name']}: {str(e)}")
+                continue
+
+        if saved_count > 0:
+            try:
+                db.commit()
+                return RedirectResponse(url=f"/admin/users/{user_id}", status_code=status.HTTP_302_FOUND)
+            except Exception as e:
+                db.rollback()
+                raise HTTPException(status_code=500, detail=f"Database error while saving locations: {str(e)}")
+        else:
+            raise HTTPException(status_code=500, detail="Failed to save any locations")
+
+    except HTTPException as he:
+        # Re-raise HTTP exceptions to maintain their status codes
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in add_user_location: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to add location: {str(e)}"
+        )
 
 @router.get("/interactions", response_class=HTMLResponse)
 async def list_interactions(

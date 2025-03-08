@@ -5,6 +5,8 @@ import googlemaps
 from fastapi import HTTPException
 from config import settings
 
+logger = logging.getLogger(__name__)
+
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
 
@@ -18,7 +20,7 @@ Critérios de Validação:
     4. Erros de Digitação: Identifique e sugira correções para erros ortográficos ou variações de escrita.
     5. Menor Nível Geográfico: A menor unidade válida é um município.
     6. Múltiplas Localidades: O usuário pode inserir múltiplas localidades separadas por vírgula.
-    7. Caso Especial: Se o usuário digitar "todas as localizações", "all locations" ou similar, responda com "ALL_LOCATIONS"
+    7. Caso Especial: Se o usuário digitar "todas", "todas as localizações", "all locations" ou similar, responda com "ALL_LOCATIONS"
 
 Formato de Saída para múltiplas localidades:
     Para cada localidade na lista:
@@ -31,12 +33,17 @@ async def validate_brazilian_location(location_text: str) -> List[Tuple[bool, st
     """Validates if the input contains valid Brazilian city or region names.
     Returns a list of tuples (is_valid, corrected_name, region_type) for each location."""
     try:
-        # Check for "all locations" case
+        # Check for "all locations" case with more variations
         all_locations_variations = [
+            "todas", "todos", "todas as", "all",
             "todas as localizações", "todas localizações", "all locations", 
-            "todas as localidades", "todas localidades", "all"
+            "todas as localidades", "todas localidades", "todos os locais",
+            "todas regiões", "todas as regiões"
         ]
-        if location_text.lower().strip() in all_locations_variations:
+
+        input_lower = location_text.lower().strip()
+        # Check if input starts with any of the variations
+        if any(input_lower.startswith(variation) for variation in all_locations_variations):
             return [(True, "ALL_LOCATIONS", "all")]
 
         # Split the input text by commas and clean each location name
@@ -53,21 +60,31 @@ async def validate_brazilian_location(location_text: str) -> List[Tuple[bool, st
                 {"role": "user", "content": f"Is '{location_text}' a valid location (city, region, state, popular expression) in the Brazil? If it's valid but has typos, correct the location_name. If it's not valid, explain why. Also the user can insert multiple locations in a same message, if any of the locations is invalid then answer with the location invalid only"}
             ]
         )
-        response = completion.choices[0].message.content
+        response = completion.choices[0].message.content.strip()
 
         # Check if response is the special case
-        if response.strip() == "ALL_LOCATIONS":
+        if response == "ALL_LOCATIONS":
             return [(True, "ALL_LOCATIONS", "all")]
 
-        # Process multiple locations
+        # Process multiple locations with better error handling
         results = []
         for location_result in response.split('|'):
-            is_valid, name, region_type = location_result.strip().split(';', 2)
-            results.append((is_valid.strip() == "T", name.strip(), region_type.strip()))
+            try:
+                parts = location_result.strip().split(';', 2)
+                if len(parts) == 3:
+                    is_valid, name, region_type = parts
+                    results.append((is_valid.strip() == "T", name.strip(), region_type.strip()))
+                else:
+                    # Handle malformed response by marking location as invalid
+                    results.append((False, location_text, 'formato_invalido'))
+            except Exception as e:
+                logger.error(f"Error processing location result: {str(e)}")
+                results.append((False, location_text, 'erro_processamento'))
 
-        return results
+        return results if results else [(False, location_text, 'erro_validacao')]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error validating locations: {str(e)}")
+        logger.error(f"Error in validate_brazilian_location: {str(e)}")
+        return [(False, location_text, 'erro_sistema')]
 
 async def get_location_details(location_text: str, country: str = "BR") -> List[Dict]:
     """Gets location details including coordinates for multiple locations using Google Maps API."""
