@@ -28,12 +28,12 @@ class ChatBot:
         )
         self.machine.add_transition(
             trigger='show_menu',
-            source=['start', 'register'],
+            source=['start', 'register', 'get_user_location', 'get_user_subject', 'get_user_schedule',],
             dest='menu_state'
         )
         self.machine.add_transition(
             trigger='select_subscribe',
-            source='menu_state',
+            source=['menu_state', 'get_user_location', ''],
             dest='get_user_location'
         )
         self.machine.add_transition(

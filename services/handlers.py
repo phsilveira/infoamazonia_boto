@@ -62,15 +62,13 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
     """Handle the location state logic"""
     db = next(get_db())
     user = chatbot.get_user(phone_number)
-    if not user:
-        await send_message(phone_number, message_loader.get_message('error.user_not_found'), db)
-        return chatbot.state
 
     try:
         confirmation_response = chatgpt_service.parse_confirmation(message)
         if confirmation_response is not None:
             if confirmation_response:
                 await send_message(phone_number, message_loader.get_message('location.add_more'), db)
+                return "get_user_location"
             else:
                 chatbot.proceed_to_subjects()
                 await send_message(phone_number, message_loader.get_message('subject.request'), db)
