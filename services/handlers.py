@@ -59,7 +59,7 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
     return chatbot.state
 
 async def handle_location_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
-    """Handle the location state logic with support for multiple locations"""
+    """Handle the location state logic"""
     db = next(get_db())
     user = chatbot.get_user(phone_number)
     if not user:
@@ -76,10 +76,10 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
                 await send_message(phone_number, message_loader.get_message('subject.request'), db)
                 return "get_user_subject"
 
-        from services.location import validate_brazilian_location, get_location_details
-        validation_results = await validate_brazilian_location(message)
+        from services.location import validate_locations, get_location_details
+        validation_results = validate_locations(message)
 
-        # Check if it's the "all locations" case
+        # Handle "all locations" case
         if len(validation_results) == 1 and validation_results[0][1] == "ALL_LOCATIONS":
             try:
                 from models import Location
@@ -103,9 +103,10 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
                 await send_message(phone_number, message_loader.get_message('error.save_location', error=str(e)), db)
                 return chatbot.state
 
-        # Check if any locations are valid
-        if not any(result[0] for result in validation_results):
-            invalid_locations = [result[1] for result in validation_results]
+        # Get details for valid locations
+        valid_locations = [result[1] for result in validation_results if result[0]]
+        if not valid_locations:
+            invalid_locations = [result[1] for result in validation_results if not result[0]]
             await send_message(
                 phone_number, 
                 message_loader.get_message('location.invalid', message=", ".join(invalid_locations)), 
@@ -113,40 +114,35 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
             )
             return chatbot.state
 
-        # Get details for all valid locations
+        # Get details and save valid locations
         locations_details = await get_location_details(message)
-
-        # Save all valid locations
         saved_locations = []
-        for location_detail in locations_details:
-            try:
-                from models import Location
-                location = Location(
-                    location_name=location_detail["corrected_name"],
-                    latitude=location_detail["latitude"],
-                    longitude=location_detail["longitude"],
-                    user_id=user.id
-                )
-                db.add(location)
-                saved_locations.append(location_detail["corrected_name"])
-            except Exception as e:
-                logger.error(f"Error saving location {location_detail['corrected_name']}: {str(e)}")
-                continue
 
-        try:
-            db.commit()
-            # Notify about saved locations
-            if saved_locations:
-                locations_str = ", ".join(saved_locations)
-                await send_message(
-                    phone_number, 
-                    message_loader.get_message('location.saved_multiple', locations=locations_str), 
-                    db
-                )
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Error committing locations: {str(e)}")
-            await send_message(phone_number, message_loader.get_message('error.save_location', error=str(e)), db)
+        for location_detail in locations_details:
+            location = Location(
+                location_name=location_detail["corrected_name"],
+                latitude=location_detail["latitude"],
+                longitude=location_detail["longitude"],
+                user_id=user.id
+            )
+            db.add(location)
+            saved_locations.append(location_detail["corrected_name"])
+
+        db.commit()
+
+        # Notify about saved locations
+        if len(saved_locations) == 1:
+            await send_message(
+                phone_number, 
+                message_loader.get_message('location.saved', location=saved_locations[0]), 
+                db
+            )
+        else:
+            await send_message(
+                phone_number, 
+                message_loader.get_message('location.saved_multiple', locations=", ".join(saved_locations)), 
+                db
+            )
 
     except Exception as e:
         logger.error(f"Error in handle_location_state: {str(e)}")
