@@ -200,7 +200,7 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
         'daily': 'diário',
         'weekly': 'semanal',
         'monthly': 'mensal',
-        'immediately': 'imediato'
+        'immediately': 'Assim que a notícia for publicada'
     }
 
     # Define valid schedule options and their variations
@@ -209,6 +209,7 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
         '2': 'weekly', 'weekly': 'weekly', 'semana': 'weekly', 'semanal': 'weekly',
         '3': 'monthly', 'monthly': 'monthly', 'mes': 'monthly', 'mensal': 'monthly', 'mês': 'monthly',
         '4': 'immediately', 'immediate': 'immediately', 'immediato': 'immediately', 'imediato': 'immediately',
+        'assim que a notícia for publicada': 'immediately', 'assim que for publicada': 'immediately'
     }
 
     try:

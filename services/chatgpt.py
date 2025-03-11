@@ -105,11 +105,12 @@ Valid options are:
 1. Daily (diário, diario, dia)
 2. Weekly (semanal, semana)
 3. Monthly (mensal, mes, mês)
-4. Immediately (imediato, immediato)
+4. Immediately (Assim que a notícia for publicada, imediato, immediato)
 
 Instructions:
 - If input is a number (1-4), map it to corresponding schedule.
 - If input matches any variation (in Portuguese or English), return the base form.
+- For option 4, accept variations of "Assim que a notícia for publicada".
 - Return the normalized form that matches the schedule_map keys.
 
 Response format:
