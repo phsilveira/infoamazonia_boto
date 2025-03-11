@@ -179,40 +179,69 @@ async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str
         chatbot.save_subject(user.id, corrected_subject)
         await send_message(phone_number, message_loader.get_message('subject.saved', subject=corrected_subject), db)
         
+
     except Exception as e:
         logger.error(f"Error in handle_subject_state: {str(e)}")
         await send_message(phone_number, message_loader.get_message('error.save_subject', error=str(e)), db)
     
+
     return chatbot.state
 
 async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
-    """Handle the schedule state logic"""
+    """Handle the schedule state logic with improved validation and Portuguese schedule names"""
     db = next(get_db())
     user = chatbot.get_user(phone_number)
     if not user:
         await send_message(phone_number, message_loader.get_message('error.user_not_found'), db)
         return chatbot.state
 
+    # Map schedule options to their Portuguese names
+    schedule_names = {
+        'daily': 'diário',
+        'weekly': 'semanal',
+        'monthly': 'mensal',
+        'immediately': 'imediato'
+    }
+
+    # Define valid schedule options and their variations
     schedule_map = {
-        '1': 'daily', 'daily': 'daily', 'dia': 'daily', 'diário': 'daily',
+        '1': 'daily', 'daily': 'daily', 'dia': 'daily', 'diário': 'daily', 'diario': 'daily',
         '2': 'weekly', 'weekly': 'weekly', 'semana': 'weekly', 'semanal': 'weekly',
-        '3': 'monthly', 'monthly': 'monthly', 'mes': 'monthly', 'mensal': 'monthly',
+        '3': 'monthly', 'monthly': 'monthly', 'mes': 'monthly', 'mensal': 'monthly', 'mês': 'monthly',
         '4': 'immediately', 'immediate': 'immediately', 'immediato': 'immediately', 'imediato': 'immediately',
     }
 
-    schedule = schedule_map.get(message.lower().strip())
-    if not schedule:
-        await send_message(phone_number, message_loader.get_message('schedule.invalid_option'), db)
-        return chatbot.state
-
     try:
+        # Use ChatGPT to validate and normalize the schedule input
+        is_valid, normalized_input = await chatgpt_service.validate_schedule(message)
+
+        if not is_valid:
+            await send_message(phone_number, message_loader.get_message('schedule.invalid_option'), db)
+            return chatbot.state
+
+        # Get the standardized schedule value
+        schedule = schedule_map.get(normalized_input.lower().strip())
+        if not schedule:
+            await send_message(phone_number, message_loader.get_message('schedule.invalid_option'), db)
+            return chatbot.state
+
+        # Save the schedule and end conversation
         chatbot.save_schedule(user.id, schedule)
         chatbot.end_conversation()
-        await send_message(phone_number, message_loader.get_message('schedule.confirmation', schedule=schedule), db)
+
+        # Get Portuguese schedule name for confirmation message
+        schedule_pt = schedule_names.get(schedule, schedule)
+        await send_message(
+            phone_number, 
+            message_loader.get_message('schedule.confirmation', schedule=schedule_pt), 
+            db
+        )
         await send_message(phone_number, message_loader.get_message('return'), next(get_db()))
+
     except Exception as e:
+        logger.error(f"Error in handle_schedule_state: {str(e)}")
         await send_message(phone_number, message_loader.get_message('error.save_schedule', error=str(e)), db)
-    
+
     return chatbot.state
 
 async def handle_about_state(chatbot: ChatBot, phone_number: str) -> str:

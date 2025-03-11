@@ -63,7 +63,7 @@ class ChatGPTService:
     5.\tBiodiversidade e saúde ambiental
     6.\tSaúde e educação na Amazônia
     7.\tMineração em terras indígenas
-etc.
+    etc.
     •\tInstructions for validation:
     •\tIf the input is a number (1-7), map it to the corresponding example subject above.
     •\tIf the input is a subject text, check its relevance to the examples provided.
@@ -95,3 +95,33 @@ VALID|INVALID|subject_name|explanation"""}
             return False
 
         return None
+
+    async def validate_schedule(self, schedule: str) -> tuple[bool, str]:
+        """Validate and normalize a schedule option"""
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant that validates schedule options for a messaging system."},
+            {"role": "user", "content": f"""Is '{schedule}' a valid schedule option?
+Valid options are:
+1. Daily (diário, diario, dia)
+2. Weekly (semanal, semana)
+3. Monthly (mensal, mes, mês)
+4. Immediately (imediato, immediato)
+
+Instructions:
+- If input is a number (1-4), map it to corresponding schedule.
+- If input matches any variation (in Portuguese or English), return the base form.
+- Return the normalized form that matches the schedule_map keys.
+
+Response format:
+VALID|INVALID|normalized_input|explanation"""}
+        ]
+
+        response = await self._make_request(messages)
+        if not response or not response.get('choices'):
+            return False, "Could not validate schedule"
+
+        result = response['choices'][0]['message']['content'].split('|')
+        is_valid = result[0] == 'VALID'
+        normalized_input = result[2] if len(result) > 2 else schedule
+
+        return is_valid, normalized_input
