@@ -45,7 +45,7 @@ location:
 
   saved: "Ok, vamos te enviar conteúdos de '{location}'. Gostaria de adicionar novos locais? (Sim/Não)"
   saved_multiple: "Ok, vamos te enviar conteúdos das seguintes localizações: {locations}. Gostaria de adicionar mais locais? (Sim/Não)"
-  saved_all: "Ok, você receberá conteúdos de todas as localizações da Amazônia Legal. Gostaria de adicionar locais específicos também? (Sim/Não)"
+  saved_all: "Ok, você receberá conteúdos de todas as localizações da Amazônia Legal."
   add_more: "Digite uma nova localização ou mais localizações separadas por vírgula."
   invalid: "As seguintes localizações não são válidas: {message}. Por favor, tente novamente."
 
@@ -99,7 +99,7 @@ about:
     2️⃣ Voltar ao menu inicial 
 
 # return
-return: "Retornando ao início. Digite qualquer mensagem para começar."
+return: "Obrigado! Estamos encaminhando sua ideia para nossa equipe de redação :). Digite menu para voltar a menu principal."
 
 # Error messages
 error:
