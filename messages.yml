@@ -92,13 +92,13 @@ schedule:
 # About message
 about:
   info: |
-    BOTO é um projeto da InfoAmazonia que conecta você à Amazônia pelo WhatsApp. Financiado pelo ICFJ e XXXX, ele utiliza inteligência artificial para entregar notícias, dados e insights personalizados sobre a maior floresta tropical do planeta. 
-
+    BOTO é um projeto da InfoAmazonia que conecta você à Amazônia pelo WhatsApp. Ele conecta públicos de forma prática e personalizada por meio do WhatsApp, utilizando inteligência artificial para entregar notícias, dados e insights personalizados sobre a maior floresta tropical do planeta. 
+  
     Nosso objetivo é facilitar o acesso à informação, promovendo compreensão, debate e ação em relação aos desafios e à importância global da Amazônia. 
-
-    1️⃣ Compartilhe essa iniciativa com sua rede! 
-    2️⃣ Voltar ao menu inicial 
-
+  
+    Compartilhe essa iniciativa com sua rede! 
+    https://wa.me/5511910230000
+  
 # return
 return: "Obrigado! Estamos encaminhando sua ideia para nossa equipe de redação :). Digite menu para voltar a menu principal."
 

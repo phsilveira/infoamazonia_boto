@@ -106,27 +106,25 @@ VALID|INVALID|subject_name|explanation"""}
         return None
 
     async def validate_schedule(self, schedule: str) -> tuple[bool, str]:
-        """Validate and normalize a schedule option"""
+        """Validate user schedule input and return standardized key"""
         messages = [
-            {"role": "system", "content": "You are a helpful assistant that validates schedule options for a messaging system."},
-            {"role": "user", "content": f"""Is '{schedule}' a valid schedule option?
-Valid options are:
-1. Daily (diário, diario, dia)
-2. Weekly (semanal, semana)
-3. Monthly (mensal, mes, mês)
-4. Immediately (Assim que a notícia for publicada)
+            {"role": "system", "content": "You are a scheduling assistant that validates schedule preferences."},
+            {"role": "user", "content": f"""Map this schedule preference '{schedule}' to one of these standard keys:
+            - 'daily' for daily notifications
+            - 'weekly' for weekly notifications
+            - 'monthly' for monthly notifications
+            - 'immediately' for immediate notifications
 
-Instructions:
-- Map the input to one of these standard keys: 'daily', 'weekly', 'monthly', 'immediately'
-- If input is a number (1-4), map to corresponding key
-- If input matches Portuguese variations, map to corresponding key
-- If input is invalid, return INVALID
-- For option 4, accept "Assim que a notícia for publicada" or similar variations
+            Valid inputs can be:
+            - Numbers (1-4)
+            - Portuguese words (diário, semanal, mensal)
+            - Phrases like "Assim que a notícia for publicada"
+            - English words (daily, weekly, monthly, immediate)
 
-Response format:
-VALID|INVALID|standard_key|explanation
-Example: "VALID|immediately|User wants immediate notifications"
-"""}
+            Response format:
+            VALID|INVALID|key
+            Example: "VALID|immediately" for immediate notifications
+            """}
         ]
 
         response = await self._make_request(messages)
@@ -135,6 +133,6 @@ Example: "VALID|immediately|User wants immediate notifications"
 
         result = response['choices'][0]['message']['content'].split('|')
         is_valid = result[0] == 'VALID'
-        standard_key = result[2] if len(result) > 2 else schedule
+        key = result[2] if len(result) > 2 else schedule
 
-        return is_valid, standard_key
+        return is_valid, key

@@ -195,41 +195,41 @@ async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str
     return chatbot.state
 
 async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
-    """Handle the schedule state logic with improved validation and Portuguese schedule names"""
+    """Handle the schedule state logic"""
     db = next(get_db())
     user = chatbot.get_user(phone_number)
     if not user:
         await send_message(phone_number, message_loader.get_message('error.user_not_found'), db)
         return chatbot.state
 
-    # Map schedule keys to their Portuguese display names
+    # Simple mapping for display purposes only
     schedule_display = {
-        'daily': 'diário',
-        'weekly': 'semanal',
-        'monthly': 'mensal',
+        'daily': 'Diário',
+        'weekly': 'Semanal',
+        'monthly': 'Mensal',
         'immediately': 'Assim que a notícia for publicada'
     }
 
     try:
-        # Use ChatGPT to validate and normalize the schedule input
+        # Let the LLM validate and normalize the input
         is_valid, schedule_key = await chatgpt_service.validate_schedule(message)
 
         if not is_valid:
             await send_message(phone_number, message_loader.get_message('schedule.invalid_option'), db)
             return chatbot.state
 
-        # Save the standardized key to the database
+        # Save the standardized key
         chatbot.save_schedule(user.id, schedule_key)
         chatbot.end_conversation()
 
-        # Get Portuguese display name for confirmation message
-        schedule_pt = schedule_display.get(schedule_key, schedule_key)
+        # Display the Portuguese version in the confirmation
+        display_text = schedule_display.get(schedule_key, schedule_key)
         await send_message(
             phone_number, 
-            message_loader.get_message('schedule.confirmation', schedule=schedule_pt), 
+            message_loader.get_message('schedule.confirmation', schedule=display_text), 
             db
         )
-        await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
+        await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
 
     except Exception as e:
         logger.error(f"Error in handle_schedule_state: {str(e)}")
