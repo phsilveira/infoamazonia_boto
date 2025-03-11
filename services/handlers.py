@@ -176,6 +176,13 @@ async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str
             await send_message(phone_number, message_loader.get_message('subject.invalid', message=corrected_subject), db)
             return chatbot.state
 
+        if corrected_subject == "ALL_SUBJECTS":
+            chatbot.save_subject(user.id, corrected_subject)
+            await send_message(phone_number, message_loader.get_message('subject.saved_all'), db)
+            chatbot.proceed_to_schedule()
+            await send_message(phone_number, message_loader.get_message('schedule.request'), db)
+            return "get_user_schedule"
+    
         chatbot.save_subject(user.id, corrected_subject)
         await send_message(phone_number, message_loader.get_message('subject.saved', subject=corrected_subject), db)
         
@@ -195,49 +202,34 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
         await send_message(phone_number, message_loader.get_message('error.user_not_found'), db)
         return chatbot.state
 
-    # Map schedule options to their Portuguese names
-    schedule_names = {
+    # Map schedule keys to their Portuguese display names
+    schedule_display = {
         'daily': 'diário',
         'weekly': 'semanal',
         'monthly': 'mensal',
         'immediately': 'Assim que a notícia for publicada'
     }
 
-    # Define valid schedule options and their variations
-    schedule_map = {
-        '1': 'daily', 'daily': 'daily', 'dia': 'daily', 'diário': 'daily', 'diario': 'daily',
-        '2': 'weekly', 'weekly': 'weekly', 'semana': 'weekly', 'semanal': 'weekly',
-        '3': 'monthly', 'monthly': 'monthly', 'mes': 'monthly', 'mensal': 'monthly', 'mês': 'monthly',
-        '4': 'immediately', 'immediate': 'immediately', 'immediato': 'immediately', 'imediato': 'immediately',
-        'assim que a notícia for publicada': 'immediately', 'assim que for publicada': 'immediately'
-    }
-
     try:
         # Use ChatGPT to validate and normalize the schedule input
-        is_valid, normalized_input = await chatgpt_service.validate_schedule(message)
+        is_valid, schedule_key = await chatgpt_service.validate_schedule(message)
 
         if not is_valid:
             await send_message(phone_number, message_loader.get_message('schedule.invalid_option'), db)
             return chatbot.state
 
-        # Get the standardized schedule value
-        schedule = schedule_map.get(normalized_input.lower().strip())
-        if not schedule:
-            await send_message(phone_number, message_loader.get_message('schedule.invalid_option'), db)
-            return chatbot.state
-
-        # Save the schedule and end conversation
-        chatbot.save_schedule(user.id, schedule)
+        # Save the standardized key to the database
+        chatbot.save_schedule(user.id, schedule_key)
         chatbot.end_conversation()
 
-        # Get Portuguese schedule name for confirmation message
-        schedule_pt = schedule_names.get(schedule, schedule)
+        # Get Portuguese display name for confirmation message
+        schedule_pt = schedule_display.get(schedule_key, schedule_key)
         await send_message(
             phone_number, 
             message_loader.get_message('schedule.confirmation', schedule=schedule_pt), 
             db
         )
-        await send_message(phone_number, message_loader.get_message('return'), next(get_db()))
+        await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
 
     except Exception as e:
         logger.error(f"Error in handle_schedule_state: {str(e)}")
@@ -263,7 +255,7 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
             response = await client.post(api_url, json=payload)
             data = response.json()
 
-            if data.get("success") and data.get("summary"):
+            if data.get("success") and data.get("summary") and int(data.get('count')) > 0:
                 # Get user if exists
                 user = chatbot.get_user(phone_number)
                 user_id = user.id if user else None
@@ -287,6 +279,8 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
                 await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
             else:
                 await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse termo.", db)
+                await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
+                chatbot.end_conversation()
 
     except Exception as e:
         logger.error(f"Error in term info handler: {str(e)}")
@@ -360,6 +354,8 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
                 await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
             else:
                 await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse artigo.", db)
+                await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
+                chatbot.end_conversation()
 
     except Exception as e:
         logger.error(f"Error in article summary handler: {str(e)}")

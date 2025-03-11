@@ -54,7 +54,7 @@ class ChatGPTService:
         """Validate and categorize a subject related to Amazon"""
         messages = [
             {"role": "system", "content": "You are a helpful assistant that validates and categorizes subjects related to the Amazon rainforest."},
-            {"role": "user", "content": f"""Is ‘{subject}’ a valid subject related to the Amazon rainforest?
+            {"role": "user", "content": f"""Is '{subject}' a valid subject related to the Amazon rainforest?
     •\tExamples of valid subjects:
     1.\tTodos assuntos
     2.\tConservação e clima
@@ -73,6 +73,15 @@ class ChatGPTService:
 Response format:
 VALID|INVALID|subject_name|explanation"""}
         ]
+
+        # Check for "all locations" variations
+        all_locations_variations = [
+            "todas", "todos", "todas as", "all",
+            "todas as localizações", "todas localizações", "all locations", "1"
+        ]
+
+        if any(subject.lower().strip().startswith(v) for v in all_locations_variations):
+            return True, "ALL_SUBJECTS"
 
         response = await self._make_request(messages)
         if not response or not response.get('choices'):
@@ -105,16 +114,19 @@ Valid options are:
 1. Daily (diário, diario, dia)
 2. Weekly (semanal, semana)
 3. Monthly (mensal, mes, mês)
-4. Immediately (Assim que a notícia for publicada, imediato, immediato)
+4. Immediately (Assim que a notícia for publicada)
 
 Instructions:
-- If input is a number (1-4), map it to corresponding schedule.
-- If input matches any variation (in Portuguese or English), return the base form.
-- For option 4, accept variations of "Assim que a notícia for publicada".
-- Return the normalized form that matches the schedule_map keys.
+- Map the input to one of these standard keys: 'daily', 'weekly', 'monthly', 'immediately'
+- If input is a number (1-4), map to corresponding key
+- If input matches Portuguese variations, map to corresponding key
+- If input is invalid, return INVALID
+- For option 4, accept "Assim que a notícia for publicada" or similar variations
 
 Response format:
-VALID|INVALID|normalized_input|explanation"""}
+VALID|INVALID|standard_key|explanation
+Example: "VALID|immediately|User wants immediate notifications"
+"""}
         ]
 
         response = await self._make_request(messages)
@@ -123,6 +135,6 @@ VALID|INVALID|normalized_input|explanation"""}
 
         result = response['choices'][0]['message']['content'].split('|')
         is_valid = result[0] == 'VALID'
-        normalized_input = result[2] if len(result) > 2 else schedule
+        standard_key = result[2] if len(result) > 2 else schedule
 
-        return is_valid, normalized_input
+        return is_valid, standard_key

@@ -73,7 +73,7 @@ class ChatBot:
         )
         self.machine.add_transition(
             trigger='end_conversation',
-            source=['register', 'get_user_schedule', 'about', 'feedback_state', 'get_news_suggestion'],
+            source=['register', 'get_user_schedule', 'about', 'feedback_state', 'get_news_suggestion', 'get_article_summary', 'get_term_info'],
             dest='start'
         )
 

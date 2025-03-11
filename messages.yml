@@ -64,6 +64,7 @@ subject:
     Ou digite outro tema. Exemplo: Mineração em terras indígenas
 
   saved: "Ok, vamos te enviar conteúdos de '{subject}'. Gostaria de adicionar novos temas? (Sim/Não)"
+  saved_all: "Ok, você receberá conteúdos de todos assuntos da Amazônia Legal."
   add_more: "Digite um novo tema de interesse:"
   invalid: "{message} parece não ser um tema válido. Por favor, tente novamente."
 
@@ -80,7 +81,7 @@ schedule:
 
     📌 Digite o número da sua escolha ou escreva (diário/semanal/mensal)!
 
-  invalid_option: "Opção inválida. Por favor selecione:\n1. Diariamente\n2. Semanalmente\n3. Mensalmente"
+  invalid_option: "Opção inválida. Por favor selecione:\n1. Diariamente\n2. Semanalmente\n3. Mensalmente\n4. Assim que a notícia for publicada"
   confirmation: |
     Sua preferência foi configurada! 
 
@@ -100,6 +101,8 @@ about:
 
 # return
 return: "Obrigado! Estamos encaminhando sua ideia para nossa equipe de redação :). Digite menu para voltar a menu principal."
+
+return_to_menu_from_subscription: "Digite *menu* para voltar a menu principal."
 
 # Error messages
 error:
