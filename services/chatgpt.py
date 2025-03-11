@@ -109,21 +109,24 @@ VALID|INVALID|subject_name|explanation"""}
         """Validate user schedule input and return standardized key"""
         messages = [
             {"role": "system", "content": "You are a scheduling assistant that validates schedule preferences."},
-            {"role": "user", "content": f"""Map this schedule preference '{schedule}' to one of these standard keys:
-            - 'daily' for daily notifications
-            - 'weekly' for weekly notifications
-            - 'monthly' for monthly notifications
-            - 'immediately' for immediate notifications
+            {"role": "user", "content": f"""Map the given schedule preference '{schedule}' to one of the following standard keys:
 
-            Valid inputs can be:
-            - Numbers (1-4)
-            - Portuguese words (diário, semanal, mensal)
-            - Phrases like "Assim que a notícia for publicada"
-            - English words (daily, weekly, monthly, immediate)
+- 'daily' for daily notifications (option 1)
+- 'weekly' for weekly notifications (option 2)
+- 'monthly' for monthly notifications (option 3)
+- 'immediately' for immediate notifications (option 4)
 
-            Response format:
-            VALID|INVALID|key
-            Example: "VALID|immediately" for immediate notifications
+**Valid inputs include:**
+- Numbers (1-4)
+- Portuguese words (diário, semanal, mensal, imediato)
+- Phrases like "Assim que a notícia for publicada"
+- English words (daily, weekly, monthly, immediate)
+
+**STRICT Output format (only return the following, nothing else):**
+- If the input is valid, return: `VALID|<key>` (Example: `VALID|immediately`)
+- If the input is invalid, return: `INVALID`
+
+**Do not return numbers. Do not explain. Do not provide any extra text.**
             """}
         ]
 
@@ -133,6 +136,6 @@ VALID|INVALID|subject_name|explanation"""}
 
         result = response['choices'][0]['message']['content'].split('|')
         is_valid = result[0] == 'VALID'
-        key = result[2] if len(result) > 2 else schedule
+        key = result[1] if len(result) > 1 else schedule
 
         return is_valid, key

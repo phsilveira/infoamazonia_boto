@@ -195,7 +195,7 @@ async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str
     return chatbot.state
 
 async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
-    """Handle the schedule state logic"""
+    """Handle the schedule state logic with improved validation and Portuguese schedule names"""
     db = next(get_db())
     user = chatbot.get_user(phone_number)
     if not user:
