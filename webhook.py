@@ -21,7 +21,8 @@ from services.handlers import (
     handle_term_info_state,
     handle_article_summary_state,
     handle_news_suggestion_state,
-    handle_feedback_state
+    handle_feedback_state,
+    handle_unsubscribe_state # Added this import
 )
 import os
 
@@ -130,7 +131,6 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
             db.rollback()
             logger.error(f"Error sending message: {e}")
             raise
-
     except Exception as e:
         logger.error(f"Error in process_webhook_message: {str(e)}")
         # Ensure the transaction is rolled back in case of any error
@@ -213,9 +213,6 @@ def handle_message_status(status: Dict, db: Session) -> None:
     """Process and store message status updates"""
     try:
         whatsapp_message_id = status['id']
-        # message = db.query(models.Message).filter_by(whatsapp_message_id=whatsapp_message_id).first()
-
-        # if not message:
         message = models.Message(
             whatsapp_message_id=whatsapp_message_id,
             phone_number=status['recipient_id'],
@@ -223,9 +220,6 @@ def handle_message_status(status: Dict, db: Session) -> None:
             status=status['status'],
             status_timestamp=datetime.fromtimestamp(int(status['timestamp']))
         )
-        # else:
-        #     message.status = status['status']
-        #     message.status_timestamp = datetime.fromtimestamp(int(status['timestamp']))
 
         # Handle failed messages
         if status['status'] == 'failed' and 'errors' in status:
@@ -259,6 +253,7 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> 
             'feedback_state': handle_feedback_state,
             'get_article_summary': handle_article_summary_state,
             'get_news_suggestion': handle_news_suggestion_state,
+            'unsubscribe_state': handle_unsubscribe_state,  # Add the new state handler
         }
 
         # Get the appropriate handler for the current state

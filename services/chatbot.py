@@ -7,11 +7,11 @@ from utils.message_loader import message_loader
 logger = logging.getLogger(__name__)
 
 class ChatBot:
-    states = ['start', 'register', 'menu_state', 'get_user_location', 'get_user_subject', 'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 'get_news_suggestion', 'feedback_state']
+    states = ['start', 'register', 'menu_state', 'get_user_location', 'get_user_subject', 'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 'get_news_suggestion', 'feedback_state', 'unsubscribe_state']
 
     def __init__(self, db: Session):
         self.db = db
-        self.current_interaction_id = None  # Add interaction ID tracking
+        self.current_interaction_id = None
         self.machine = Machine(
             model=self,
             states=ChatBot.states,
@@ -28,12 +28,12 @@ class ChatBot:
         )
         self.machine.add_transition(
             trigger='show_menu',
-            source=['start', 'register', 'get_user_location', 'get_user_subject', 'get_user_schedule',],
+            source=['start', 'register', 'get_user_location', 'get_user_subject', 'get_user_schedule', 'unsubscribe_state'],
             dest='menu_state'
         )
         self.machine.add_transition(
             trigger='select_subscribe',
-            source=['menu_state', 'get_user_location', ''],
+            source=['menu_state', 'get_user_location'],
             dest='get_user_location'
         )
         self.machine.add_transition(
@@ -71,9 +71,15 @@ class ChatBot:
             source=['get_term_info','get_article_summary'],
             dest='feedback_state'
         )
+        # Add new transition for unsubscribe
+        self.machine.add_transition(
+            trigger='select_unsubscribe',
+            source='menu_state',
+            dest='unsubscribe_state'
+        )
         self.machine.add_transition(
             trigger='end_conversation',
-            source=['register', 'get_user_schedule', 'about', 'feedback_state', 'get_news_suggestion', 'get_article_summary', 'get_term_info'],
+            source=['register', 'get_user_schedule', 'about', 'feedback_state', 'get_news_suggestion', 'get_article_summary', 'get_term_info', 'unsubscribe_state'],
             dest='start'
         )
 

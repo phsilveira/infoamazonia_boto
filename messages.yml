@@ -17,6 +17,7 @@ menu:
     3️⃣ Pedir um resumo de artigo 📄
     4️⃣ Enviar sugestão de pauta 📨
     5️⃣ Saber mais sobre o projeto InfoAmazonia ℹ️
+    6️⃣ Desinscrever-se do serviço ❌
 
     ⚙️ Digite o número da opção que deseja acessar. 
 
@@ -84,21 +85,37 @@ schedule:
   invalid_option: "Opção inválida. Por favor selecione:\n1. Diariamente\n2. Semanalmente\n3. Mensalmente\n4. Assim que a notícia for publicada"
   confirmation: |
     Sua preferência foi configurada! 
-
     📆 Frequência: {schedule}.
-
     Em breve você começará a receber nossos conteúdos. 🎉
 
 # About message
 about:
   info: |
     BOTO é um projeto da InfoAmazonia que conecta você à Amazônia pelo WhatsApp. Ele conecta públicos de forma prática e personalizada por meio do WhatsApp, utilizando inteligência artificial para entregar notícias, dados e insights personalizados sobre a maior floresta tropical do planeta. 
-  
     Nosso objetivo é facilitar o acesso à informação, promovendo compreensão, debate e ação em relação aos desafios e à importância global da Amazônia. 
-  
     Compartilhe essa iniciativa com sua rede! 
     https://wa.me/5511910230000
-  
+
+# Unsubscribe messages
+unsubscribe:
+  confirm: |
+    ❌ Você tem certeza que deseja cancelar sua inscrição? 
+
+    Você não receberá mais atualizações sobre a Amazônia.
+
+    Responda 'sim' para confirmar ou 'não' para cancelar.
+  success: |
+    ✅ Sua inscrição foi cancelada com sucesso. 
+
+    Se quiser se inscrever novamente no futuro, é só voltar e selecionar a opção 1️⃣ no menu principal.
+
+    Obrigado por ter usado nosso serviço! 🙏
+  cancelled: |
+    ✅ Que bom que você decidiu ficar! 
+
+    Você continuará recebendo nossas atualizações sobre a Amazônia.
+  invalid_option: "Por favor, responda 'sim' para confirmar o cancelamento ou 'não' para manter sua inscrição."
+
 # return
 return: "Obrigado! Estamos encaminhando sua ideia para nossa equipe de redação :). Digite menu para voltar a menu principal."
 

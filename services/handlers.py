@@ -53,6 +53,9 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
     elif message in ['5', 'about', 'sobre', 'info']:
         chatbot.select_about()
         await send_message(phone_number, message_loader.get_message('about.info'), db)
+    elif message in ['6', 'desinscrever', 'cancelar']:
+        chatbot.select_unsubscribe()
+        await send_message(phone_number, message_loader.get_message('unsubscribe.confirm'), db)
     else:
         await send_message(phone_number, message_loader.get_message('menu.invalid_option'), db)
 
@@ -390,5 +393,35 @@ async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, mess
     except Exception as e:
         logger.error(f"Error in news suggestion handler: {str(e)}")
         await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
+
+    return chatbot.state
+
+async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
+    """Handle the unsubscribe state logic"""
+    db = next(get_db())
+    user = chatbot.get_user(phone_number)
+    if not user:
+        await send_message(phone_number, message_loader.get_message('error.user_not_found'), db)
+        return chatbot.state
+
+    try:
+        confirmation_response = chatgpt_service.parse_confirmation(message)
+        if confirmation_response is not None:
+            if confirmation_response:
+                # Deactivate the user
+                user.is_active = False
+                db.commit()
+                await send_message(phone_number, message_loader.get_message('unsubscribe.success'), db)
+            else:
+                await send_message(phone_number, message_loader.get_message('unsubscribe.cancelled'), db)
+
+            chatbot.end_conversation()
+            await send_message(phone_number, message_loader.get_message('return'), db)
+        else:
+            await send_message(phone_number, message_loader.get_message('unsubscribe.invalid_option'), db)
+
+    except Exception as e:
+        logger.error(f"Error in unsubscribe handler: {str(e)}")
+        await send_message(phone_number, message_loader.get_message('error.process_message', error=str(e)), db)
 
     return chatbot.state
