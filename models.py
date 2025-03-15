@@ -131,3 +131,17 @@ class UserInteraction(Base):
 
     def __repr__(self):
         return f'<UserInteraction {self.category}:{self.query}>'
+
+class SchedulerRun(Base):
+    __tablename__ = "scheduler_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_name = Column(String(50), nullable=False)
+    status = Column(String(20), nullable=False)  # 'success', 'failed'
+    start_time = Column(DateTime, default=datetime.utcnow)
+    end_time = Column(DateTime)
+    affected_users = Column(Integer, default=0)  # Number of users affected
+    error_message = Column(Text)
+
+    def __repr__(self):
+        return f'<SchedulerRun {self.task_name}:{self.status}>'

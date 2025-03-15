@@ -8,7 +8,6 @@ from auth import get_current_admin
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from datetime import datetime, timezone
-from scheduler import schedule_message
 import json
 import httpx
 import logging
@@ -19,6 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory="templates")
 
+# Existing view endpoints remain unchanged
 @router.get("/users", response_class=HTMLResponse)
 async def list_users(
     request: Request,
@@ -130,18 +130,21 @@ async def schedule_new_message(
     current_admin: models.Admin = Depends(get_current_admin)
 ):
     try:
+        # Calculate scheduled time based on schedule type
+        if schedule_type == "just_in_time" and scheduled_date:
+            scheduled_time = datetime.strptime(f"{scheduled_date} 09:00", "%Y-%m-%d %H:%M")
+        else:
+            scheduled_time = datetime.now(timezone.utc)
+
         # Create scheduled message record
         scheduled_message = models.ScheduledMessage(
             template_id=template_id,
-            scheduled_time=datetime.now(tz=timezone.utc),  # Use UTC for scheduling
+            scheduled_time=scheduled_time,
             target_groups={"target_group": target_group},
             status="pending"
         )
         db.add(scheduled_message)
         db.commit()
-
-        # Schedule the message
-        schedule_message(db, scheduled_message.id, schedule_type, scheduled_date)
 
         return RedirectResponse(url="/admin/messages", status_code=status.HTTP_302_FOUND)
     except Exception as e:

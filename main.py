@@ -58,11 +58,31 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Health check endpoint
+# Health check endpoint with enhanced logging
 @app.get("/health")
 async def health_check():
-    logger.info("Health check endpoint called")
-    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+    try:
+        logger.info(f"Health check endpoint called at {datetime.utcnow().isoformat()}")
+        # Test database connection
+        db = next(get_db())
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
+        db_status = "ok"
+    except Exception as e:
+        logger.error(f"Database health check failed: {str(e)}")
+        db_status = "error"
+
+    response = {
+        "status": "ok",
+        "timestamp": datetime.utcnow().isoformat(),
+        "database": db_status,
+        "environment": {
+            "debug": settings.DEBUG,
+            "log_level": settings.LOG_LEVEL
+        }
+    }
+    logger.info(f"Health check response: {response}")
+    return response
 
 # Mount static files and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -201,7 +221,43 @@ async def get_news_sources(db: Session = Depends(get_db)):
             content={"error": "Failed to fetch news sources"}
         )
 
+@app.get("/api/scheduler/runs")
+async def get_scheduler_runs(
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(auth.get_current_admin)
+):
+    try:
+        # Get the last 100 scheduler runs
+        runs = db.query(models.SchedulerRun)\
+            .order_by(desc(models.SchedulerRun.start_time))\
+            .limit(100)\
+            .all()
+
+        return [{
+            "id": run.id,
+            "task_name": run.task_name,
+            "status": run.status,
+            "start_time": run.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "end_time": run.end_time.strftime("%Y-%m-%d %H:%M:%S") if run.end_time else None,
+            "affected_users": run.affected_users,
+            "error_message": run.error_message
+        } for run in runs]
+    except Exception as e:
+        logger.error(f"Error fetching scheduler runs: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to fetch scheduler runs"}
+        )
+
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting server on port 8000...")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
+    logger.info("Starting server on port 5000...")
+    # Ensure host is 0.0.0.0 to be accessible
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=5000,
+        reload=True,
+        log_level="info",
+        access_log=True
+    )
