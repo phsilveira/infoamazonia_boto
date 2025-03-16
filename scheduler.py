@@ -8,6 +8,8 @@ from database import SessionLocal
 from pytz import timezone
 import asyncio
 from services.whatsapp import send_message
+import httpx
+from typing import List, Dict
 
 # Configure timezone
 SP_TIMEZONE = timezone('America/Sao_Paulo')
@@ -143,6 +145,105 @@ async def send_daily_template():
         if db:
             db.close()
 
+async def send_monthly_news_template():
+    """Send monthly news template to active users with monthly schedule"""
+    db = None
+    scheduler_run = None
+
+    try:
+        # Start scheduler run record
+        db = SessionLocal()
+        scheduler_run = models.SchedulerRun(
+            task_name='send_monthly_news_template',
+            status='running'
+        )
+        db.add(scheduler_run)
+        db.commit()
+
+        # Get active users with monthly schedule
+        active_users = db.query(models.User).filter(
+            models.User.is_active == True,
+            models.User.schedule == 'monthly'
+        ).all()
+
+        if not active_users:
+            logger.info("No active users with monthly schedule found")
+            scheduler_run.status = 'success'
+            scheduler_run.end_time = datetime.utcnow()
+            scheduler_run.affected_users = 0
+            db.commit()
+            return
+
+        # Get last 30 days news
+        date_to = datetime.now().strftime('%Y-%m-%d')
+        date_from = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f'https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/articles/list',
+                params={'date_from': date_from, 'date_to': date_to}
+            )
+            news_data = response.json()
+
+        if not news_data.get('articles'):
+            logger.error("No articles found in the response")
+            raise Exception("No articles found in the API response")
+
+        # Get first 3 article titles
+        articles = news_data['articles'][:3]
+        article_titles = [article['title'] for article in articles]
+
+        sent_count = 0
+        # Send template to each active user
+        for user in active_users:
+            try:
+                template_content = {
+                    "name": "articles_summary",
+                    "language": "pt_BR",
+                    "parameters": [
+                        {"type": "text", "text": article_titles[0]},
+                        {"type": "text", "text": article_titles[1]},
+                        {"type": "text", "text": article_titles[2]}
+                    ]
+                }
+
+                result = await send_message(
+                    to=user.phone_number,
+                    content=template_content,
+                    db=db,
+                    message_type="template"
+                )
+
+                if result["status"] == "success":
+                    sent_count += 1
+                    logger.info(f"Successfully sent monthly news template to {user.phone_number}")
+                else:
+                    logger.error(f"Failed to send template to {user.phone_number}: {result['message']}")
+            except Exception as e:
+                logger.error(f"Error sending template to {user.phone_number}: {str(e)}")
+
+        # Update scheduler run record
+        scheduler_run.status = 'success'
+        scheduler_run.end_time = datetime.utcnow()
+        scheduler_run.affected_users = sent_count
+        db.commit()
+
+        logger.info(f"Monthly news template sent to {sent_count} users")
+
+    except Exception as e:
+        error_msg = f"Error in monthly news template sending: {str(e)}"
+        logger.error(error_msg)
+
+        # Update scheduler run record with error
+        if scheduler_run and db:
+            scheduler_run.status = 'failed'
+            scheduler_run.end_time = datetime.utcnow()
+            scheduler_run.error_message = error_msg
+            db.commit()
+    finally:
+        if db:
+            db.close()
+
 async def start_scheduler():
     """Start the scheduler with all tasks"""
     logger.info("Initializing scheduler...")
@@ -158,8 +259,16 @@ async def start_scheduler():
 
         scheduler.add_job(
             send_daily_template,
-            trigger=CronTrigger(hour=9, minute=15, timezone=SP_TIMEZONE),
+            trigger=CronTrigger(hour=9, minute=20, timezone=SP_TIMEZONE),
             id='send_daily_template',
+            replace_existing=True,
+            misfire_grace_time=300  # 5 minutes grace time
+        )
+
+        scheduler.add_job(
+            send_monthly_news_template,
+            trigger=CronTrigger(day=1, hour=10, minute=0, timezone=SP_TIMEZONE),  # Run at 10 AM on the 1st day of each month
+            id='send_monthly_news_template',
             replace_existing=True,
             misfire_grace_time=300  # 5 minutes grace time
         )
