@@ -11,7 +11,7 @@ class User(Base):
     name = Column(String)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    schedule = Column(String)  # daily, weekly, monthly
+    schedule = Column(String)  # daily, weekly, monthly, immediately
     preferences = relationship("UserPreference", back_populates="user")
     interactions = relationship("UserInteraction", back_populates="user")
 

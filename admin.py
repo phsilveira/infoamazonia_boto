@@ -378,3 +378,62 @@ async def scheduler_runs_page(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch scheduler runs: {str(e)}"
         )
+
+@router.post("/users/{user_id}/status", response_class=HTMLResponse)
+async def update_user_status(
+    request: Request,
+    user_id: int,
+    status: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user.is_active = (status == 'active')
+        db.commit()
+
+        return RedirectResponse(
+            url=f"/admin/users/{user_id}",
+            status_code=status.HTTP_302_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Error updating user status: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update user status: {str(e)}"
+        )
+
+@router.post("/users/{user_id}/schedule", response_class=HTMLResponse)
+async def update_user_schedule(
+    request: Request,
+    user_id: int,
+    schedule: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Validate schedule value
+        valid_schedules = ['daily', 'weekly', 'monthly', 'immediately']
+        if schedule not in valid_schedules:
+            raise HTTPException(status_code=400, detail="Invalid schedule value")
+
+        user.schedule = schedule
+        db.commit()
+
+        return RedirectResponse(
+            url=f"/admin/users/{user_id}",
+            status_code=status.HTTP_302_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Error updating user schedule: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update user schedule: {str(e)}"
+        )

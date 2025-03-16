@@ -38,10 +38,10 @@
                     <select name="schedule" 
                             onchange="this.form.submit()" 
                             class="form-select text-xs px-2 py-1 rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="morning" {{ 'selected' if user.schedule == 'morning' else '' }}>Morning (8-12)</option>
-                        <option value="afternoon" {{ 'selected' if user.schedule == 'afternoon' else '' }}>Afternoon (12-17)</option>
-                        <option value="evening" {{ 'selected' if user.schedule == 'evening' else '' }}>Evening (17-22)</option>
-                        <option value="custom" {{ 'selected' if user.schedule == 'custom' else '' }}>Custom</option>
+                        <option value="daily" {{ 'selected' if user.schedule == 'daily' else '' }}>Diário</option>
+                        <option value="weekly" {{ 'selected' if user.schedule == 'weekly' else '' }}>Semanal</option>
+                        <option value="monthly" {{ 'selected' if user.schedule == 'monthly' else '' }}>Mensal</option>
+                        <option value="immediately" {{ 'selected' if user.schedule == 'immediately' else '' }}>Imediatamente</option>
                     </select>
                 </form>
             </dd>
