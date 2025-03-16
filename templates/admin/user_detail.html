@@ -21,9 +21,29 @@
         <div>
             <dt class="text-xs font-medium text-gray-500">Status</dt>
             <dd class="mt-1">
-                <span class="px-2 py-0.5 text-xs {{ 'bg-emerald-100 text-emerald-700' if user.is_active else 'bg-red-100 text-red-700' }} rounded">
-                    {{ "Active" if user.is_active else "Inactive" }}
-                </span>
+                <form method="POST" action="/admin/users/{{ user.id }}/status" class="inline">
+                    <select name="status" 
+                            onchange="this.form.submit()" 
+                            class="form-select text-xs px-2 py-1 rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="active" {{ 'selected' if user.is_active else '' }}>Active</option>
+                        <option value="inactive" {{ 'selected' if not user.is_active else '' }}>Inactive</option>
+                    </select>
+                </form>
+            </dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-gray-500">Schedule</dt>
+            <dd class="mt-1">
+                <form method="POST" action="/admin/users/{{ user.id }}/schedule" class="inline">
+                    <select name="schedule" 
+                            onchange="this.form.submit()" 
+                            class="form-select text-xs px-2 py-1 rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="morning" {{ 'selected' if user.schedule == 'morning' else '' }}>Morning (8-12)</option>
+                        <option value="afternoon" {{ 'selected' if user.schedule == 'afternoon' else '' }}>Afternoon (12-17)</option>
+                        <option value="evening" {{ 'selected' if user.schedule == 'evening' else '' }}>Evening (17-22)</option>
+                        <option value="custom" {{ 'selected' if user.schedule == 'custom' else '' }}>Custom</option>
+                    </select>
+                </form>
             </dd>
         </div>
         <div>
