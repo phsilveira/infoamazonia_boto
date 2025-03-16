@@ -397,7 +397,7 @@ async def update_user_status(
 
         return RedirectResponse(
             url=f"/admin/users/{user_id}",
-            status_code=status.HTTP_302_FOUND
+            status_code=302
         )
     except Exception as e:
         logger.error(f"Error updating user status: {str(e)}")
