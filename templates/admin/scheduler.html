@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Scheduler Tasks - InfoAmazonia Admin{% endblock %}
+
+{% block content %}
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Scheduler Task History</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Task Name</th>
+                                <th>Status</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Users Affected</th>
+                                <th>Error Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for run in scheduler_runs %}
+                            <tr>
+                                <td>{{ run.id }}</td>
+                                <td>{{ run.task_name }}</td>
+                                <td>
+                                    <span class="badge bg-{{ run.status == 'success' and 'success' or 'danger' }}">
+                                        {{ run.status }}
+                                    </span>
+                                </td>
+                                <td>{{ run.start_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>{{ run.end_time.strftime('%Y-%m-%d %H:%M:%S') if run.end_time else 'Running...' }}</td>
+                                <td>{{ run.affected_users }}</td>
+                                <td>
+                                    {% if run.error_message %}
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" 
+                                            title="{{ run.error_message }}">
+                                        Show Error
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script>
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    </script>
+{% endblock %}

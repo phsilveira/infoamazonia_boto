@@ -41,6 +41,17 @@ async def lifespan(app: FastAPI):
             await redis_client.ping()
             logger.info("Redis connection established")
             app.state.redis = redis_client
+
+        # Initialize scheduler
+        logger.info("Starting scheduler initialization...")
+        try:
+            # Create a task to run the scheduler
+            await asyncio.sleep(1)  # Brief delay to ensure app is ready
+            asyncio.create_task(start_scheduler())
+            logger.info("Scheduler initialization scheduled in background")
+        except Exception as e:
+            logger.error(f"Failed to initialize scheduler: {e}")
+
     except Exception as e:
         logger.error(f"Redis connection failed: {e}")
 
@@ -95,18 +106,6 @@ app.middleware("http")(auth_middleware)
 app.include_router(admin_router)
 app.include_router(webhook_router)
 app.include_router(location_router)
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize scheduler after server startup"""
-    logger.info("Server startup event triggered")
-    try:
-        # Defer scheduler initialization slightly to ensure server is ready
-        await asyncio.sleep(1)
-        asyncio.create_task(start_scheduler())
-        logger.info("Scheduler initialization scheduled in background")
-    except Exception as e:
-        logger.error(f"Failed to schedule scheduler initialization: {e}")
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -256,7 +255,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=5000,
+        port=8000,
         reload=True,
         log_level="info",
         access_log=True

@@ -7,6 +7,7 @@ import models
 from database import SessionLocal
 from pytz import timezone
 import asyncio
+from services.whatsapp import send_message
 
 # Configure timezone
 SP_TIMEZONE = timezone('America/Sao_Paulo')
@@ -78,16 +79,89 @@ async def update_user_status():
         if db:
             db.close()
 
-def start_scheduler():
-    """Start the scheduler with the user status update task"""
+async def send_daily_template():
+    """Send hello_world template message to all active users"""
+    db = None
+    scheduler_run = None
+
+    try:
+        # Start scheduler run record
+        db = SessionLocal()
+        scheduler_run = models.SchedulerRun(
+            task_name='send_daily_template',
+            status='running'
+        )
+        db.add(scheduler_run)
+        db.commit()
+
+        # Get all active users
+        active_users = db.query(models.User).filter(models.User.is_active == True).all()
+        sent_count = 0
+
+        # Template message configuration
+        template_content = {
+            "name": "hello_world",
+            "language": "en_US"
+        }
+
+        # Send template to each active user
+        for user in active_users:
+            try:
+                result = await send_message(
+                    to=user.phone_number,
+                    content=template_content,
+                    db=db,
+                    message_type="template"
+                )
+                if result["status"] == "success":
+                    sent_count += 1
+                    logger.info(f"Successfully sent template to {user.phone_number}")
+                else:
+                    logger.error(f"Failed to send template to {user.phone_number}: {result['message']}")
+            except Exception as e:
+                logger.error(f"Error sending template to {user.phone_number}: {str(e)}")
+
+        # Update scheduler run record
+        scheduler_run.status = 'success'
+        scheduler_run.end_time = datetime.utcnow()
+        scheduler_run.affected_users = sent_count
+        db.commit()
+
+        logger.info(f"Daily template message sent to {sent_count} users")
+
+    except Exception as e:
+        error_msg = f"Error in daily template sending: {str(e)}"
+        logger.error(error_msg)
+
+        # Update scheduler run record with error
+        if scheduler_run and db:
+            scheduler_run.status = 'failed'
+            scheduler_run.end_time = datetime.utcnow()
+            scheduler_run.error_message = error_msg
+            db.commit()
+    finally:
+        if db:
+            db.close()
+
+async def start_scheduler():
+    """Start the scheduler with all tasks"""
     logger.info("Initializing scheduler...")
 
     try:
-        # Schedule regular user status updates - daily at 11:15 AM
+        # Schedule user status updates - run every minute for testing
         scheduler.add_job(
             update_user_status,
-            trigger=CronTrigger(hour=11, minute=15),
+            trigger=CronTrigger(minute='*/1'),  # For testing: run every minute
             id='update_user_status',
+            replace_existing=True,
+            misfire_grace_time=300  # 5 minutes grace time
+        )
+
+        # Schedule daily template message - run at midnight (00:00)
+        scheduler.add_job(
+            send_daily_template,
+            trigger=CronTrigger(hour=0, minute=0),  # Run at midnight
+            id='send_daily_template',
             replace_existing=True,
             misfire_grace_time=300  # 5 minutes grace time
         )

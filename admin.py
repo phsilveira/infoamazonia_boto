@@ -12,6 +12,7 @@ import json
 import httpx
 import logging
 from config import settings
+from sqlalchemy import desc
 
 logger = logging.getLogger(__name__)
 
@@ -315,56 +316,30 @@ async def send_template_message(
     current_admin: models.Admin = Depends(get_current_admin)
 ):
     try:
-        # WhatsApp API configuration
-        whatsapp_api_url = f"https://graph.facebook.com/v17.0/{settings.NUMBER_ID}/messages"
-        headers = {
-            "Authorization": f"Bearer {settings.API_TOKEN}",
-            "Content-Type": "application/json"
+        # Prepare the template content
+        template_content = {
+            "name": template_name,
+            "language": language_code
         }
 
-        # Prepare the message payload
-        payload = {
-            "messaging_product": "whatsapp",
-            "to": phone_number,
-            "type": "template",
-            "template": {
-                "name": template_name,
-                "language": {
-                    "code": language_code
-                }
-            }
-        }
+        # Send the template message using the updated WhatsApp service
+        from services.whatsapp import send_message
+        result = await send_message(
+            to=phone_number,
+            content=template_content,
+            db=db,
+            message_type="template"
+        )
 
-        # Send the request to WhatsApp API
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                whatsapp_api_url,
-                headers=headers,
-                json=payload
-            )
-            response_data = response.json()
-
-        if response.status_code == 200:
-            # Log the successful message
-            message = models.Message(
-                whatsapp_message_id=response_data.get('messages', [{}])[0].get('id', 'unknown'),
-                phone_number=phone_number,
-                message_type='outgoing',
-                message_content=f"Template: {template_name}",
-                status='sent'
-            )
-            db.add(message)
-            db.commit()
-
+        if result["status"] == "success":
             return RedirectResponse(
                 url="/admin/messages",
                 status_code=status.HTTP_302_FOUND
             )
         else:
-            error_message = response_data.get('error', {}).get('message', 'Unknown error')
             raise HTTPException(
-                status_code=response.status_code,
-                detail=f"WhatsApp API error: {error_message}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"WhatsApp API error: {result['message']}"
             )
 
     except Exception as e:
@@ -372,4 +347,34 @@ async def send_template_message(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send template message: {str(e)}"
+        )
+
+@router.get("/scheduler", response_class=HTMLResponse)
+async def scheduler_runs_page(
+    request: Request,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        # Get recent scheduler runs
+        scheduler_runs = db.query(models.SchedulerRun)\
+            .order_by(desc(models.SchedulerRun.start_time))\
+            .offset(skip)\
+            .limit(limit)\
+            .all()
+
+        return templates.TemplateResponse(
+            "admin/scheduler.html",
+            {
+                "request": request,
+                "scheduler_runs": scheduler_runs
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error fetching scheduler runs: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch scheduler runs: {str(e)}"
         )
