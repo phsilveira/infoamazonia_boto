@@ -158,7 +158,7 @@ async def start_scheduler():
 
         scheduler.add_job(
             send_daily_template,
-            trigger=CronTrigger(hour=9, minute=15), 
+            trigger=CronTrigger(hour=9, minute=15, timezone=SP_TIMEZONE),
             id='send_daily_template',
             replace_existing=True,
             misfire_grace_time=300  # 5 minutes grace time
