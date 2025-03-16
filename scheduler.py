@@ -148,19 +148,17 @@ async def start_scheduler():
     logger.info("Initializing scheduler...")
 
     try:
-        # Schedule user status updates - run every minute for testing
         scheduler.add_job(
             update_user_status,
-            trigger=CronTrigger(minute='*/1'),  # For testing: run every minute
+            trigger=CronTrigger(minute='*/15'),  # For testing: run every minute
             id='update_user_status',
             replace_existing=True,
             misfire_grace_time=300  # 5 minutes grace time
         )
 
-        # Schedule daily template message - run at midnight (00:00)
         scheduler.add_job(
             send_daily_template,
-            trigger=CronTrigger(hour=0, minute=0),  # Run at midnight
+            trigger=CronTrigger(hour=8, minute=52), 
             id='send_daily_template',
             replace_existing=True,
             misfire_grace_time=300  # 5 minutes grace time
