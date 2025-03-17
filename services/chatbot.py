@@ -98,6 +98,10 @@ class ChatBot:
         else:
             self.state = 'start'
 
+    def get_state(self):
+        """Get the current state"""
+        return self.state
+
     def is_new_user(self, phone_number):
         """Check if a user with the given phone number exists"""
         try:
