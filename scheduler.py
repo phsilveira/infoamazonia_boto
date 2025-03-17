@@ -10,6 +10,7 @@ import asyncio
 from services.whatsapp import send_message
 import httpx
 from typing import List, Dict
+from config import get_redis
 
 # Configure timezone
 SP_TIMEZONE = timezone('America/Sao_Paulo')
@@ -149,8 +150,12 @@ async def send_monthly_news_template():
     """Send monthly news template to active users with monthly schedule"""
     db = None
     scheduler_run = None
+    redis_client = None
 
     try:
+        # Initialize Redis client
+        redis_client = await get_redis()
+
         # Start scheduler run record
         db = SessionLocal()
         scheduler_run = models.SchedulerRun(
@@ -218,8 +223,6 @@ async def send_monthly_news_template():
 
                 }
 
-                print(template_content)
-
                 result = await send_message(
                     to=user.phone_number,
                     content=template_content,
@@ -229,13 +232,17 @@ async def send_monthly_news_template():
 
                 if result["status"] == "success":
                     # Set the user's chatbot state to monthly_news_response in Redis
-                    if hasattr(db.app, 'state') and hasattr(db.app.state, 'redis'):
-                        redis_client = db.app.state.redis
-                        await redis_client.setex(
-                            f"state:{user.phone_number}",
-                            10*60,  # 10 minutes expiry
-                            "monthly_news_response"
-                        )
+                    if redis_client:
+                        try:
+                            await redis_client.setex(
+                                f"state:{user.phone_number}",
+                                10*60,  # 10 minutes expiry
+                                "monthly_news_response"
+                            )
+                            logger.info(f"Set chatbot state to monthly_news_response for user {user.phone_number}")
+                        except Exception as redis_error:
+                            logger.error(f"Failed to set Redis state for user {user.phone_number}: {str(redis_error)}")
+
                     sent_count += 1
                     logger.info(f"Successfully sent monthly news template to {user.phone_number}")
                 else:
