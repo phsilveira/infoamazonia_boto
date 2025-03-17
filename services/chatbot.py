@@ -87,7 +87,7 @@ class ChatBot:
             trigger='end_conversation',
             source=['register', 'get_user_schedule', 'about', 'feedback_state', 
                    'get_news_suggestion', 'get_article_summary', 'get_term_info', 
-                   'unsubscribe_state',],
+                   'unsubscribe_state', 'monthly_news_response'],
             dest='start'
         )
 
@@ -97,10 +97,6 @@ class ChatBot:
             self.state = state
         else:
             self.state = 'start'
-
-    def get_state(self):
-        """Get the current state"""
-        return self.state
 
     def is_new_user(self, phone_number):
         """Check if a user with the given phone number exists"""
