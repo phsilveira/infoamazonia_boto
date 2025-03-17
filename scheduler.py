@@ -178,10 +178,15 @@ async def send_monthly_news_template():
         date_to = datetime.now().strftime('%Y-%m-%d')
         date_from = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
 
+        headers = {
+            'accept': 'application/json'
+        }
+
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f'https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/articles/list',
-                params={'date_from': date_from, 'date_to': date_to}
+                params={'date_from': date_from, 'date_to': date_to},
+                headers=headers
             )
             news_data = response.json()
 
@@ -200,12 +205,20 @@ async def send_monthly_news_template():
                 template_content = {
                     "name": "articles_summary",
                     "language": "pt_BR",
-                    "parameters": [
-                        {"type": "text", "text": article_titles[0]},
-                        {"type": "text", "text": article_titles[1]},
-                        {"type": "text", "text": article_titles[2]}
+                    "components": [
+                      {
+                        "type": "body",
+                          "parameters": [
+                              {"type": "text", "text": article_titles[0]},
+                              {"type": "text", "text": article_titles[1]},
+                              {"type": "text", "text": article_titles[2]}
+                          ]
+                      }
                     ]
+                    
                 }
+
+                print(template_content)
 
                 result = await send_message(
                     to=user.phone_number,
