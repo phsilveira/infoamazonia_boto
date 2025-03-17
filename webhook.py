@@ -22,7 +22,8 @@ from services.handlers import (
     handle_article_summary_state,
     handle_news_suggestion_state,
     handle_feedback_state,
-    handle_unsubscribe_state # Added this import
+    handle_unsubscribe_state,
+    handle_monthly_news_response  
 )
 import os
 
@@ -253,7 +254,8 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> 
             'feedback_state': handle_feedback_state,
             'get_article_summary': handle_article_summary_state,
             'get_news_suggestion': handle_news_suggestion_state,
-            'unsubscribe_state': handle_unsubscribe_state,  # Add the new state handler
+            'unsubscribe_state': handle_unsubscribe_state,
+            'monthly_news_response': handle_monthly_news_response,  
         }
 
         # Get the appropriate handler for the current state

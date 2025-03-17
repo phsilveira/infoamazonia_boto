@@ -215,7 +215,7 @@ async def send_monthly_news_template():
                           ]
                       }
                     ]
-                    
+
                 }
 
                 print(template_content)

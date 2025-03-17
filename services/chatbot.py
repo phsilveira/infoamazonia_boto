@@ -7,7 +7,9 @@ from utils.message_loader import message_loader
 logger = logging.getLogger(__name__)
 
 class ChatBot:
-    states = ['start', 'register', 'menu_state', 'get_user_location', 'get_user_subject', 'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 'get_news_suggestion', 'feedback_state', 'unsubscribe_state']
+    states = ['start', 'register', 'menu_state', 'get_user_location', 'get_user_subject', 
+              'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 
+              'get_news_suggestion', 'feedback_state', 'unsubscribe_state', 'monthly_news_response']
 
     def __init__(self, db: Session):
         self.db = db
@@ -58,7 +60,7 @@ class ChatBot:
         )
         self.machine.add_transition(
             trigger='select_article_summary',
-            source='menu_state',
+            source=['menu_state', 'monthly_news_response'],
             dest='get_article_summary'
         )
         self.machine.add_transition(
@@ -68,18 +70,24 @@ class ChatBot:
         )
         self.machine.add_transition(
             trigger='get_feedback',
-            source=['get_term_info','get_article_summary'],
+            source=['get_term_info','get_article_summary', 'monthly_news_response'],
             dest='feedback_state'
         )
-        # Add new transition for unsubscribe
         self.machine.add_transition(
             trigger='select_unsubscribe',
             source='menu_state',
             dest='unsubscribe_state'
         )
         self.machine.add_transition(
+            trigger='start_monthly_news_response',
+            source='start',
+            dest='monthly_news_response'
+        )
+        self.machine.add_transition(
             trigger='end_conversation',
-            source=['register', 'get_user_schedule', 'about', 'feedback_state', 'get_news_suggestion', 'get_article_summary', 'get_term_info', 'unsubscribe_state'],
+            source=['register', 'get_user_schedule', 'about', 'feedback_state', 
+                   'get_news_suggestion', 'get_article_summary', 'get_term_info', 
+                   'unsubscribe_state', 'monthly_news_response'],
             dest='start'
         )
 
@@ -102,7 +110,7 @@ class ChatBot:
     def register_user(self, phone_number: str):
         """Register a new user with the given phone number and name"""
         try:
-            new_user = models.User(phone_number=phone_number, )
+            new_user = models.User(phone_number=phone_number)
             self.db.add(new_user)
             self.db.commit()
             return new_user

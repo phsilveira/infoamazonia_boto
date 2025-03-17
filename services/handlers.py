@@ -425,3 +425,49 @@ async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message:
         await send_message(phone_number, message_loader.get_message('error.process_message', error=str(e)), db)
 
     return chatbot.state
+
+async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
+    """Handle user response to monthly news template"""
+    db = next(get_db())
+    try:
+        # Reuse the article summary functionality
+        import httpx
+        api_url = "https://infoamazonia-rag.replit.app/api/v1/search/articles"
+        payload = {"query": message}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(api_url, json=payload)
+            data = response.json()
+
+            if data.get("success") and data.get('count') > 0:
+                # Get user if exists
+                user = chatbot.get_user(phone_number)
+                user_id = user.id if user else None
+
+                # Create user interaction record
+                interaction = UserInteraction(
+                    user_id=user_id,
+                    phone_number=phone_number,
+                    category='monthly_news_response',
+                    query=message,
+                    response=data["results"][0]["summary_content"]
+                )
+                db.add(interaction)
+                db.commit()
+
+                # Store interaction ID in chatbot state for feedback
+                chatbot.set_current_interaction_id(interaction.id)
+
+                await send_message(phone_number, data["results"][0]["summary_content"], db)
+                chatbot.get_feedback()
+                await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
+            else:
+                await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse artigo.", db)
+                await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
+                chatbot.end_conversation()
+
+    except Exception as e:
+        logger.error(f"Error in monthly news response handler: {str(e)}")
+        await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
+
+    return chatbot.state
