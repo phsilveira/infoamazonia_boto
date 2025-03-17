@@ -12,7 +12,7 @@ from datetime import timedelta
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from middleware import auth_middleware
-from scheduler import start_scheduler
+from scheduler import start_scheduler, init_scheduler
 from config import settings, get_redis
 import redis.asyncio as redis
 import logging
@@ -41,6 +41,9 @@ async def lifespan(app: FastAPI):
             await redis_client.ping()
             logger.info("Redis connection established")
             app.state.redis = redis_client
+
+            # Initialize scheduler with Redis client
+            init_scheduler(redis_client)
 
         # Initialize scheduler
         logger.info("Starting scheduler initialization...")

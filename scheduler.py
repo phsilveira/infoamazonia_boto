@@ -10,6 +10,7 @@ import asyncio
 from services.whatsapp import send_message
 import httpx
 from typing import List, Dict
+from redis.asyncio import Redis
 
 # Configure timezone
 SP_TIMEZONE = timezone('America/Sao_Paulo')
@@ -20,6 +21,14 @@ logger.setLevel(logging.INFO)
 
 # Create scheduler with Brazil/Sao Paulo timezone
 scheduler = AsyncIOScheduler(timezone=SP_TIMEZONE)
+
+# Store Redis client globally
+redis_client = None
+
+def init_scheduler(redis: Redis):
+    """Initialize the scheduler with Redis client"""
+    global redis_client
+    redis_client = redis
 
 async def update_user_status():
     """Check for users who haven't sent any messages in the last 30 days and mark them as inactive"""
@@ -215,10 +224,7 @@ async def send_monthly_news_template():
                           ]
                       }
                     ]
-
                 }
-
-                print(template_content)
 
                 result = await send_message(
                     to=user.phone_number,
@@ -229,8 +235,7 @@ async def send_monthly_news_template():
 
                 if result["status"] == "success":
                     # Set the user's chatbot state to monthly_news_response in Redis
-                    if hasattr(db.app, 'state') and hasattr(db.app.state, 'redis'):
-                        redis_client = db.app.state.redis
+                    if redis_client:
                         await redis_client.setex(
                             f"state:{user.phone_number}",
                             10*60,  # 10 minutes expiry

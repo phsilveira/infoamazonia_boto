@@ -87,7 +87,7 @@ class ChatBot:
             trigger='end_conversation',
             source=['register', 'get_user_schedule', 'about', 'feedback_state', 
                    'get_news_suggestion', 'get_article_summary', 'get_term_info', 
-                   'unsubscribe_state', 'monthly_news_response'],
+                   'unsubscribe_state',],
             dest='start'
         )
 
