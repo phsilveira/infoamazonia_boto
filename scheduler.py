@@ -228,6 +228,14 @@ async def send_monthly_news_template():
                 )
 
                 if result["status"] == "success":
+                    # Set the user's chatbot state to monthly_news_response in Redis
+                    if hasattr(db.app, 'state') and hasattr(db.app.state, 'redis'):
+                        redis_client = db.app.state.redis
+                        await redis_client.setex(
+                            f"state:{user.phone_number}",
+                            10*60,  # 10 minutes expiry
+                            "monthly_news_response"
+                        )
                     sent_count += 1
                     logger.info(f"Successfully sent monthly news template to {user.phone_number}")
                 else:
