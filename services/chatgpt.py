@@ -18,7 +18,7 @@ class ChatGPTService:
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant that retrieves article titles based on user selection."},
                     {"role": "user", "content": f"""
-                    Using the following user input '{user_input}', and the JSON structure provided, determine which article title corresponds to the user's numeric selection based on the key 'parameters' which is a list, if the user choose 1 or the text, than return the text of the first element of the list, if choose 2 or the corresponding text, than return the text of that object, and so on:
+                    Using the following user input '{user_input}', and the JSON structure provided, determine which article title corresponds to the user's numeric selection or article name based on the key 'parameters', a list. If the user chooses 1 or provides text matching the first element of the list, return the text of the first element. If the user chooses 2 or provides text matching the second element, return the text of that item and so on:
 
                     {template_message}
 

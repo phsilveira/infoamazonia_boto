@@ -460,6 +460,8 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
         api_url = "https://infoamazonia-rag.replit.app/api/v1/search/articles"
         payload = {"query": selected_title}
 
+        import httpx
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(api_url, json=payload)
             data = response.json()
