@@ -19,7 +19,37 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory="templates")
 
-# Existing view endpoints remain unchanged
+@router.post("/users/create", response_class=HTMLResponse)
+async def create_user(
+    request: Request,
+    phone_number: str = Form(...),
+    status: str = Form(...),
+    schedule: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        # Create new user
+        user = models.User(
+            phone_number=phone_number,
+            is_active=(status == 'active'),
+            schedule=schedule
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        return RedirectResponse(
+            url=f"/admin/users/{user.id}",
+            status_code=status.HTTP_302_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Error creating user: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create user: {str(e)}"
+        )
+
 @router.get("/users", response_class=HTMLResponse)
 async def list_users(
     request: Request,
