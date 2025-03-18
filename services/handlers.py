@@ -434,7 +434,10 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
         last_template = db.query(Message).filter(
             Message.phone_number == phone_number,
             Message.message_type == 'outgoing',
-            Message.status == 'sent'
+            Message.status == 'sent',
+            Message.message_content.isnot(None),
+            Message.message_content.ilike('Por favor%', negated=True),
+            Message.message_content.ilike('Desculpe%', negated=True)
         ).order_by(Message.created_at.desc()).first()
 
         if not last_template:
@@ -448,7 +451,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
         if not selected_title:
             await send_message(
                 phone_number, 
-                "Por favor, escolha um número entre 1 e 3 correspondente à notícia que você quer ler.", 
+                "Por favor, escolha uma das notícia que você quer ler.", 
                 db
             )
             return chatbot.state

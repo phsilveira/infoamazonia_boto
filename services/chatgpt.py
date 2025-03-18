@@ -16,26 +16,29 @@ class ChatGPTService:
         }
 
     async def get_selected_article_title(self, user_input: str, template_message: str) -> Optional[str]:
-        """Parse user's numeric selection and get corresponding article title from template message"""
-        try:
-            # Parse the template message content to get article titles
-            message_content = json.loads(template_message)
-            parameters = message_content.get('components', [{}])[0].get('parameters', [])
-            article_titles = [param.get('text', '') for param in parameters if param.get('type') == 'text']
+        """Parse user's numeric selection and get corresponding article title from template message via ChatGPT"""
+        
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant that retrieves article titles based on user selection."},
+            {"role": "user", "content": f"""
+            Using the following user input '{user_input}', and the JSON structure provided, determine which article title corresponds to the user's numeric selection:
 
-            # Clean and validate user input
-            user_input = user_input.strip()
-            if not user_input.isdigit():
-                return None
+            {template_message}
 
-            article_index = int(user_input) - 1  # Convert to 0-based index
-            if 0 <= article_index < len(article_titles):
-                return article_titles[article_index]
-
+            - If the user's input is valid and corresponds to an article, return 'VALID|<article_title>'.
+            - If the input is invalid or does not correspond to any article, return 'INVALID'.
+            """}
+        ]
+        
+        response = await self._make_request(messages)
+        if not response or not response.get('choices'):
             return None
-        except Exception as e:
-            logger.error(f"Error parsing article selection: {str(e)}")
-            return None
+
+        result = response['choices'][0]['message']['content'].split('|')
+        is_valid = result[0] == 'VALID'
+        article_title = result[1] if is_valid else None
+
+        return article_title
 
     async def _make_request(self, messages: list) -> Optional[Dict]:
         try:
