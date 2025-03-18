@@ -21,12 +21,11 @@ class ChatGPTService:
         messages = [
             {"role": "system", "content": "You are a helpful assistant that retrieves article titles based on user selection."},
             {"role": "user", "content": f"""
-            Using the following user input '{user_input}', and the JSON structure provided, determine which article title corresponds to the user's numeric selection:
+            Using the following user input '{user_input}', and the JSON structure provided, determine which article title corresponds to the user's numeric selection based on the key 'parameters' which is a list, if the user choose 1 or the text, than return the text of the first element of the list, if choose 2 or the corresponding text, than return the text of that object, and so on:
 
             {template_message}
 
-            - If the user's input is valid and corresponds to an article, return 'VALID|<article_title>'.
-            - If the input is invalid or does not correspond to any article, return 'INVALID'.
+            RETURN ONLY THE TITLE OF THE ARTICLE CHOSEN, DO NOT RETURN ANY JUSTIFICATION OR ANYTHING ELSE.
             """}
         ]
         
@@ -34,11 +33,11 @@ class ChatGPTService:
         if not response or not response.get('choices'):
             return None
 
-        result = response['choices'][0]['message']['content'].split('|')
-        is_valid = result[0] == 'VALID'
-        article_title = result[1] if is_valid else None
+        return response['choices'][0]['message']['content']
+        # is_valid = result[0] == 'VALID'
+        # article_title = result[1] if is_valid else None
 
-        return article_title
+        # return article_title
 
     async def _make_request(self, messages: list) -> Optional[Dict]:
         try:
