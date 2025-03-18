@@ -10,7 +10,7 @@ import asyncio
 from services.whatsapp import send_message
 import httpx
 from typing import List, Dict
-from config import get_redis
+from config import get_redis, settings
 
 # Configure timezone
 SP_TIMEZONE = timezone('America/Sao_Paulo')
