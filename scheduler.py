@@ -65,7 +65,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30) -> None:
 
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                'https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/articles/list',
+                settings.ARTICLES_API_URL,
                 params={'date_from': date_from, 'date_to': date_to},
                 headers=headers
             )
