@@ -436,8 +436,8 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
             Message.message_type == 'outgoing',
             Message.status == 'sent',
             Message.message_content.isnot(None),
-            Message.message_content.ilike('Por favor%', negated=True),
-            Message.message_content.ilike('Desculpe%', negated=True)
+            ~Message.message_content.ilike('Por favor%'),
+            ~Message.message_content.ilike('Desculpe%')
         ).order_by(Message.created_at.desc()).first()
 
         if not last_template:
