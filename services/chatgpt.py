@@ -2,6 +2,7 @@ import logging
 from typing import Optional, Dict, Tuple
 import httpx
 from config import settings
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,28 @@ class ChatGPTService:
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
             "Content-Type": "application/json"
         }
+
+    async def get_selected_article_title(self, user_input: str, template_message: str) -> Optional[str]:
+        """Parse user's numeric selection and get corresponding article title from template message"""
+        try:
+            # Parse the template message content to get article titles
+            message_content = json.loads(template_message)
+            parameters = message_content.get('components', [{}])[0].get('parameters', [])
+            article_titles = [param.get('text', '') for param in parameters if param.get('type') == 'text']
+
+            # Clean and validate user input
+            user_input = user_input.strip()
+            if not user_input.isdigit():
+                return None
+
+            article_index = int(user_input) - 1  # Convert to 0-based index
+            if 0 <= article_index < len(article_titles):
+                return article_titles[article_index]
+
+            return None
+        except Exception as e:
+            logger.error(f"Error parsing article selection: {str(e)}")
+            return None
 
     async def _make_request(self, messages: list) -> Optional[Dict]:
         try:

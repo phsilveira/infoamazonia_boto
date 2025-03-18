@@ -75,29 +75,35 @@ async def send_news_template(schedule_type: str, days_back: int = 30) -> None:
             logger.error("No articles found in the response")
             raise Exception("No articles found in the API response")
 
-        # Get first 3 article titles
+        # Determine template name based on article count
         articles = news_data['articles'][:3]
         article_titles = [article['title'] for article in articles]
+        
+        if len(article_titles) == 3:
+            template_name = "three_articles"
+        elif len(article_titles) == 2:
+            template_name = "two_articles"
+        else:
+            template_name = "one_article"
 
         sent_count = 0
         # Send template to each active user
         for user in active_users:
             try:
                 template_content = {
-                    "name": "articles_summary",
+                    "name": template_name,
                     "language": "pt_BR",
                     "components": [
                       {
                         "type": "body",
                           "parameters": [
-                              {"type": "text", "text": article_titles[0]},
-                              {"type": "text", "text": article_titles[1]},
-                              {"type": "text", "text": article_titles[2]}
+                              {"type": "text", "text": article_titles[0] if len(article_titles) > 0 else ""},
+                              {"type": "text", "text": article_titles[1] if len(article_titles) > 1 else ""},
+                              {"type": "text", "text": article_titles[2] if len(article_titles) > 2 else ""}
                           ]
                       }
                     ]
                 }
-
                 result = await send_message(
                     to=user.phone_number,
                     content=template_content,

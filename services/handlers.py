@@ -5,7 +5,7 @@ from utils.message_loader import message_loader
 from typing import Tuple
 from services.whatsapp import send_message
 from database import get_db
-from models import UserInteraction, Location, User
+from models import UserInteraction, Location, User, Message # Added import for models.Message
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -430,10 +430,32 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
     """Handle user response to monthly news template"""
     db = next(get_db())
     try:
-        # Reuse the article summary functionality
-        import httpx
+        # Get the last outgoing template message for this user
+        last_template = db.query(Message).filter(
+            Message.phone_number == phone_number,
+            Message.message_type == 'outgoing',
+            Message.status == 'sent'
+        ).order_by(Message.created_at.desc()).first()
+
+        if not last_template:
+            await send_message(phone_number, "Desculpe, não encontrei a mensagem original com as notícias.", db)
+            chatbot.end_conversation()
+            return chatbot.state
+
+        # Get the selected article title based on user's numeric choice
+        selected_title = await chatgpt_service.get_selected_article_title(message, last_template.message_content)
+
+        if not selected_title:
+            await send_message(
+                phone_number, 
+                "Por favor, escolha um número entre 1 e 3 correspondente à notícia que você quer ler.", 
+                db
+            )
+            return chatbot.state
+
+        # Reuse the article summary functionality with the selected title
         api_url = "https://infoamazonia-rag.replit.app/api/v1/search/articles"
-        payload = {"query": message}
+        payload = {"query": selected_title}
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(api_url, json=payload)
@@ -449,7 +471,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
                     user_id=user_id,
                     phone_number=phone_number,
                     category='monthly_news_response',
-                    query=message,
+                    query=selected_title,
                     response=data["results"][0]["summary_content"]
                 )
                 db.add(interaction)
