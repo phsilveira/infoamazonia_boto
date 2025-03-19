@@ -12,35 +12,20 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">
-                InfoAmazonia Admin
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <a class="navbar-brand" href="/">InfoAmazonia Admin</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/admin/">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/admin/users">User Management</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/admin/news-sources">News Sources</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/admin/messages">Messages</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/admin/metrics">Metrics</a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout">Logout</a>
-                    </li>
-                </ul>
+            <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                <div class="navbar-nav">
+                    <a class="nav-link" href="/admin/users">Users</a>
+                    <a class="nav-link" href="/admin/interactions">Interactions</a>
+                    <a class="nav-link" href="/admin/news-sources">News Sources</a>
+                    <a class="nav-link" href="/admin/metrics">Metrics</a>
+                    <a class="nav-link" href="/admin/messages">Messages</a>
+                    <a class="nav-link" href="/admin/scheduler">Scheduler</a>
+                    <a class="nav-link" href="/logout">Logout</a>
+                </div>
             </div>
         </div>
     </nav>
@@ -88,7 +73,7 @@
 
         <!-- Charts Row -->
         <div class="row mb-4">
-            <div class="col-md-8">
+            <div class="col-md-4">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title">User Engagement Trends</h5>
