@@ -41,7 +41,7 @@ async def create_user(
 
         return RedirectResponse(
             url=f"/admin/users/{user.id}",
-            status_code=status.HTTP_302_FOUND
+            status_code=302
         )
     except Exception as e:
         logger.error(f"Error creating user: {str(e)}")

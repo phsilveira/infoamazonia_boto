@@ -76,9 +76,13 @@ async def send_news_template(schedule_type: str, days_back: int = 30) -> None:
             raise Exception("No articles found in the API response")
 
         # Determine template name based on article count
-        articles = news_data['articles'][:3]
+        max_articles = 3
+        articles = news_data['articles'][:max_articles]
         article_titles = [article['title'] for article in articles]
-        
+        template_parameters = [
+            {"type": "text", "text": title} for title in article_titles
+        ]
+
         if len(article_titles) == 3:
             template_name = "three_articles"
         elif len(article_titles) == 2:
@@ -96,11 +100,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30) -> None:
                     "components": [
                       {
                         "type": "body",
-                          "parameters": [
-                              {"type": "text", "text": article_titles[0] if len(article_titles) > 0 else ""},
-                              {"type": "text", "text": article_titles[1] if len(article_titles) > 1 else ""},
-                              {"type": "text", "text": article_titles[2] if len(article_titles) > 2 else ""}
-                          ]
+                        "parameters": template_parameters
                       }
                     ]
                 }
@@ -232,7 +232,7 @@ async def start_scheduler():
     try:
         scheduler.add_job(
             update_user_status,
-            trigger=CronTrigger(minute='*/15'),  # For testing: run every minute
+            trigger=CronTrigger(hour=9, minute=0, timezone=SP_TIMEZONE),
             id='update_user_status',
             replace_existing=True,
             misfire_grace_time=300  # 5 minutes grace time
