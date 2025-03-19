@@ -283,6 +283,62 @@ async def get_user_stats(db: Session = Depends(get_db)):
             content={"error": "Failed to fetch user statistics"}
         )
 
+@app.get("/api/dashboard/message-stats")
+async def get_message_stats(db: Session = Depends(get_db)):
+    try:
+        # Get the last 12 weeks of data
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(weeks=12)
+
+        # Format dates for weekly intervals
+        weeks = []
+        outgoing_messages = []
+        incoming_messages = []
+
+        # Calculate stats for each week
+        current_date = start_date
+        while current_date <= end_date:
+            week_end = current_date + timedelta(days=7)
+
+            # Get outgoing messages for this week
+            outgoing = db.query(func.count(models.Message.id))\
+                .filter(
+                    models.Message.message_type == 'outgoing',
+                    models.Message.created_at > current_date,
+                    models.Message.created_at <= week_end
+                )\
+                .scalar()
+
+            # Get incoming messages for this week
+            incoming = db.query(func.count(models.Message.id))\
+                .filter(
+                    models.Message.message_type == 'incoming',
+                    models.Message.created_at > current_date,
+                    models.Message.created_at <= week_end
+                )\
+                .scalar()
+
+            # Format date for labels (e.g., "Mar 12")
+            week_label = current_date.strftime("%b %d")
+
+            weeks.append(week_label)
+            outgoing_messages.append(outgoing)
+            incoming_messages.append(incoming)
+
+            current_date = week_end
+
+        return {
+            "weeks": weeks,
+            "outgoing_messages": outgoing_messages,
+            "incoming_messages": incoming_messages
+        }
+    except Exception as e:
+        logger.error(f"Error fetching message stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to fetch message statistics"}
+        )
+
 @app.get("/api/scheduler/runs")
 async def get_scheduler_runs(
     db: Session = Depends(get_db),

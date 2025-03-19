@@ -166,6 +166,7 @@
     <script src="/static/js/charts.js"></script>
     <script>
         let engagementChart;
+        let messageDistChart;
 
         // Initialize Feather icons
         document.addEventListener('DOMContentLoaded', function() {
@@ -242,22 +243,78 @@
                     }
                 }
             });
+
+            const messageCtx = document.getElementById('messageDistributionChart').getContext('2d');
+            messageDistChart = new Chart(messageCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Outgoing Messages',
+                            data: [],
+                            borderColor: 'rgb(54, 162, 235)',
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'Incoming Messages',
+                            data: [],
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Week'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Messages'
+                            },
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Message Distribution by Week'
+                        }
+                    }
+                }
+            });
         }
 
         async function loadDashboardData() {
             try {
                 // Fetch all dashboard data in parallel
-                const [statsResponse, usersResponse, sourcesResponse, userStatsResponse] = await Promise.all([
+                const [statsResponse, usersResponse, sourcesResponse, userStatsResponse, messageStatsResponse] = await Promise.all([
                     fetch('/api/dashboard/stats'),
                     fetch('/api/dashboard/recent-users'),
                     fetch('/api/dashboard/news-sources'),
-                    fetch('/api/dashboard/user-stats')
+                    fetch('/api/dashboard/user-stats'),
+                    fetch('/api/dashboard/message-stats')
                 ]);
 
                 const stats = await statsResponse.json();
                 const users = await usersResponse.json();
                 const sources = await sourcesResponse.json();
                 const userStats = await userStatsResponse.json();
+                const messageStats = await messageStatsResponse.json();
 
                 // Update engagement chart
                 if (engagementChart && userStats) {
@@ -266,6 +323,14 @@
                     engagementChart.data.datasets[1].data = userStats.new_users;
                     engagementChart.data.datasets[2].data = userStats.cancellations;
                     engagementChart.update();
+                }
+
+                // Update message distribution chart
+                if (messageDistChart && messageStats) {
+                    messageDistChart.data.labels = messageStats.weeks;
+                    messageDistChart.data.datasets[0].data = messageStats.outgoing_messages;
+                    messageDistChart.data.datasets[1].data = messageStats.incoming_messages;
+                    messageDistChart.update();
                 }
 
                 // Update stats
