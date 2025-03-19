@@ -165,27 +165,108 @@
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     <script src="/static/js/charts.js"></script>
     <script>
+        let engagementChart;
+
         // Initialize Feather icons
         document.addEventListener('DOMContentLoaded', function() {
             feather.replace();
+
+            // Initialize charts
+            initializeCharts();
+
             // Initial data load
             loadDashboardData();
+
             // Refresh data every 30 seconds
             setInterval(loadDashboardData, 30000);
         });
 
+        function initializeCharts() {
+            const engagementCtx = document.getElementById('engagementTrendChart').getContext('2d');
+            engagementChart = new Chart(engagementCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Total Users',
+                            data: [],
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'New Users',
+                            data: [],
+                            borderColor: 'rgb(54, 162, 235)',
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'Cancellations',
+                            data: [],
+                            borderColor: 'rgb(255, 99, 132)',
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Week'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Users'
+                            },
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'User Statistics by Week'
+                        }
+                    }
+                }
+            });
+        }
+
         async function loadDashboardData() {
             try {
                 // Fetch all dashboard data in parallel
-                const [statsResponse, usersResponse, sourcesResponse] = await Promise.all([
+                const [statsResponse, usersResponse, sourcesResponse, userStatsResponse] = await Promise.all([
                     fetch('/api/dashboard/stats'),
                     fetch('/api/dashboard/recent-users'),
-                    fetch('/api/dashboard/news-sources')
+                    fetch('/api/dashboard/news-sources'),
+                    fetch('/api/dashboard/user-stats')
                 ]);
 
                 const stats = await statsResponse.json();
                 const users = await usersResponse.json();
                 const sources = await sourcesResponse.json();
+                const userStats = await userStatsResponse.json();
+
+                // Update engagement chart
+                if (engagementChart && userStats) {
+                    engagementChart.data.labels = userStats.weeks;
+                    engagementChart.data.datasets[0].data = userStats.total_users;
+                    engagementChart.data.datasets[1].data = userStats.new_users;
+                    engagementChart.data.datasets[2].data = userStats.cancellations;
+                    engagementChart.update();
+                }
 
                 // Update stats
                 document.getElementById('totalUsers').textContent = stats.total_users;

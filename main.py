@@ -220,6 +220,69 @@ async def get_news_sources(db: Session = Depends(get_db)):
             content={"error": "Failed to fetch news sources"}
         )
 
+@app.get("/api/dashboard/user-stats")
+async def get_user_stats(db: Session = Depends(get_db)):
+    try:
+        # Get the last 12 weeks of data
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(weeks=12)
+
+        # Format dates for weekly intervals
+        weeks = []
+        total_users = []
+        new_users = []
+        cancellations = []
+
+        # Calculate stats for each week
+        current_date = start_date
+        while current_date <= end_date:
+            week_end = current_date + timedelta(days=7)
+
+            # Get total users up to this week
+            total = db.query(func.count(models.User.id))\
+                .filter(models.User.created_at <= week_end)\
+                .scalar()
+
+            # Get new users this week
+            new = db.query(func.count(models.User.id))\
+                .filter(
+                    models.User.created_at > current_date,
+                    models.User.created_at <= week_end
+                )\
+                .scalar()
+
+            # Get cancellations this week (users who became inactive)
+            cancelled = db.query(func.count(models.User.id))\
+                .filter(
+                    models.User.is_active == False,
+                    models.User.updated_at > current_date,
+                    models.User.updated_at <= week_end
+                )\
+                .scalar()
+
+            # Format date for labels (e.g., "Mar 12")
+            week_label = current_date.strftime("%b %d")
+
+            weeks.append(week_label)
+            total_users.append(total)
+            new_users.append(new)
+            cancellations.append(cancelled)
+
+            current_date = week_end
+
+        return {
+            "weeks": weeks,
+            "total_users": total_users,
+            "new_users": new_users,
+            "cancellations": cancellations
+        }
+    except Exception as e:
+        logger.error(f"Error fetching user stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to fetch user statistics"}
+        )
+
 @app.get("/api/scheduler/runs")
 async def get_scheduler_runs(
     db: Session = Depends(get_db),
