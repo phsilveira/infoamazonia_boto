@@ -64,7 +64,7 @@
                         <div class="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
                             {{ subject.subject_name }}
                             <button type="button" 
-                                    class="text-gray-400 hover:text-red-600"
+                                    class="text-gray-500 hover:text-red-700 transition-colors duration-150"
                                     data-bs-toggle="modal" 
                                     data-bs-target="#deleteSubjectModal"
                                     data-subject-id="{{ subject.id }}"
@@ -101,7 +101,7 @@
                                 <div class="text-xs text-gray-500">{{ location.latitude }}, {{ location.longitude }}</div>
                             </div>
                             <button type="button" 
-                                    class="text-gray-400 hover:text-red-600"
+                                    class="text-gray-500 hover:text-red-700 transition-colors duration-150"
                                     data-bs-toggle="modal" 
                                     data-bs-target="#deleteLocationModal"
                                     data-location-id="{{ location.id }}"
