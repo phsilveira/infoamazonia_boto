@@ -339,6 +339,74 @@ async def get_message_stats(db: Session = Depends(get_db)):
             content={"error": "Failed to fetch message statistics"}
         )
 
+@app.get("/api/dashboard/status-stats")
+async def get_status_stats(db: Session = Depends(get_db)):
+    try:
+        # Get the last 12 weeks of data
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(weeks=12)
+
+        # Format dates for weekly intervals
+        weeks = []
+        delivered = []
+        failed = []
+        pending = []
+
+        # Calculate stats for each week
+        current_date = start_date
+        while current_date <= end_date:
+            week_end = current_date + timedelta(days=7)
+
+            # Get delivered messages for this week
+            delivered_count = db.query(func.count(models.Message.id))\
+                .filter(
+                    models.Message.status == 'delivered',
+                    models.Message.created_at > current_date,
+                    models.Message.created_at <= week_end
+                )\
+                .scalar()
+
+            # Get failed messages for this week
+            failed_count = db.query(func.count(models.Message.id))\
+                .filter(
+                    models.Message.status == 'failed',
+                    models.Message.created_at > current_date,
+                    models.Message.created_at <= week_end
+                )\
+                .scalar()
+
+            # Get pending messages for this week
+            pending_count = db.query(func.count(models.Message.id))\
+                .filter(
+                    models.Message.status == 'pending',
+                    models.Message.created_at > current_date,
+                    models.Message.created_at <= week_end
+                )\
+                .scalar()
+
+            # Format date for labels (e.g., "Mar 12")
+            week_label = current_date.strftime("%b %d")
+
+            weeks.append(week_label)
+            delivered.append(delivered_count)
+            failed.append(failed_count)
+            pending.append(pending_count)
+
+            current_date = week_end
+
+        return {
+            "weeks": weeks,
+            "delivered": delivered,
+            "failed": failed,
+            "pending": pending
+        }
+    except Exception as e:
+        logger.error(f"Error fetching status stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to fetch status statistics"}
+        )
+
 @app.get("/api/scheduler/runs")
 async def get_scheduler_runs(
     db: Session = Depends(get_db),

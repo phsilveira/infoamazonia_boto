@@ -108,6 +108,16 @@
                     </div>
                 </div>
             </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Message Status Distribution</h5>
+                        <div class="chart-container" style="position: relative; height:300px;">
+                            <canvas id="statusDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Recent Activity -->
@@ -167,6 +177,7 @@
     <script>
         let engagementChart;
         let messageDistChart;
+        let statusDistChart;
 
         // Initialize Feather icons
         document.addEventListener('DOMContentLoaded', function() {
@@ -297,17 +308,78 @@
                     }
                 }
             });
+
+            const statusCtx = document.getElementById('statusDistributionChart').getContext('2d');
+            statusDistChart = new Chart(statusCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Delivered',
+                            data: [],
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'Failed',
+                            data: [],
+                            borderColor: 'rgb(255, 99, 132)',
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'Pending',
+                            data: [],
+                            borderColor: 'rgb(255, 205, 86)',
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Week'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Messages'
+                            },
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Message Status Distribution by Week'
+                        }
+                    }
+                }
+            });
         }
 
         async function loadDashboardData() {
             try {
-                // Fetch all dashboard data in parallel
-                const [statsResponse, usersResponse, sourcesResponse, userStatsResponse, messageStatsResponse] = await Promise.all([
+                const [statsResponse, usersResponse, sourcesResponse, userStatsResponse, messageStatsResponse, statusStatsResponse] = await Promise.all([
                     fetch('/api/dashboard/stats'),
                     fetch('/api/dashboard/recent-users'),
                     fetch('/api/dashboard/news-sources'),
                     fetch('/api/dashboard/user-stats'),
-                    fetch('/api/dashboard/message-stats')
+                    fetch('/api/dashboard/message-stats'),
+                    fetch('/api/dashboard/status-stats')
                 ]);
 
                 const stats = await statsResponse.json();
@@ -315,8 +387,8 @@
                 const sources = await sourcesResponse.json();
                 const userStats = await userStatsResponse.json();
                 const messageStats = await messageStatsResponse.json();
+                const statusStats = await statusStatsResponse.json();
 
-                // Update engagement chart
                 if (engagementChart && userStats) {
                     engagementChart.data.labels = userStats.weeks;
                     engagementChart.data.datasets[0].data = userStats.total_users;
@@ -325,7 +397,6 @@
                     engagementChart.update();
                 }
 
-                // Update message distribution chart
                 if (messageDistChart && messageStats) {
                     messageDistChart.data.labels = messageStats.weeks;
                     messageDistChart.data.datasets[0].data = messageStats.outgoing_messages;
@@ -333,13 +404,19 @@
                     messageDistChart.update();
                 }
 
-                // Update stats
+                if (statusDistChart && statusStats) {
+                    statusDistChart.data.labels = statusStats.weeks;
+                    statusDistChart.data.datasets[0].data = statusStats.delivered;
+                    statusDistChart.data.datasets[1].data = statusStats.failed;
+                    statusDistChart.data.datasets[2].data = statusStats.pending;
+                    statusDistChart.update();
+                }
+
                 document.getElementById('totalUsers').textContent = stats.total_users;
                 document.getElementById('activeUsers').textContent = stats.active_users;
                 document.getElementById('messagesSent').textContent = stats.messages_sent;
                 document.getElementById('clickRate').textContent = stats.click_rate;
 
-                // Update recent users table
                 const userRows = users.map(user => `
                     <tr>
                         <td>${user.phone_number}</td>
@@ -349,7 +426,6 @@
                 `).join('');
                 document.getElementById('recentUsersTable').innerHTML = userRows || '<tr><td colspan="3" class="text-center">No recent users</td></tr>';
 
-                // Update news sources table
                 const sourceRows = sources.map(source => `
                     <tr>
                         <td>${source.name}</td>
