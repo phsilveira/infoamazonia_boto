@@ -1,6 +1,5 @@
-
 import logging
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, List
 from openai import OpenAI
 from config import settings
 
@@ -9,6 +8,34 @@ logger = logging.getLogger(__name__)
 class ChatGPTService:
     def __init__(self):
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+    async def summarize_queries(self, queries: List[str], interaction_type: str) -> str:
+        """Summarize a list of user queries for a specific interaction type"""
+        try:
+            completion = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that summarizes user interactions and identifies common patterns."},
+                    {"role": "user", "content": f"""
+                    Please analyze and summarize these user queries for {interaction_type}:
+
+                    {queries}
+
+                    Provide a concise summary that includes:
+                    1. Most common topics or themes
+                    2. Types of information users are seeking
+                    3. Notable patterns in user behavior
+
+                    Keep the summary short and focused on key insights.
+                    """}
+                ],
+                temperature=0.3,
+                max_tokens=250
+            )
+            return completion.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error summarizing queries: {str(e)}")
+            return "Could not generate summary due to an error"
 
     async def get_selected_article_title(self, user_input: str, template_message: str) -> Optional[str]:
         """Parse user's numeric selection and get corresponding article title from template message via ChatGPT"""
@@ -19,9 +46,9 @@ class ChatGPTService:
                     {"role": "system", "content": "You are a helpful assistant that retrieves article titles based on user selection."},
                     {"role": "user", "content": f"""
                     Using the following user input '{user_input}', and the JSON structure provided, determine which article title corresponds to the user's numeric selection or article name based on the key 'parameters', a list. If the user chooses 1 or provides text matching the first element of the list, return the text of the first element. If the user chooses 2 or provides text matching the second element, return the text of that item and so on:
-
+                    
                     {template_message}
-
+                    
                     RETURN ONLY THE TITLE OF THE ARTICLE CHOSEN, DO NOT RETURN ANY JUSTIFICATION OR ANYTHING ELSE.
                     """}
                 ],
@@ -84,7 +111,7 @@ class ChatGPTService:
             •\tIf the input is a subject text, check its relevance to the examples provided.
             •\tIf valid but needs correction, provide the corrected version of the subject.
             •\tIf invalid, explain why it does not match any valid subject.
-
+            
         Response format:
         VALID|INVALID|subject_name|explanation"""}
                 ],

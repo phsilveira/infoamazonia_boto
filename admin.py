@@ -13,11 +13,13 @@ import httpx
 import logging
 from config import settings
 from sqlalchemy import desc
+from services.chatgpt import ChatGPTService # Added import
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory="templates")
+chatgpt_service = ChatGPTService()
 
 @router.post("/users/create", response_class=HTMLResponse)
 async def create_user(
@@ -335,6 +337,35 @@ async def list_interactions(
         "admin/interactions.html",
         {"request": request, "interactions": interactions}
     )
+
+@router.get("/interactions/summaries/{category}") #NEW ROUTE
+async def get_interaction_summaries(
+    category: str,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        # Get queries for the specified category
+        queries = db.query(models.UserInteraction.query)\
+            .filter(models.UserInteraction.category == category)\
+            .all()
+
+        # Extract query texts
+        query_texts = [q[0] for q in queries]
+
+        if not query_texts:
+            return {"summary": "No queries found for this category"}
+
+        # Generate summary using ChatGPT
+        summary = await chatgpt_service.summarize_queries(query_texts, category)
+
+        return {"summary": summary}
+    except Exception as e:
+        logger.error(f"Error generating interaction summaries: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate summaries: {str(e)}"
+        )
 
 @router.post("/messages/send-template", response_class=HTMLResponse)
 async def send_template_message(

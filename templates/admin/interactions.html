@@ -31,6 +31,16 @@
             {% for category in ['term', 'article', 'news_suggestion'] %}
             <div class="tab-pane fade {% if category == 'term' %}show active{% endif %}" 
                  id="{{ category.split('_')[0] }}" role="tabpanel">
+
+                <!-- Query Summary Section -->
+                <div class="mb-4 p-4 bg-gray-50 rounded">
+                    <h3 class="text-lg font-semibold mb-2">Query Summary</h3>
+                    <div id="{{ category }}-summary" class="text-gray-700">
+                        Loading summary...
+                    </div>
+                </div>
+
+                <!-- Interactions Table -->
                 <div class="overflow-x-auto">
                     <table class="table table-striped">
                         <thead>
@@ -116,8 +126,27 @@
             triggerEl.addEventListener('click', function(event) {
                 event.preventDefault()
                 tabTrigger.show()
+                // Load summary when tab is shown
+                const category = this.getAttribute('data-bs-target').replace('#', '')
+                loadSummary(category)
             })
         })
+
+        // Load initial summary for the active tab
+        loadSummary('term')
     });
+
+    async function loadSummary(category) {
+        const summaryElement = document.getElementById(`${category}-summary`)
+        try {
+            const response = await fetch(`/admin/interactions/summaries/${category}`)
+            if (!response.ok) throw new Error('Network response was not ok')
+            const data = await response.json()
+            summaryElement.innerHTML = `<p class="whitespace-pre-wrap">${data.summary}</p>`
+        } catch (error) {
+            console.error('Error loading summary:', error)
+            summaryElement.innerHTML = 'Failed to load summary. Please try again later.'
+        }
+    }
 </script>
 {% endblock %}
