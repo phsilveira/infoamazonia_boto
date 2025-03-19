@@ -194,11 +194,31 @@ async def update_user_status():
                 models.Message.created_at >= thirty_days_ago
             ).first()
 
-            # If no recent messages, mark user as inactive
+            # If no recent messages, mark user as inactive and send template
             if not latest_message:
                 user.is_active = False
                 updated_count += 1
                 logger.info(f"Marking user {user.phone_number} as inactive due to 30+ days of inactivity")
+
+                # Send unsubscribe template
+                template_content = {
+                    "name": "unsubscribe_user",
+                    "language": "pt_BR"
+                }
+
+                try:
+                    result = await send_message(
+                        to=user.phone_number,
+                        content=template_content,
+                        db=db,
+                        message_type="template"
+                    )
+                    if result["status"] == "success":
+                        logger.info(f"Successfully sent unsubscribe template to {user.phone_number}")
+                    else:
+                        logger.error(f"Failed to send unsubscribe template to {user.phone_number}: {result['message']}")
+                except Exception as e:
+                    logger.error(f"Error sending unsubscribe template to {user.phone_number}: {str(e)}")
 
         # Commit changes
         if updated_count > 0:
