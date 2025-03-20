@@ -348,14 +348,42 @@ async def get_status_stats(db: Session = Depends(get_db)):
 
         # Format dates for weekly intervals
         weeks = []
+        received = []
+        read = []
+        sent = []
         delivered = []
-        failed = []
-        pending = []
 
         # Calculate stats for each week
         current_date = start_date
         while current_date <= end_date:
             week_end = current_date + timedelta(days=7)
+
+            # Get received messages for this week
+            received_count = db.query(func.count(models.Message.id))\
+                .filter(
+                    models.Message.status == 'received',
+                    models.Message.created_at > current_date,
+                    models.Message.created_at <= week_end
+                )\
+                .scalar()
+
+            # Get read messages for this week
+            read_count = db.query(func.count(models.Message.id))\
+                .filter(
+                    models.Message.status == 'read',
+                    models.Message.created_at > current_date,
+                    models.Message.created_at <= week_end
+                )\
+                .scalar()
+
+            # Get sent messages for this week
+            sent_count = db.query(func.count(models.Message.id))\
+                .filter(
+                    models.Message.status == 'sent',
+                    models.Message.created_at > current_date,
+                    models.Message.created_at <= week_end
+                )\
+                .scalar()
 
             # Get delivered messages for this week
             delivered_count = db.query(func.count(models.Message.id))\
@@ -366,39 +394,23 @@ async def get_status_stats(db: Session = Depends(get_db)):
                 )\
                 .scalar()
 
-            # Get failed messages for this week
-            failed_count = db.query(func.count(models.Message.id))\
-                .filter(
-                    models.Message.status == 'failed',
-                    models.Message.created_at > current_date,
-                    models.Message.created_at <= week_end
-                )\
-                .scalar()
-
-            # Get pending messages for this week
-            pending_count = db.query(func.count(models.Message.id))\
-                .filter(
-                    models.Message.status == 'pending',
-                    models.Message.created_at > current_date,
-                    models.Message.created_at <= week_end
-                )\
-                .scalar()
-
             # Format date for labels (e.g., "Mar 12")
             week_label = current_date.strftime("%b %d")
 
             weeks.append(week_label)
+            received.append(received_count)
+            read.append(read_count)
+            sent.append(sent_count)
             delivered.append(delivered_count)
-            failed.append(failed_count)
-            pending.append(pending_count)
 
             current_date = week_end
 
         return {
             "weeks": weeks,
-            "delivered": delivered,
-            "failed": failed,
-            "pending": pending
+            "received": received,
+            "read": read,
+            "sent": sent,
+            "delivered": delivered
         }
     except Exception as e:
         logger.error(f"Error fetching status stats: {e}")
