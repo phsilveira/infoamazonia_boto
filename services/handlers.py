@@ -243,7 +243,7 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
 async def handle_about_state(chatbot: ChatBot, phone_number: str) -> str:
     """Handle the about state logic"""
     chatbot.end_conversation()
-    await send_message(phone_number, message_loader.get_message('return'), next(get_db()))
+    await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
     return chatbot.state
 
 async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
@@ -312,7 +312,7 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
                 logger.error("No interaction ID in chatbot state")
 
             chatbot.end_conversation()
-            await send_message(phone_number, message_loader.get_message('return'), db)
+            await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
         else:
             await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", db)
     except Exception as e:

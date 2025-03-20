@@ -174,8 +174,8 @@
             // Initial data load
             loadDashboardData();
 
-            // Refresh data every 30 seconds
-            setInterval(loadDashboardData, 30000);
+            // Refresh data every 60 seconds
+            setInterval(loadDashboardData, 60000);
         });
 
         function initializeCharts() {
@@ -301,23 +301,30 @@
                     labels: [],
                     datasets: [
                         {
-                            label: 'Delivered',
+                            label: 'Received',
                             data: [],
                             borderColor: 'rgb(75, 192, 192)',
                             tension: 0.1,
                             fill: false
                         },
                         {
-                            label: 'Failed',
+                            label: 'Read',
                             data: [],
-                            borderColor: 'rgb(255, 99, 132)',
+                            borderColor: 'rgb(54, 162, 235)',
                             tension: 0.1,
                             fill: false
                         },
                         {
-                            label: 'Pending',
+                            label: 'Sent',
                             data: [],
                             borderColor: 'rgb(255, 205, 86)',
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'Delivered',
+                            data: [],
+                            borderColor: 'rgb(255, 99, 132)',
                             tension: 0.1,
                             fill: false
                         }
@@ -391,9 +398,10 @@
 
                 if (statusDistChart && statusStats) {
                     statusDistChart.data.labels = statusStats.weeks;
-                    statusDistChart.data.datasets[0].data = statusStats.delivered;
-                    statusDistChart.data.datasets[1].data = statusStats.failed;
-                    statusDistChart.data.datasets[2].data = statusStats.pending;
+                    statusDistChart.data.datasets[0].data = statusStats.received;
+                    statusDistChart.data.datasets[1].data = statusStats.read;
+                    statusDistChart.data.datasets[2].data = statusStats.sent;
+                    statusDistChart.data.datasets[3].data = statusStats.delivered;
                     statusDistChart.update();
                 }
 
