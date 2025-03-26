@@ -459,9 +459,24 @@ async def ctr_stats_page(
         )
     except Exception as e:
         logger.error(f"Error fetching CTR stats for page: {str(e)}")
+        # Instead of using a separate error template, we'll use the main template
+        # with error data that can display a message
+        dummy_data = {
+            "totals": {
+                "total_urls": 0,
+                "total_impressions": 0,
+                "total_clicks": 0,
+                "overall_ctr": 0
+            },
+            "stats": []
+        }
         return templates.TemplateResponse(
-            "admin/error.html",
-            {"request": request, "error_message": "Failed to fetch click-through rate statistics"}
+            "admin/ctr-stats.html",
+            {
+                "request": request, 
+                "ctr_data": dummy_data,
+                "error": f"Failed to fetch CTR statistics: {str(e)}"
+            }
         )
 
 @router.post("/users/{user_id}/status", response_class=HTMLResponse)

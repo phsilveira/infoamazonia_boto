@@ -8,6 +8,12 @@
         <h2>Click-Through Rate Statistics</h2>
     </div>
 
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        {{ error }}
+    </div>
+    {% endif %}
+
     <!-- Overview Card -->
     <div class="row mb-4">
         <div class="col-12">
@@ -124,112 +130,137 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Parse CTR data from the template
-    const ctrData = {{ ctr_data|tojson }};
-    
-    if (ctrData && ctrData.stats && ctrData.stats.length > 0) {
-        // Prepare data for the bar chart
-        const shortIds = ctrData.stats.map(stat => stat.short_id);
-        const ctrValues = ctrData.stats.map(stat => stat.ctr);
-        const backgroundColors = ctrValues.map(value => {
-            if (value > 50) return 'rgba(40, 167, 69, 0.7)';  // success
-            if (value > 25) return 'rgba(255, 193, 7, 0.7)';  // warning
-            return 'rgba(220, 53, 69, 0.7)';                  // danger
-        });
+    try {
+        // Parse CTR data from the template
+        const ctrData = {{ ctr_data|tojson }};
         
-        // CTR Bar Chart
-        const ctrCtx = document.getElementById('ctrBarChart').getContext('2d');
-        new Chart(ctrCtx, {
-            type: 'bar',
-            data: {
-                labels: shortIds,
-                datasets: [{
-                    label: 'CTR %',
-                    data: ctrValues,
-                    backgroundColor: backgroundColors,
-                    borderColor: backgroundColors.map(color => color.replace('0.7', '1')),
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'CTR %'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Short URL ID'
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `CTR: ${context.raw}%`;
+        if (ctrData && ctrData.stats && ctrData.stats.length > 0) {
+            try {
+                // Prepare data for the bar chart
+                const shortIds = ctrData.stats.map(stat => stat.short_id);
+                const ctrValues = ctrData.stats.map(stat => stat.ctr);
+                const backgroundColors = ctrValues.map(value => {
+                    if (value > 50) return 'rgba(40, 167, 69, 0.7)';  // success
+                    if (value > 25) return 'rgba(255, 193, 7, 0.7)';  // warning
+                    return 'rgba(220, 53, 69, 0.7)';                  // danger
+                });
+                
+                // CTR Bar Chart
+                const ctrBarChart = document.getElementById('ctrBarChart');
+                if (ctrBarChart) {
+                    const ctrCtx = ctrBarChart.getContext('2d');
+                    new Chart(ctrCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: shortIds,
+                            datasets: [{
+                                label: 'CTR %',
+                                data: ctrValues,
+                                backgroundColor: backgroundColors,
+                                borderColor: backgroundColors.map(color => color.replace('0.7', '1')),
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'CTR %'
+                                    }
+                                },
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Short URL ID'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `CTR: ${context.raw}%`;
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
+                    });
                 }
-            }
-        });
-        
-        // Impressions vs Clicks Chart
-        const impressions = ctrData.stats.map(stat => stat.impressions);
-        const clicks = ctrData.stats.map(stat => stat.clicks);
-        
-        const comparisonCtx = document.getElementById('clicksVsImpressionsChart').getContext('2d');
-        new Chart(comparisonCtx, {
-            type: 'bar',
-            data: {
-                labels: shortIds,
-                datasets: [
-                    {
-                        label: 'Impressions',
-                        data: impressions,
-                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                        borderColor: 'rgb(54, 162, 235)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Clicks',
-                        data: clicks,
-                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                        borderColor: 'rgb(75, 192, 192)',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Count'
+                
+                // Impressions vs Clicks Chart
+                const impressions = ctrData.stats.map(stat => stat.impressions);
+                const clicks = ctrData.stats.map(stat => stat.clicks);
+                
+                const clicksVsImpressionsChart = document.getElementById('clicksVsImpressionsChart');
+                if (clicksVsImpressionsChart) {
+                    const comparisonCtx = clicksVsImpressionsChart.getContext('2d');
+                    new Chart(comparisonCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: shortIds,
+                            datasets: [
+                                {
+                                    label: 'Impressions',
+                                    data: impressions,
+                                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                                    borderColor: 'rgb(54, 162, 235)',
+                                    borderWidth: 1
+                                },
+                                {
+                                    label: 'Clicks',
+                                    data: clicks,
+                                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                                    borderColor: 'rgb(75, 192, 192)',
+                                    borderWidth: 1
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Count'
+                                    }
+                                },
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Short URL ID'
+                                    }
+                                }
+                            }
                         }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Short URL ID'
-                        }
-                    }
+                    });
                 }
+            } catch (chartError) {
+                console.error('Error creating charts:', chartError);
+                // Add a fallback message if charts fail
+                const chartContainers = document.querySelectorAll('.chart-container');
+                chartContainers.forEach(container => {
+                    container.innerHTML = '<div class="alert alert-warning">Unable to display chart. Data may be invalid or insufficient.</div>';
+                });
             }
-        });
+        } else {
+            // If no data is available, display a message in chart containers
+            const chartContainers = document.querySelectorAll('.chart-container');
+            chartContainers.forEach(container => {
+                container.innerHTML = '<div class="alert alert-info">No data available for charts.</div>';
+            });
+        }
+    } catch (error) {
+        console.error('Error initializing CTR stats page:', error);
     }
 });
 </script>
