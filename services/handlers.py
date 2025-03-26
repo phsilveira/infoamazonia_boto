@@ -317,7 +317,7 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
             await send_message(phone_number, message_loader.get_message('feedback.request'), db)
     except Exception as e:
         logger.error(f"Error in feedback handler: {str(e)}")
-        await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
+        await send_message(phone_number, message_loader.get_message('error.general_error'), db)
 
     return chatbot.state
 
@@ -354,15 +354,15 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
 
                 await send_message(phone_number, data["results"][0]["summary_content"], db)
                 chatbot.get_feedback()
-                await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
+                await send_message(phone_number, message_loader.get_message('feedback.request'), next(get_db()))
             else:
-                await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse artigo.", db)
+                await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
                 await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
                 chatbot.end_conversation()
 
     except Exception as e:
         logger.error(f"Error in article summary handler: {str(e)}")
-        await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
+        await send_message(phone_number, message_loader.get_message('error.general_error'), db)
 
     return chatbot.state
 
@@ -392,7 +392,7 @@ async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, mess
         await send_message(phone_number, message_loader.get_message('menu.implementation_soon'), db)
     except Exception as e:
         logger.error(f"Error in news suggestion handler: {str(e)}")
-        await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
+        await send_message(phone_number, message_loader.get_message('error.general_error'), db)
 
     return chatbot.state
 
@@ -441,7 +441,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
         ).order_by(Message.created_at.desc()).first()
 
         if not last_template:
-            await send_message(phone_number, "Desculpe, não encontrei a mensagem original com as notícias.", db)
+            await send_message(phone_number, message_loader.get_message('error.news_message_not_found'), db)
             chatbot.end_conversation()
             return chatbot.state
 
@@ -451,7 +451,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
         if not selected_title:
             await send_message(
                 phone_number, 
-                "Por favor, escolha uma das notícia que você quer ler.", 
+                message_loader.get_message('error.select_article'), 
                 db
             )
             return chatbot.state
@@ -487,14 +487,14 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
 
                 await send_message(phone_number, data["results"][0]["summary_content"], db)
                 chatbot.get_feedback()
-                await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
+                await send_message(phone_number, message_loader.get_message('feedback.request'), next(get_db()))
             else:
-                await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse artigo.", db)
+                await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
                 await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
                 chatbot.end_conversation()
 
     except Exception as e:
         logger.error(f"Error in monthly news response handler: {str(e)}")
-        await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
+        await send_message(phone_number, message_loader.get_message('error.general_error'), db)
 
     return chatbot.state
