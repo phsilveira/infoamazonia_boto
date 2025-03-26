@@ -33,40 +33,43 @@
     <div class="container-fluid py-4">
         <!-- Quick Stats Row -->
         <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card">
+            <div class="col-md-3 d-flex align-items-stretch">
+                <div class="card w-100">
                     <div class="card-body">
-                        <h6 class="card-title text-muted">Total Users</h6>
-                        <h2 class="mb-0" id="totalUsers">--</h2>
-                        <small id="totalUsersChange" class="text-success">Loading...</small>
+                        <a href="/admin/users" class="text-decoration-none">
+                            <h6 class="card-title text-muted">Total Users</h6>
+                            <h2 class="mb-0" id="totalUsers">--</h2>
+                        </a>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card">
+            <div class="col-md-3 d-flex align-items-stretch">
+                <div class="card w-100">
                     <div class="card-body">
-                        <h6 class="card-title text-muted">Active Users</h6>
-                        <h2 class="mb-0" id="activeUsers">--</h2>
-                        <small id="activeUsersChange" class="text-success">Loading...</small>
+                        <a href="/admin/users" class="text-decoration-none">
+                            <h6 class="card-title text-muted">Active Users</h6>
+                            <h2 class="mb-0" id="activeUsers">--</h2>
+                        </a>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card">
+            <div class="col-md-3 d-flex align-items-stretch">
+                <div class="card w-100">
                     <div class="card-body">
-                        <h6 class="card-title text-muted">Messages Sent</h6>
-                        <h2 class="mb-0" id="messagesSent">--</h2>
-                        <small class="text-info">Last 24 hours</small>
+                        <a href="/admin/messages" class="text-decoration-none">
+                            <h6 class="card-title text-muted">Messages Sent</h6>
+                            <h2 class="mb-0" id="messagesSent">--</h2>
+                            <small class="text-info">Last 24 hours</small>
+                        </a>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card">
+            <div class="col-md-3 d-flex align-items-stretch">
+                <div class="card w-100">
                     <div class="card-body">
                         <a href="/admin/ctr-stats" class="text-decoration-none">
                             <h6 class="card-title text-muted">Click Rate</h6>
                             <h2 class="mb-0" id="clickRate">--</h2>
-                            <small id="clickRateChange" class="text-success">Loading...</small>
                             <div class="mt-2">
                                 <span class="text-primary">View detailed stats →</span>
                             </div>

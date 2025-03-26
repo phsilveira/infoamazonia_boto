@@ -1,25 +1,21 @@
 # Welcome messages
 welcome:
-  new_user: |
-    🌱🐬 Olá! Eu sou o Boto, o robô da InfoAmazonia que te fornece notícias personalizadas sobre a Amazônia brasileira, gratuitamente.  
-    Por favor, me diga seu nome para começarmos.
-  returning_user: "Welcome back!"
 
 # Menu messages
 menu:
   main: |
-    🌱🐬 Olá! Eu sou o Boto, o robô da InfoAmazonia que te fornece notícias personalizadas sobre a Amazônia brasileira, gratuitamente.  
+    🌱🐬 Olá! Eu sou o *BOTO*, o robô da InfoAmazonia que te fornece notícias personalizadas sobre a Amazônia brasileira, gratuitamente.  
 
     Aqui você pode:
 
-    1️⃣ Inscrever-se para receber notícias da Amazônia 🌍
+    1️⃣ Inscrever-se ou altere no *BOTO* 🔧 
     2️⃣ Tirar dúvidas sobre um termo 🔍
     3️⃣ Pedir um resumo de artigo 📄
     4️⃣ Enviar sugestão de pauta 📨
-    5️⃣ Saber mais sobre o projeto InfoAmazonia ℹ️
-    6️⃣ Desinscrever-se do serviço ❌
+    5️⃣ Descadastre-se 📤
+    6️⃣ Saber mais sobre o *BOTO* ℹ️
 
-    ⚙️ Digite o número da opção que deseja acessar. 
+    ⚙️ Digite o número da opção que deseja acessar.  
 
   invalid_option: "Opção inválida. Por favor, selecione uma opção válida do menu."
   term_info: |
@@ -36,56 +32,57 @@ menu:
 # Location messages
 location:
   request: |
-    📍 Primeiro, digite uma ou mais localizações de interesse, separadas por vírgula. 
-    Pode ser uma cidade, uma região ou área temática específica.
-
-    Exemplos: 
-    - Belém, Baixo Solimões, Bacia do Xingu
-    - Altamira, Amazonas
-    - Digite "todas as localizações" para receber informações de toda a região
-
-  saved: "Ok, vamos te enviar conteúdos de '{location}'. Gostaria de adicionar novos locais? (Sim/Não)"
-  saved_multiple: "Ok, vamos te enviar conteúdos das seguintes localizações: {locations}. Gostaria de adicionar mais locais? (Sim/Não)"
-  saved_all: "Ok, você receberá conteúdos de todas as localizações da Amazônia Legal."
+    📍 Primeiro, digite *uma localização de interesse*. Pode ser uma cidade, uma região ou área temática específica.
+    _Exemplos: Belém, Baixo Solimões, Bacia do Xingu e Altamira, Amazonas._
+    _Digite "todas" para receber informações de toda a região_
+  
+  saved: "Ok, vamos te enviar conteúdos de '{location}'. Deseja adicionar alguma outra localização? (Sim/Não)"
+  saved_multiple: "Ok, vamos te enviar conteúdos das seguintes localizações: {locations}. Deseja adicionar alguma outra localização? (Sim/Não)"
+  saved_all: "Ok, vamos te enviar conteúdos de todas as regiões da Amazônia Legal, sem filtros."
   add_more: "Digite uma nova localização ou mais localizações separadas por vírgula."
   invalid: "As seguintes localizações não são válidas: {message}. Por favor, tente novamente."
 
 # Subject messages
 subject:
   request: |
-    📰 Sobre quais temas você gostaria de receber notícias?  
+    📰 Sobre quais *temas* você gostaria de receber notícias?  
 
     Escolha entre as opções abaixo ou digite o tema que te interessa:  
-    1️⃣ Todos os assuntos
-    2️⃣ Conservação e clima
-    3️⃣ Povos originários e territórios
-    4️⃣ Política e economia amazônica
-    5️⃣ Biodiversidade e saúde ambiental
-    6️⃣ Saúde e educação na Amazônia
-    Ou digite outro tema. Exemplo: Mineração em terras indígenas
+    1️⃣ Todos os temas 
+    2️⃣ Biodiversidade e saúde ambiental
+    3️⃣Conservação e clima
+    4️⃣Política e economia amazônica
 
-  saved: "Ok, vamos te enviar conteúdos de '{subject}'. Gostaria de adicionar novos temas? (Sim/Não)"
-  saved_all: "Ok, você receberá conteúdos de todos assuntos da Amazônia Legal."
+    5️⃣Povos originários e territórios
+    6️⃣Saúde e educação na Amazônia
+    Ou digite outro tema específico. Exemplo: _Mineração em terras indígenas_
+
+  saved: "Ok, vamos te enviar conteúdos de '{subject}'. Deseja adicionar algum outro tema? (Sim/Não)"
+  saved_all: "Ok, vamos te enviar conteúdos de todos os temas, sem filtros."
   add_more: "Digite um novo tema de interesse:"
   invalid: "{message} parece não ser um tema válido. Por favor, tente novamente."
 
 # Schedule messages
 schedule:
   request: |
-    📆 Com que frequência você prefere receber notícias?  
+    📆 Com que *frequência* você prefere receber notícias?  
 
     Escolha uma opção:  
     1️⃣ Diariamente
     2️⃣ Semanalmente
     3️⃣ Mensalmente 
-    4️⃣ Assim que a notícia for publicada
+    4️⃣ Assim que for publicada
 
-    📌 Digite o número da sua escolha ou escreva (diário/semanal/mensal)!
+    📌 Digite o número da sua escolha para continuar ou digite a frequência desejada.
 
   invalid_option: "Opção inválida. Por favor selecione:\n1. Diariamente\n2. Semanalmente\n3. Mensalmente\n4. Assim que a notícia for publicada"
   confirmation: |
     Sua preferência foi configurada! 
+    
+    📍 Região: {location} 
+    📰 Tema: {subject}
     📆 Frequência: {schedule}.
+    
     Em breve você começará a receber nossos conteúdos. 🎉
 
 # About message

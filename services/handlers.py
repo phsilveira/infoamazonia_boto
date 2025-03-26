@@ -50,10 +50,10 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
     elif message in ['4', 'sugestão', 'pauta']:
         chatbot.select_news_suggestion()
         await send_message(phone_number, message_loader.get_message('menu.news_suggestion'), db)
-    elif message in ['5', 'about', 'sobre', 'info']:
+    elif message in ['6', 'about', 'sobre', 'info']:
         chatbot.select_about()
         await send_message(phone_number, message_loader.get_message('about.info'), db)
-    elif message in ['6', 'desinscrever', 'cancelar']:
+    elif message in ['5', 'desinscrever', 'cancelar']:
         chatbot.select_unsubscribe()
         await send_message(phone_number, message_loader.get_message('unsubscribe.confirm'), db)
     else:
