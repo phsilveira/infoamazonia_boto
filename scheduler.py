@@ -22,7 +22,7 @@ logger.setLevel(logging.INFO)
 # Create scheduler with Brazil/Sao Paulo timezone
 scheduler = AsyncIOScheduler(timezone=SP_TIMEZONE)
 
-async def send_news_template(schedule_type: str, days_back: int = 30) -> None:
+async def send_news_template(schedule_type: str, days_back: int = 30, use_ingestion_api: bool = False) -> None:
     """Base function for sending news templates to users based on their schedule"""
     db = None
     scheduler_run = None
@@ -55,29 +55,40 @@ async def send_news_template(schedule_type: str, days_back: int = 30) -> None:
             db.commit()
             return
 
-        # Get news for the specified period
-        date_to = datetime.now().strftime('%Y-%m-%d')
-        date_from = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+        # Get news based on API endpoint
+        if use_ingestion_api:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    'https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/ingestion/download-articles',
+                    headers={'accept': 'application/json'}
+                )
+                news_data = response.json()
+                articles = news_data.get('articles', []) if news_data.get('success') else []
+        else:
+            # Get news for the specified period
+            date_to = datetime.now().strftime('%Y-%m-%d')
+            date_from = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
 
-        headers = {
-            'accept': 'application/json'
-        }
+            headers = {
+                'accept': 'application/json'
+            }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                settings.ARTICLES_API_URL,
-                params={'date_from': date_from, 'date_to': date_to},
-                headers=headers
-            )
-            news_data = response.json()
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    settings.ARTICLES_API_URL,
+                    params={'date_from': date_from, 'date_to': date_to},
+                    headers=headers
+                )
+                news_data = response.json()
+                articles = news_data.get('articles', [])
 
-        if not news_data.get('articles'):
+        if not articles:
             logger.error("No articles found in the response")
             raise Exception("No articles found in the API response")
 
         # Determine template name based on article count
         max_articles = 3
-        articles = news_data['articles'][:max_articles]
+        articles = articles[:max_articles]
         article_titles = [article['title'] for article in articles]
         template_parameters = [
             {"type": "text", "text": title} for title in article_titles
@@ -97,11 +108,11 @@ async def send_news_template(schedule_type: str, days_back: int = 30) -> None:
                 template_content = {
                     "name": template_name,
                     "language": "pt_BR",
-                    "components": [
-                      {
-                        "type": "body",
-                        "parameters": template_parameters
-                      }
+                    "component": [
+                        {
+                            "type": "body",
+                            "parameters": template_parameters
+                        }
                     ]
                 }
                 result = await send_message(
@@ -152,6 +163,10 @@ async def send_news_template(schedule_type: str, days_back: int = 30) -> None:
     finally:
         if db:
             db.close()
+
+async def send_immediately_news_template():
+    """Send news template to active users with immediate schedule using the ingestion API"""
+    await send_news_template('immediately', days_back=1, use_ingestion_api=True)
 
 async def send_daily_news_template():
     """Send daily news template to active users with daily schedule"""
@@ -281,6 +296,15 @@ async def start_scheduler():
             send_monthly_news_template,
             trigger=CronTrigger(day=1, hour=11, minute=0, timezone=SP_TIMEZONE),
             id='send_monthly_news_template',
+            replace_existing=True,
+            misfire_grace_time=300
+        )
+
+        # Immediate news every 6 hours
+        scheduler.add_job(
+            send_immediately_news_template,
+            trigger=CronTrigger(hour='*/6', minute=0, timezone=SP_TIMEZONE),
+            id='send_immediately_news_template',
             replace_existing=True,
             misfire_grace_time=300
         )
