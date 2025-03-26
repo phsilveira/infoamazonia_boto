@@ -44,6 +44,30 @@
             </div>
         </div>
     </div>
+    
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">CTR Performance by URL</h5>
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="ctrBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Impressions vs Clicks</h5>
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="clicksVsImpressionsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- URLs Table -->
     <div class="row">
@@ -95,4 +119,118 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Parse CTR data from the template
+    const ctrData = {{ ctr_data|tojson }};
+    
+    if (ctrData && ctrData.stats && ctrData.stats.length > 0) {
+        // Prepare data for the bar chart
+        const shortIds = ctrData.stats.map(stat => stat.short_id);
+        const ctrValues = ctrData.stats.map(stat => stat.ctr);
+        const backgroundColors = ctrValues.map(value => {
+            if (value > 50) return 'rgba(40, 167, 69, 0.7)';  // success
+            if (value > 25) return 'rgba(255, 193, 7, 0.7)';  // warning
+            return 'rgba(220, 53, 69, 0.7)';                  // danger
+        });
+        
+        // CTR Bar Chart
+        const ctrCtx = document.getElementById('ctrBarChart').getContext('2d');
+        new Chart(ctrCtx, {
+            type: 'bar',
+            data: {
+                labels: shortIds,
+                datasets: [{
+                    label: 'CTR %',
+                    data: ctrValues,
+                    backgroundColor: backgroundColors,
+                    borderColor: backgroundColors.map(color => color.replace('0.7', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'CTR %'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Short URL ID'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `CTR: ${context.raw}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Impressions vs Clicks Chart
+        const impressions = ctrData.stats.map(stat => stat.impressions);
+        const clicks = ctrData.stats.map(stat => stat.clicks);
+        
+        const comparisonCtx = document.getElementById('clicksVsImpressionsChart').getContext('2d');
+        new Chart(comparisonCtx, {
+            type: 'bar',
+            data: {
+                labels: shortIds,
+                datasets: [
+                    {
+                        label: 'Impressions',
+                        data: impressions,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgb(54, 162, 235)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Clicks',
+                        data: clicks,
+                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                        borderColor: 'rgb(75, 192, 192)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Short URL ID'
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
