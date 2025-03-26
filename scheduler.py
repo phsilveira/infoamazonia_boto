@@ -217,7 +217,7 @@ async def update_user_status():
 
                 # Send unsubscribe template
                 template_content = {
-                    "name": "unsubscribe_user",
+                    "name": "unsubscribe",
                     "language": "pt_BR"
                 }
 

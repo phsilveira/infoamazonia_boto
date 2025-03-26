@@ -22,9 +22,10 @@ menu:
     📚 Você escolheu: Tirar dúvidas sobre um termo.
 
     👉 Digite um termo ou questão que você deseja entender melhor. Exemplos:
-    Queimadas na Amazônia
-    O que é desmatamento ilegal? 
-    Qual o impacto do aquecimento global na Amazônia?
+    _Queimadas na Amazônia_
+    _O que é desmatamento ilegal?_
+    _Qual o impacto do aquecimento global na Amazônia?_
+
   article_summary: "Por favor, compartilhe o link do artigo que você gostaria de resumir:"
   news_suggestion: "Compartilhe sua sugestão de pauta:"
   implementation_soon: "Obrigado! Em breve implementaremos esta funcionalidade."
