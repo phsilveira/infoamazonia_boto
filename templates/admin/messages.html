@@ -3,7 +3,7 @@
 {% block title %}Message Management - InfoAmazonia Admin{% endblock %}
 
 {% block content %}
-    <div class="container mt-4">
+    <div class="container-fluid mt-4">
         <div class="row mb-4">
             <!-- Send WhatsApp Template Message Section -->
             <div class="col-12">
@@ -40,15 +40,136 @@
             </div>
         </div>
 
+        <!-- Message History Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Message History</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Filters -->
+                        <form method="get" action="/admin/messages" class="row mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Phone Number</label>
+                                <input type="text" class="form-control" name="phone_number" value="{{ phone_number or '' }}" placeholder="Search by phone number">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Message Type</label>
+                                <select class="form-select" name="message_type">
+                                    <option value="">All Types</option>
+                                    {% for type in message_type_options %}
+                                        <option value="{{ type }}" {% if message_type == type %}selected{% endif %}>{{ type }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" name="status">
+                                    <option value="">All Statuses</option>
+                                    {% for stat in status_options %}
+                                        <option value="{{ stat }}" {% if status == stat %}selected{% endif %}>{{ stat }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary me-2">Filter</button>
+                                <a href="/admin/messages" class="btn btn-outline-secondary">Reset</a>
+                            </div>
+                        </form>
+
+                        <!-- Messages Table -->
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>WhatsApp ID</th>
+                                        <th>Phone Number</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Content</th>
+                                        <th>Created At</th>
+                                        <th>Status Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for message in messages %}
+                                    <tr {% if message.error_code %}class="table-danger"{% endif %}>
+                                        <td>{{ message.id }}</td>
+                                        <td>{{ message.whatsapp_message_id[:10] }}...</td>
+                                        <td>{{ message.phone_number }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'primary' if message.message_type == 'outgoing' else 'secondary' }}">
+                                                {{ message.message_type }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if message.status == 'delivered' or message.status == 'read' else 'warning' if message.status == 'sent' else 'danger' }}">
+                                                {{ message.status or 'unknown' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ message.message_content }}">
+                                                {{ message.message_content }}
+                                            </span>
+                                            {% if message.error_code %}
+                                            <div class="text-danger small">Error: {{ message.error_title }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ message.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>{{ message.status_timestamp.strftime('%Y-%m-%d %H:%M') if message.status_timestamp else 'N/A' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    
+                                    {% if not messages %}
+                                    <tr>
+                                        <td colspan="8" class="text-center">No messages found</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if total_pages > 1 %}
+                        <nav aria-label="Page navigation" class="mt-3">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item {{ 'disabled' if page == 1 else '' }}">
+                                    <a class="page-link" href="?page={{ page - 1 }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}">Previous</a>
+                                </li>
+                                
+                                {% for pg in range(1, total_pages + 1) %}
+                                <li class="page-item {{ 'active' if pg == page else '' }}">
+                                    <a class="page-link" href="?page={{ pg }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}">{{ pg }}</a>
+                                </li>
+                                {% endfor %}
+                                
+                                <li class="page-item {{ 'disabled' if page == total_pages else '' }}">
+                                    <a class="page-link" href="?page={{ page + 1 }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                        <div class="text-center text-muted small">
+                            Showing {{ (page - 1) * page_size + 1 }}-{{ (page - 1) * page_size + messages|length }} of {{ total_messages }} messages
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <!-- Message Templates Section -->
             <div class="col-md-6">
                 <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Message Templates</h5>
-                        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#newTemplateModal">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Message Templates</h5>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newTemplateModal">
                             Create New Template
                         </button>
+                    </div>
+                    <div class="card-body">
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>
@@ -63,7 +184,11 @@
                                     {% for template in message_templates %}
                                     <tr>
                                         <td>{{ template.name }}</td>
-                                        <td>{{ template.content }}</td>
+                                        <td>
+                                            <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ template.content }}">
+                                                {{ template.content }}
+                                            </span>
+                                        </td>
                                         <td>{{ template.variables }}</td>
                                         <td>
                                             {% if template.is_active %}
@@ -84,11 +209,13 @@
             <!-- Scheduled Messages Section -->
             <div class="col-md-6">
                 <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Scheduled Messages</h5>
-                        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#scheduleMessageModal">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Scheduled Messages</h5>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#scheduleMessageModal">
                             Schedule New Message
                         </button>
+                    </div>
+                    <div class="card-body">
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>

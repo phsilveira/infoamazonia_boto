@@ -117,20 +117,66 @@ async def get_metrics(
 @router.get("/messages", response_class=HTMLResponse)
 async def messages_page(
     request: Request,
+    page: int = 1,
+    page_size: int = 10,
+    message_type: str = None,
+    status: str = None,
+    phone_number: str = None,
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
+    # Get message templates and scheduled messages
     templates_list = db.query(models.MessageTemplate).all()
     scheduled_messages = db.query(models.ScheduledMessage).order_by(models.ScheduledMessage.scheduled_time.desc()).all()
     hello_world_template = db.query(models.MessageTemplate).filter(models.MessageTemplate.name == "hello_world").first()
-
+    
+    # Query messages with pagination and filtering
+    query = db.query(models.Message)
+    
+    # Apply filters if provided
+    if message_type:
+        query = query.filter(models.Message.message_type == message_type)
+    if status:
+        query = query.filter(models.Message.status == status)
+    if phone_number:
+        query = query.filter(models.Message.phone_number.contains(phone_number))
+    
+    # Get total message count for pagination
+    total_messages = query.count()
+    total_pages = (total_messages + page_size - 1) // page_size
+    
+    # Apply pagination
+    messages = query.order_by(models.Message.created_at.desc()) \
+        .offset((page - 1) * page_size) \
+        .limit(page_size) \
+        .all()
+    
+    # Get unique status and message type values for filters
+    status_options = db.query(models.Message.status) \
+        .filter(models.Message.status.isnot(None)) \
+        .distinct() \
+        .all()
+    message_type_options = db.query(models.Message.message_type) \
+        .distinct() \
+        .all()
+    
     return templates.TemplateResponse(
         "admin/messages.html",
         {
             "request": request,
             "message_templates": templates_list,
             "scheduled_messages": scheduled_messages,
-            "hello_world_template": hello_world_template
+            "hello_world_template": hello_world_template,
+            "messages": messages,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "total_messages": total_messages,
+            "message_type": message_type,
+            "status": status,
+            "phone_number": phone_number,
+            "status_options": [s[0] for s in status_options if s[0]],  # Filter None values
+            "message_type_options": [t[0] for t in message_type_options]
         }
     )
 
