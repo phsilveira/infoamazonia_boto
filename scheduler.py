@@ -285,7 +285,7 @@ async def start_scheduler():
         # Weekly news at 10:00 AM SP time every Monday
         scheduler.add_job(
             send_weekly_news_template,
-            trigger=CronTrigger(day_of_week='mon', hour=10, minute=0, timezone=SP_TIMEZONE),
+            trigger=CronTrigger(day_of_week='mon', hour=9, minute=0, timezone=SP_TIMEZONE),
             id='send_weekly_news_template',
             replace_existing=True,
             misfire_grace_time=300
@@ -294,7 +294,7 @@ async def start_scheduler():
         # Monthly news at 11:00 AM SP time on the 1st of each month
         scheduler.add_job(
             send_monthly_news_template,
-            trigger=CronTrigger(day=1, hour=11, minute=0, timezone=SP_TIMEZONE),
+            trigger=CronTrigger(day=1, hour=9, minute=0, timezone=SP_TIMEZONE),
             id='send_monthly_news_template',
             replace_existing=True,
             misfire_grace_time=300
