@@ -279,15 +279,15 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
 
                 await send_message(phone_number, data["summary"], db)
                 chatbot.get_feedback()
-                await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", next(get_db()))
+                await send_message(phone_number, message_loader.get_message('feedback.request'), next(get_db()))
             else:
-                await send_message(phone_number, "Desculpe, não consegui encontrar informações sobre esse termo.", db)
+                await send_message(phone_number, message_loader.get_message('error.term_not_found'), db)
                 await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
                 chatbot.end_conversation()
 
     except Exception as e:
         logger.error(f"Error in term info handler: {str(e)}")
-        await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)
+        await send_message(phone_number, message_loader.get_message('error.general_error'), db)
 
     return chatbot.state
 
@@ -314,7 +314,7 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
             chatbot.end_conversation()
             await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
         else:
-            await send_message(phone_number, "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não", db)
+            await send_message(phone_number, message_loader.get_message('feedback.request'), db)
     except Exception as e:
         logger.error(f"Error in feedback handler: {str(e)}")
         await send_message(phone_number, "Desculpe, ocorreu um erro ao processar sua solicitação.", db)

@@ -128,3 +128,12 @@ error:
   save_schedule: "Falha ao salvar frequência: {error}"
   process_message: "Erro ao processar mensagem: {error}"
   invalid_state: "Estado inválido do chatbot"
+  term_not_found: "Desculpe, não consegui encontrar informações sobre esse termo."
+  article_not_found: "Desculpe, não consegui encontrar informações sobre esse artigo."
+  general_error: "Desculpe, ocorreu um erro ao processar sua solicitação."
+  news_message_not_found: "Desculpe, não encontrei a mensagem original com as notícias."
+  select_article: "Por favor, escolha uma das notícia que você quer ler."
+
+# Feedback messages
+feedback:
+  request: "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não"
