@@ -439,6 +439,30 @@ async def scheduler_runs_page(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch scheduler runs: {str(e)}"
         )
+        
+@router.get("/ctr-stats", response_class=HTMLResponse)
+async def ctr_stats_page(
+    request: Request,
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Display detailed click-through rate statistics"""
+    try:
+        # Fetch CTR stats from the API endpoint
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{request.base_url}api/v1/analytics/ctr-stats")
+            response.raise_for_status()
+            ctr_data = response.json()
+            
+        return templates.TemplateResponse(
+            "admin/ctr-stats.html",
+            {"request": request, "ctr_data": ctr_data}
+        )
+    except Exception as e:
+        logger.error(f"Error fetching CTR stats for page: {str(e)}")
+        return templates.TemplateResponse(
+            "admin/error.html",
+            {"request": request, "error_message": "Failed to fetch click-through rate statistics"}
+        )
 
 @router.post("/users/{user_id}/status", response_class=HTMLResponse)
 async def update_user_status(

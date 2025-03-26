@@ -17,6 +17,7 @@ from config import settings, get_redis
 import redis.asyncio as redis
 import logging
 import asyncio
+import httpx
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc
 
@@ -417,6 +418,22 @@ async def get_status_stats(db: Session = Depends(get_db)):
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to fetch status statistics"}
+        )
+
+@app.get("/api/v1/analytics/ctr-stats")
+async def get_ctr_stats():
+    """Get click-through rate statistics from external API"""
+    try:
+        # Using httpx for HTTP request
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/analytics/ctr-stats")
+            response.raise_for_status()  # Raise an exception for HTTP errors
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error fetching CTR stats: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to fetch click-through rate statistics"}
         )
 
 @app.get("/api/scheduler/runs")

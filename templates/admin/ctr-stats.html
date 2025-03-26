@@ -1,0 +1,98 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Click-Through Rate Statistics - InfoAmazonia Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Click-Through Rate Statistics</h2>
+    </div>
+
+    <!-- Overview Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Overall Statistics</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <h6 class="text-muted">Total URLs</h6>
+                                <h2>{{ ctr_data.totals.total_urls }}</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <h6 class="text-muted">Total Impressions</h6>
+                                <h2>{{ ctr_data.totals.total_impressions }}</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <h6 class="text-muted">Total Clicks</h6>
+                                <h2>{{ ctr_data.totals.total_clicks }}</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <h6 class="text-muted">Overall CTR</h6>
+                                <h2>{{ ctr_data.totals.overall_ctr }}%</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- URLs Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">URL Performance</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Short ID</th>
+                                    <th>Short URL</th>
+                                    <th>Original URL</th>
+                                    <th>Impressions</th>
+                                    <th>Clicks</th>
+                                    <th>CTR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in ctr_data.stats %}
+                                <tr>
+                                    <td>{{ stat.short_id }}</td>
+                                    <td><a href="{{ stat.short_url }}" target="_blank">{{ stat.short_url }}</a></td>
+                                    <td>
+                                        <span class="text-truncate d-inline-block" style="max-width: 300px;" title="{{ stat.original_url }}">
+                                            {{ stat.original_url }}
+                                        </span>
+                                    </td>
+                                    <td>{{ stat.impressions }}</td>
+                                    <td>{{ stat.clicks }}</td>
+                                    <td>
+                                        <span class="badge {% if stat.ctr > 50 %}bg-success{% elif stat.ctr > 25 %}bg-warning{% else %}bg-danger{% endif %}">
+                                            {{ stat.ctr }}%
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not ctr_data.stats %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No stats available</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
