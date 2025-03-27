@@ -44,6 +44,8 @@ location:
     📍 Primeiro, digite *uma localização de interesse*. Pode ser uma cidade, uma região ou área temática específica.
     _Exemplos: Belém, Baixo Solimões, Bacia do Xingu e Altamira, Amazonas._
     _Digite "todas" para receber informações de toda a região_
+
+    Você também pode digitar "Voltar" para retornar ao menu principal.
   
   saved: "Ok, vamos te enviar conteúdos de '{location}'. Deseja adicionar alguma outra localização? (Sim/Não)"
   saved_multiple: "Ok, vamos te enviar conteúdos das seguintes localizações: {locations}. Deseja adicionar alguma outra localização? (Sim/Não)"
