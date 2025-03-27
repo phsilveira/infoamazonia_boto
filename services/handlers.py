@@ -6,7 +6,7 @@ from typing import Tuple
 from services.whatsapp import send_message
 from database import get_db
 from models import UserInteraction, Location, Subject, User, Message # Added
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -77,6 +77,12 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
             menu_message = message_loader.get_message('menu.main')
             await send_message(phone_number, menu_message, db)
             return chatbot.state
+
+        db.query(Location).filter(
+            Location.user_id == user.id,
+            Location.created_at <= datetime.utcnow() - timedelta(hours=1)
+        ).delete()
+        db.flush()
             
         confirmation_response = chatgpt_service.parse_confirmation(message)
         if confirmation_response is not None:
@@ -95,7 +101,7 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
         if len(validation_results) == 1 and validation_results[0][1] == "ALL_LOCATIONS":
             try:
                 location = Location(
-                    location_name="All Locations",
+                    location_name="Todos Locais",
                     latitude=None,
                     longitude=None,
                     user_id=user.id
@@ -171,11 +177,21 @@ async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str
     """Handle the subject state logic"""
     db = next(get_db())
     user = chatbot.get_user(phone_number)
+
+    # Check for 'voltar' keyword to go back to main menu
+    if message.lower().strip() == 'voltar':
+        chatbot.show_menu()
+        menu_message = message_loader.get_message('menu.main')
+        await send_message(phone_number, menu_message, db)
+        return chatbot.state
+
+    
     if not user:
         await send_message(phone_number, message_loader.get_message('error.user_not_found'), db)
         return chatbot.state
 
     try:
+       
         confirmation_response = chatgpt_service.parse_confirmation(message)
         if confirmation_response is not None:
             if confirmation_response:
@@ -185,12 +201,18 @@ async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str
                 await send_message(phone_number, message_loader.get_message('schedule.request'), db)
                 return "get_user_schedule"
 
+        # db.query(Subject).filter(
+        #     Subject.user_id == user.id,
+        #     Subject.created_at <= datetime.utcnow() - timedelta(hours=1)
+        # ).delete()
+        # db.flush()
+        
         is_valid, corrected_subject = await chatgpt_service.validate_subject(message)
         if not is_valid:
             await send_message(phone_number, message_loader.get_message('subject.invalid', message=corrected_subject), db)
             return chatbot.state
 
-        if corrected_subject == "ALL_SUBJECTS":
+        if corrected_subject == "Todos temas":
             chatbot.save_subject(user.id, corrected_subject)
             await send_message(phone_number, message_loader.get_message('subject.saved_all'), db)
             chatbot.proceed_to_schedule()
@@ -336,7 +358,7 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
                 logger.error("No interaction ID in chatbot state")
 
             chatbot.end_conversation()
-            await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
+            await send_message(phone_number, message_loader.get_message('return_success'), db)
         else:
             await send_message(phone_number, message_loader.get_message('feedback.request'), db)
     except Exception as e:

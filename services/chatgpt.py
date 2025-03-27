@@ -97,7 +97,7 @@ class ChatGPTService:
         ]
 
         if any(subject.lower().strip().startswith(v) for v in all_locations_variations):
-            return True, "ALL_SUBJECTS"
+            return True, "Todos temas"
 
         try:
             # Get the validate_subject prompt from the prompt loader

@@ -135,7 +135,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
                         try:
                             await redis_client.setex(
                                 f"state:{user.phone_number}",
-                                10*60,  # 10 minutes expiry
+                                2*60*60,  # 2 hours to expiry
                                 "monthly_news_response"
                             )
                             logger.info(f"Set chatbot state to monthly_news_response for user {user.phone_number}")
@@ -193,6 +193,9 @@ async def update_user_status():
     scheduler_run = None
 
     try:
+        # Initialize Redis client
+        redis_client = await get_redis()
+        
         # Start scheduler run record
         db = SessionLocal()
         scheduler_run = models.SchedulerRun(
@@ -237,6 +240,17 @@ async def update_user_status():
                     )
                     if result["status"] == "success":
                         logger.info(f"Successfully sent unsubscribe template to {user.phone_number}")
+                        if redis_client:
+                            try:
+                                await redis_client.setex(
+                                    f"state:{user.phone_number}",
+                                    2*60*60,  # 2 hours to expiry
+                                    "unsubscribe_state"
+                                )
+                                logger.info(f"Set chatbot state to monthly_news_response for user {user.phone_number}")
+                            except Exception as redis_error:
+                                logger.error(f"Failed to set Redis state for user {user.phone_number}: {str(redis_error)}")
+
                     else:
                         logger.error(f"Failed to send unsubscribe template to {user.phone_number}: {result['message']}")
                 except Exception as e:

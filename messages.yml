@@ -131,6 +131,8 @@ return: "Obrigado! Caso tenha outras dúvidas, digite outro termo relacionado ou
 
 return_to_menu_from_subscription: "Digite *menu* para voltar a menu principal."
 
+return_success: "Obrigado! Caso tenha outras dúvidas, digite outro termo relacionado ou escolha uma nova opção no menu principal."
+
 # Error messages
 error:
   user_not_found: "Usuário não encontrado"
