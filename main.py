@@ -256,8 +256,8 @@ async def get_user_stats(db: Session = Depends(get_db)):
             cancelled = db.query(func.count(models.User.id))\
                 .filter(
                     models.User.is_active == False,
-                    models.User.updated_at > current_date,
-                    models.User.updated_at <= week_end
+                    # models.User.updated_at > current_date,
+                    # models.User.updated_at <= week_end
                 )\
                 .scalar()
 
@@ -305,6 +305,7 @@ async def get_message_stats(db: Session = Depends(get_db)):
             outgoing = db.query(func.count(models.Message.id))\
                 .filter(
                     models.Message.message_type == 'outgoing',
+                    models.Message.message_type == 'sent',
                     models.Message.created_at > current_date,
                     models.Message.created_at <= week_end
                 )\
@@ -426,7 +427,7 @@ async def get_ctr_stats():
     try:
         # Using httpx for HTTP request
         async with httpx.AsyncClient() as client:
-            response = await client.get("https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/analytics/ctr-stats")
+            response = await client.get(f"{settings.SEARCH_BASE_URL}/api/v1/analytics/ctr-stats")
             response.raise_for_status()  # Raise an exception for HTTP errors
             return response.json()
     except Exception as e:

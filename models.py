@@ -14,6 +14,8 @@ class User(Base):
     schedule = Column(String)  # daily, weekly, monthly, immediately
     preferences = relationship("UserPreference", back_populates="user")
     interactions = relationship("UserInteraction", back_populates="user")
+    # locations = relationship("Location", back_populates="user")
+    # subjects = relationship("Subject", back_populates="user")
 
 class UserPreference(Base):
     __tablename__ = "user_preferences"

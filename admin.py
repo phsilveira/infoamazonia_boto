@@ -13,7 +13,7 @@ import httpx
 import logging
 from config import settings
 from sqlalchemy import desc
-from services.chatgpt import ChatGPTService # Added import
+from services.chatgpt_v2 import ChatGPTService # Added import
 
 logger = logging.getLogger(__name__)
 
@@ -495,7 +495,7 @@ async def ctr_stats_page(
     try:
         # Fetch CTR stats from the API endpoint
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{request.base_url}api/v1/analytics/ctr-stats")
+            response = await client.get(f"{settings.SEARCH_BASE_URL}/api/v1/analytics/ctr-stats")
             response.raise_for_status()
             ctr_data = response.json()
             

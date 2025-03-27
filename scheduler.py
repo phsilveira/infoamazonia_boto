@@ -59,7 +59,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
         if use_ingestion_api:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    'https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/ingestion/download-articles',
+                    f'{settings.SEARCH_BASE_URL}/api/v1/ingestion/download-articles',
                     headers={'accept': 'application/json'}
                 )
                 news_data = response.json()
@@ -89,14 +89,21 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
         # Determine template name based on article count
         max_articles = 3
         articles = articles[:max_articles]
-        article_titles = [article['title'] for article in articles]
-        template_parameters = [
-            {"type": "text", "text": title} for title in article_titles
-        ]
 
-        if len(article_titles) == 3:
+        template_parameters = []
+        for article in articles:
+            template_parameters.append({
+                "type": "text",
+                "text": f"{article['title']} - {article['news_source']}"
+            })
+            template_parameters.append({
+                "type": "text",
+                "text": article['url']
+            })
+
+        if len(articles) == 3:
             template_name = "three_articles"
-        elif len(article_titles) == 2:
+        elif len(articles) == 2:
             template_name = "two_articles"
         else:
             template_name = "one_article"

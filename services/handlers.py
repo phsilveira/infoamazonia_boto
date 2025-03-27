@@ -5,8 +5,9 @@ from utils.message_loader import message_loader
 from typing import Tuple
 from services.whatsapp import send_message
 from database import get_db
-from models import UserInteraction, Location, User, Message # Added import for models.Message
+from models import UserInteraction, Location, Subject, User, Message # Added
 from datetime import datetime
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,9 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
     elif message in ['6', 'about', 'sobre', 'info']:
         chatbot.select_about()
         await send_message(phone_number, message_loader.get_message('about.info'), db)
+        await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
+        chatbot.end_conversation()
+        
     elif message in ['5', 'desinscrever', 'cancelar']:
         chatbot.select_unsubscribe()
         await send_message(phone_number, message_loader.get_message('unsubscribe.confirm'), db)
@@ -225,11 +229,24 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
         chatbot.save_schedule(user.id, schedule_key)
         chatbot.end_conversation()
 
+        # Retrieve the user's location name and subject name
+        locations = db.query(Location).filter(Location.user_id == user.id).all()
+        location_names = ", ".join([str(loc.location_name) for loc in locations if loc.location_name is not None])
+
+        subjects = db.query(Subject).filter(Subject.user_id == user.id).all()
+        subject_names = ", ".join([str(sub.subject_name) for sub in subjects if sub.subject_name is not None])
+
+
         # Display the Portuguese version in the confirmation
         display_text = schedule_display.get(schedule_key, schedule_key)
         await send_message(
             phone_number, 
-            message_loader.get_message('schedule.confirmation', schedule=display_text), 
+            message_loader.get_message(
+                'schedule.confirmation', 
+                schedule=display_text,
+                location=location_names,
+                subject=subject_names
+            ), 
             db
         )
         await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
@@ -242,8 +259,8 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
 
 async def handle_about_state(chatbot: ChatBot, phone_number: str) -> str:
     """Handle the about state logic"""
-    chatbot.end_conversation()
     await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
+    chatbot.end_conversation()
     return chatbot.state
 
 async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
@@ -251,7 +268,7 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
     db = next(get_db())
     try:
         import httpx
-        api_url = "https://infoamazonia-rag.replit.app/api/v1/search/term"
+        api_url = f"{settings.SEARCH_BASE_URL}/api/v1/search/term"
         payload = {"query": message, "generate_summary": True}
 
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -326,7 +343,7 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
     db = next(get_db())
     try:
         import httpx
-        api_url = "https://infoamazonia-rag.replit.app/api/v1/search/articles"
+        api_url = f"{settings.SEARCH_BASE_URL}/api/v1/search/articles"
         payload = {"query": message}
 
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -380,7 +397,7 @@ async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, mess
             phone_number=phone_number,
             category='news_suggestion',
             query=message,
-            response=message_loader.get_message('menu.implementation_soon')
+            response=message_loader.get_message('menu.news_suggestion_reply')
         )
         db.add(interaction)
         db.commit()
@@ -389,7 +406,7 @@ async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, mess
         chatbot.set_current_interaction_id(interaction.id)
 
         chatbot.end_conversation()
-        await send_message(phone_number, message_loader.get_message('menu.implementation_soon'), db)
+        await send_message(phone_number, message_loader.get_message('menu.news_suggestion_reply'), db)
     except Exception as e:
         logger.error(f"Error in news suggestion handler: {str(e)}")
         await send_message(phone_number, message_loader.get_message('error.general_error'), db)
@@ -405,9 +422,10 @@ async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message:
         return chatbot.state
 
     try:
-        confirmation_response = chatgpt_service.parse_confirmation(message)
+        # confirmation_response = chatgpt_service.parse_confirmation(message)
+        confirmation_response = message
         if confirmation_response is not None:
-            if confirmation_response:
+            if confirmation_response == '1':
                 # Deactivate the user
                 user.is_active = False
                 db.commit()
@@ -416,7 +434,6 @@ async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message:
                 await send_message(phone_number, message_loader.get_message('unsubscribe.cancelled'), db)
 
             chatbot.end_conversation()
-            await send_message(phone_number, message_loader.get_message('return'), db)
         else:
             await send_message(phone_number, message_loader.get_message('unsubscribe.invalid_option'), db)
 
@@ -457,7 +474,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
             return chatbot.state
 
         # Reuse the article summary functionality with the selected title
-        api_url = "https://infoamazonia-rag.replit.app/api/v1/search/articles"
+        api_url = f"{settings.SEARCH_BASE_URL}/api/v1/search/articles"
         payload = {"query": selected_title}
 
         import httpx
