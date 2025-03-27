@@ -13,7 +13,7 @@ import httpx
 import logging
 from config import settings
 from sqlalchemy import desc
-from services.chatgpt_v2 import ChatGPTService # Added import
+from services.chatgpt import ChatGPTService # Fixed import
 
 logger = logging.getLogger(__name__)
 

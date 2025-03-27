@@ -71,6 +71,13 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
     user = chatbot.get_user(phone_number)
 
     try:
+        # Check for 'voltar' keyword to go back to main menu
+        if message.lower().strip() == 'voltar':
+            chatbot.show_menu()
+            menu_message = message_loader.get_message('menu.main')
+            await send_message(phone_number, menu_message, db)
+            return chatbot.state
+            
         confirmation_response = chatgpt_service.parse_confirmation(message)
         if confirmation_response is not None:
             if confirmation_response:
