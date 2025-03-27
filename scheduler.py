@@ -47,6 +47,53 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
             models.User.schedule == schedule_type
         ).all()
 
+
+async def clean_old_messages():
+    """Remove messages older than 30 days to maintain database size"""
+    db = None
+    scheduler_run = None
+
+    try:
+        db = SessionLocal()
+        scheduler_run = models.SchedulerRun(
+            task_name='clean_old_messages',
+            status='running'
+        )
+        db.add(scheduler_run)
+        db.commit()
+
+        # Calculate cutoff date (30 days ago)
+        cutoff_date = datetime.utcnow() - timedelta(days=30)
+        
+        # Delete old messages
+        deleted_count = db.query(models.Message).filter(
+            models.Message.created_at < cutoff_date
+        ).delete()
+        
+        db.commit()
+        logger.info(f"Deleted {deleted_count} messages older than 30 days")
+
+        # Update scheduler run record
+        scheduler_run.status = 'success'
+        scheduler_run.end_time = datetime.utcnow()
+        scheduler_run.affected_users = deleted_count
+        db.commit()
+
+    except Exception as e:
+        error_msg = f"Error cleaning old messages: {str(e)}"
+        logger.error(error_msg)
+
+        if scheduler_run and db:
+            scheduler_run.status = 'failed'
+            scheduler_run.end_time = datetime.utcnow()
+            scheduler_run.error_message = error_msg
+            db.commit()
+    finally:
+        if db:
+            db.close()
+
+
+
         if not active_users:
             logger.info(f"No active users with {schedule_type} schedule found")
             scheduler_run.status = 'success'
@@ -326,6 +373,15 @@ async def start_scheduler():
             send_immediately_news_template,
             trigger=CronTrigger(hour='*/6', minute=0, timezone=SP_TIMEZONE),
             id='send_immediately_news_template',
+            replace_existing=True,
+            misfire_grace_time=300
+        )
+
+        # Add clean_old_messages job to run daily at 3 AM
+        scheduler.add_job(
+            clean_old_messages,
+            trigger=CronTrigger(hour=3, minute=0, timezone=SP_TIMEZONE),
+            id='clean_old_messages',
             replace_existing=True,
             misfire_grace_time=300
         )
