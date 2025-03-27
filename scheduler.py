@@ -272,13 +272,13 @@ async def start_scheduler():
     logger.info("Initializing scheduler...")
 
     try:
-        scheduler.add_job(
-            update_user_status,
-            trigger=CronTrigger(hour=9, minute=0, timezone=SP_TIMEZONE),
-            id='update_user_status',
-            replace_existing=True,
-            misfire_grace_time=300  # 5 minutes grace time
-        )
+        # scheduler.add_job(
+        #     update_user_status,
+        #     trigger=CronTrigger(hour=9, minute=0, timezone=SP_TIMEZONE),
+        #     id='update_user_status',
+        #     replace_existing=True,
+        #     misfire_grace_time=300  # 5 minutes grace time
+        # )
 
         # Daily news at 9:00 AM SP time
         scheduler.add_job(
@@ -289,7 +289,7 @@ async def start_scheduler():
             misfire_grace_time=300
         )
 
-        # Weekly news at 10:00 AM SP time every Monday
+        # Weekly news at 9:00 AM SP time every Monday
         scheduler.add_job(
             send_weekly_news_template,
             trigger=CronTrigger(day_of_week='mon', hour=9, minute=0, timezone=SP_TIMEZONE),
@@ -298,7 +298,7 @@ async def start_scheduler():
             misfire_grace_time=300
         )
 
-        # Monthly news at 11:00 AM SP time on the 1st of each month
+        # Monthly news at 9:00 AM SP time on the 1st of each month
         scheduler.add_job(
             send_monthly_news_template,
             trigger=CronTrigger(day=1, hour=9, minute=0, timezone=SP_TIMEZONE),
