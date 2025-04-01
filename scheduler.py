@@ -47,52 +47,15 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
             models.User.schedule == schedule_type
         ).all()
 
-
-async def clean_old_messages():
-    """Remove messages older than 30 days to maintain database size"""
-    db = None
-    scheduler_run = None
-
-    try:
-        db = SessionLocal()
-        scheduler_run = models.SchedulerRun(
-            task_name='clean_old_messages',
-            status='running'
-        )
-        db.add(scheduler_run)
-        db.commit()
-
-        # Calculate cutoff date (30 days ago)
-        cutoff_date = datetime.utcnow() - timedelta(days=30)
-        
-        # Delete old messages
-        deleted_count = db.query(models.Message).filter(
-            models.Message.created_at < cutoff_date
-        ).delete()
-        
-        db.commit()
-        logger.info(f"Deleted {deleted_count} messages older than 30 days")
-
-        # Update scheduler run record
-        scheduler_run.status = 'success'
-        scheduler_run.end_time = datetime.utcnow()
-        scheduler_run.affected_users = deleted_count
-        db.commit()
-
-    except Exception as e:
-        error_msg = f"Error cleaning old messages: {str(e)}"
-        logger.error(error_msg)
-
-        if scheduler_run and db:
-            scheduler_run.status = 'failed'
-            scheduler_run.end_time = datetime.utcnow()
-            scheduler_run.error_message = error_msg
-            db.commit()
-    finally:
-        if db:
-            db.close()
-
-
+        # Get news based on API endpoint
+        if use_ingestion_api:
+            async with httpx.AsyncClient(timeout=50.0) as client:
+                response = await client.post(
+                    f'{settings.SEARCH_BASE_URL}/api/v1/ingestion/download-articles',
+                    headers={'accept': 'application/json'}
+                )
+                news_data = response.json()
+                articles = news_data.get('articles', []) if news_data.get('success') else []
 
         if not active_users:
             logger.info(f"No active users with {schedule_type} schedule found")
@@ -101,17 +64,8 @@ async def clean_old_messages():
             scheduler_run.affected_users = 0
             db.commit()
             return
-
-        # Get news based on API endpoint
-        if use_ingestion_api:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f'{settings.SEARCH_BASE_URL}/api/v1/ingestion/download-articles',
-                    headers={'accept': 'application/json'}
-                )
-                news_data = response.json()
-                articles = news_data.get('articles', []) if news_data.get('success') else []
-        else:
+        
+        if not use_ingestion_api:
             # Get news for the specified period
             date_to = datetime.now().strftime('%Y-%m-%d')
             date_from = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
@@ -130,8 +84,12 @@ async def clean_old_messages():
                 articles = news_data.get('articles', [])
 
         if not articles:
-            logger.error("No articles found in the response")
-            raise Exception("No articles found in the API response")
+            logger.info(f"No articles found in the response")
+            scheduler_run.status = 'success'
+            scheduler_run.end_time = datetime.utcnow()
+            scheduler_run.affected_users = 0
+            db.commit()
+            return
 
         # Determine template name based on article count
         max_articles = 3
@@ -139,6 +97,7 @@ async def clean_old_messages():
 
         template_parameters = []
         for article in articles:
+            
             template_parameters.append({
                 "type": "text",
                 "text": f"{article['title']} - {article['news_source']}"
@@ -162,7 +121,7 @@ async def clean_old_messages():
                 template_content = {
                     "name": template_name,
                     "language": "pt_BR",
-                    "component": [
+                    "components": [
                         {
                             "type": "body",
                             "parameters": template_parameters
@@ -319,6 +278,50 @@ async def update_user_status():
         logger.error(error_msg)
 
         # Update scheduler run record with error
+        if scheduler_run and db:
+            scheduler_run.status = 'failed'
+            scheduler_run.end_time = datetime.utcnow()
+            scheduler_run.error_message = error_msg
+            db.commit()
+    finally:
+        if db:
+            db.close()
+
+async def clean_old_messages():
+    """Remove messages older than 30 days to maintain database size"""
+    db = None
+    scheduler_run = None
+
+    try:
+        db = SessionLocal()
+        scheduler_run = models.SchedulerRun(
+            task_name='clean_old_messages',
+            status='running'
+        )
+        db.add(scheduler_run)
+        db.commit()
+
+        # Calculate cutoff date (30 days ago)
+        cutoff_date = datetime.utcnow() - timedelta(days=30)
+
+        # Delete old messages
+        deleted_count = db.query(models.Message).filter(
+            models.Message.created_at < cutoff_date
+        ).delete()
+
+        db.commit()
+        logger.info(f"Deleted {deleted_count} messages older than 30 days")
+
+        # Update scheduler run record
+        scheduler_run.status = 'success'
+        scheduler_run.end_time = datetime.utcnow()
+        scheduler_run.affected_users = deleted_count
+        db.commit()
+
+    except Exception as e:
+        error_msg = f"Error cleaning old messages: {str(e)}"
+        logger.error(error_msg)
+
         if scheduler_run and db:
             scheduler_run.status = 'failed'
             scheduler_run.end_time = datetime.utcnow()
