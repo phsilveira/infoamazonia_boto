@@ -250,7 +250,7 @@ async def update_user_status():
                             try:
                                 await redis_client.setex(
                                     f"state:{user.phone_number}",
-                                    2*60*60,  # 2 hours to expiry
+                                    6*60*60,  # 6 hours to expiry
                                     "unsubscribe_state"
                                 )
                                 logger.info(f"Set chatbot state to monthly_news_response for user {user.phone_number}")
@@ -353,19 +353,19 @@ async def start_scheduler():
             misfire_grace_time=300
         )
 
-        # Weekly news at 9:00 AM SP time every Monday
+        # Weekly news at 9:00 AM SP time every Friday
         scheduler.add_job(
             send_weekly_news_template,
-            trigger=CronTrigger(day_of_week='mon', hour=9, minute=0, timezone=SP_TIMEZONE),
+            trigger=CronTrigger(day_of_week='fri', hour=9, minute=0, timezone=SP_TIMEZONE),
             id='send_weekly_news_template',
             replace_existing=True,
             misfire_grace_time=300
         )
 
-        # Monthly news at 9:00 AM SP time on the 1st of each month
+        # Monthly news at 9:00 AM SP time on the last day of each month
         scheduler.add_job(
             send_monthly_news_template,
-            trigger=CronTrigger(day=1, hour=9, minute=0, timezone=SP_TIMEZONE),
+            trigger=CronTrigger(day='last', hour=9, minute=0, timezone=SP_TIMEZONE),
             id='send_monthly_news_template',
             replace_existing=True,
             misfire_grace_time=300

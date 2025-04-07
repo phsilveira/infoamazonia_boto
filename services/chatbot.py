@@ -30,7 +30,7 @@ class ChatBot:
         )
         self.machine.add_transition(
             trigger='show_menu',
-            source=['start', 'register', 'get_user_location', 'get_user_subject', 'get_user_schedule', 'unsubscribe_state'],
+            source=['start', 'register', 'get_user_location', 'get_user_subject', 'get_user_schedule', 'unsubscribe_state', 'monthly_news_response'],
             dest='menu_state'
         )
         self.machine.add_transition(

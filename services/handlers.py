@@ -502,13 +502,19 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
             )
             return chatbot.state
 
+        if selected_title.lower() == 'menu':
+            chatbot.show_menu()
+            message = message_loader.get_message('menu.main')
+            await send_message(phone_number, message, next(get_db()))
+            return chatbot.state
+
         # Reuse the article summary functionality with the selected title
         api_url = f"{settings.SEARCH_BASE_URL}/api/v1/search/articles"
         payload = {"query": selected_title}
 
         import httpx
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=50.0) as client:
             response = await client.post(api_url, json=payload)
             data = response.json()
 
