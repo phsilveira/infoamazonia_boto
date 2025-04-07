@@ -21,6 +21,77 @@ class ChatGPTService:
             self.client = openai
             logger.info("Using module-level OpenAI client")
 
+    def generate_embedding(self, text: str) -> list:
+        """Generate an embedding vector for the given text using OpenAI's API."""
+        try:
+            response = self.client.embeddings.create(
+                model="text-embedding-ada-002",
+                input=text
+            )
+            return response.data[0].embedding
+        except Exception as e:
+            logger.error(f"Error generating embedding: {e}")
+            raise
+
+    def generate_completion(self, query: str, context: str, system_prompt: str = None) -> str:
+        """Generate a completion using OpenAI's chat API."""
+        try:
+            if not system_prompt:
+                system_prompt = prompt_loader.get_prompt('gpt-4.default_system_prompt')['system']
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Query: {query}\n\nContext: {context}"}
+            ]
+
+            response = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=messages,
+                temperature=0.2
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error generating completion: {e}")
+            raise
+
+    def generate_term_summary(self, title: str, content: str) -> str:
+        """Generate a summary for a term using OpenAI's chat API."""
+        try:
+            prompt = prompt_loader.get_prompt('gpt-4.term_summary')
+            messages = [
+                {"role": "system", "content": prompt['system']},
+                {"role": "user", "content": f"Title: {title}\n\nContent: {content}"}
+            ]
+
+            response = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=messages,
+                temperature=0.5
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error generating term summary: {e}")
+            raise
+
+    def generate_article_summary(self, title: str, content: str, url: str) -> str:
+        """Generate a summary for an article using OpenAI's chat API."""
+        try:
+            prompt = prompt_loader.get_prompt('gpt-4.article_summary')
+            messages = [
+                {"role": "system", "content": prompt['system']},
+                {"role": "user", "content": f"Title: {title}\n\nContent: {content}\n\nURL: {url}"}
+            ]
+
+            response = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=messages,
+                temperature=0.5
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error generating article summary: {e}")
+            raise
+
     async def summarize_queries(self, queries: List[str], interaction_type: str) -> str:
         """Summarize a list of user queries for a specific interaction type"""
         try:
