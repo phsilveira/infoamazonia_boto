@@ -131,12 +131,19 @@ async def login_for_access_token(
     access_token = auth.create_access_token(
         data={"sub": admin.username}, expires_delta=access_token_expires
     )
-    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    response = RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
     response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
     return response
 
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request, current_admin: models.Admin = Depends(auth.get_current_admin)):
+@app.get("/")
+async def root():
+    """Redirect root path to InfoAmazonia Boto website"""
+    logger.info("Redirecting to InfoAmazonia Boto website")
+    return RedirectResponse(url="https://infoamazonia.org/boto", status_code=status.HTTP_302_FOUND)
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_dashboard(request: Request, current_admin: models.Admin = Depends(auth.get_current_admin)):
+    """Admin dashboard page"""
     return templates.TemplateResponse(
         "admin/index.html",
         {"request": request, "admin": current_admin}
