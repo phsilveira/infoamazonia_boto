@@ -154,3 +154,4 @@ class ChatGPTService:
         except Exception as e:
             logger.error(f"Error validating schedule: {str(e)}")
             return False, "Could not validate schedule"
+            
