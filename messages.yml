@@ -150,4 +150,4 @@ error:
 
 # Feedback messages
 feedback:
-  request: "👍 Essa explicação ajudou?\n1️⃣ Sim\n2️⃣ Não"
+  request: "👍 Essa explicação ajudou?"

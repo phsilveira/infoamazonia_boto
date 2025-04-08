@@ -197,6 +197,75 @@ async def webhook_endpoint(
                                         db,
                                         request
                                     )
+                                elif message_data['type'] == 'button':
+                                    # Handle button response - used for interactive messages
+                                    button_payload = message_data['button'].get('payload')
+                                    button_text = message_data['button'].get('text')
+                                    logger.info(f"Received button response: {button_text} (payload: {button_payload})")
+                                    
+                                    # Log incoming button message
+                                    incoming_message = models.Message(
+                                        whatsapp_message_id=message_data['id'],
+                                        phone_number=message_data['from'],
+                                        message_type='incoming',
+                                        message_content=f"Button: {button_text}",
+                                        status='received'
+                                    )
+                                    db.add(incoming_message)
+                                    db.commit()
+                                    
+                                    # Process the button click as a message
+                                    webhook_data = {
+                                        'phone_number': message_data['from'],
+                                        'message': button_payload  # Use the payload for processing
+                                    }
+                                    background_tasks.add_task(
+                                        process_webhook_message,
+                                        webhook_data,
+                                        db,
+                                        request
+                                    )
+                                elif message_data['type'] == 'interactive':
+                                    # Handle interactive message responses (button clicks from the new UI)
+                                    interactive_data = message_data.get('interactive', {})
+                                    
+                                    if interactive_data.get('type') == 'button_reply':
+                                        button_reply = interactive_data.get('button_reply', {})
+                                        button_id = button_reply.get('id')
+                                        button_title = button_reply.get('title')
+                                        
+                                        logger.info(f"Received interactive button reply: {button_title} (id: {button_id})")
+                                        
+                                        # Log incoming interactive button message
+                                        incoming_message = models.Message(
+                                            whatsapp_message_id=message_data['id'],
+                                            phone_number=message_data['from'],
+                                            message_type='incoming',
+                                            message_content=f"Interactive Button: {button_title}",
+                                            status='received'
+                                        )
+                                        db.add(incoming_message)
+                                        db.commit()
+                                        
+                                        # Process the interactive button click as a message
+                                        # We'll use the button ID (sim/não) as the message content
+                                        webhook_data = {
+                                            'phone_number': message_data['from'],
+                                            'message': button_id  # Use the button ID for processing
+                                        }
+                                        background_tasks.add_task(
+                                            process_webhook_message,
+                                            webhook_data,
+                                            db,
+                                            request
+                                        )
+                                    else:
+                                        logger.warning(f"Unsupported interactive type: {interactive_data.get('type')}")
+                                        await send_message(
+                                            message_data['from'],
+                                            "Desculpe, no momento só aceitamos botões de resposta.",
+                                            db
+                                        )
                                 else:
                                     await send_message(
                                         message_data['from'],

@@ -16,7 +16,7 @@ async def send_message(
     db: Session,
     message_type: str = "text"
 ) -> Dict:
-    """Send message using WhatsApp Cloud API with support for text and template messages"""
+    """Send message using WhatsApp Cloud API with support for text, template, and interactive messages"""
     try:
         url = f"{settings.API_URL}{settings.NUMBER_ID}/messages"
         headers = {
@@ -39,6 +39,14 @@ async def send_message(
                     "preview_url": False,
                     "body": content if isinstance(content, str) else str(content)
                 }
+            })
+        elif message_type == "interactive":
+            if not isinstance(content, dict):
+                raise ValueError("Interactive content must be a dictionary")
+                
+            payload.update({
+                "type": "interactive",
+                "interactive": content
             })
         elif message_type == "template":
             if not isinstance(content, dict):

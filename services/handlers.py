@@ -39,6 +39,78 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
     message = message.lower().strip()
     db = next(get_db())
 
+    # If the message is "menu" or similar, show the interactive menu
+    if message in ['menu', 'início', 'inicio', 'start', 'começar', 'opcoes', 'opções']:
+        # Create interactive buttons for the main menu options
+        interactive_content = {
+            "type": "button",
+            "body": {
+                "text": "🌱🐬 Olá! Eu sou o *BOTO*. O que você gostaria de fazer?"
+            },
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "1",
+                            "title": "Inscreva-se 🔧"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "2",
+                            "title": "Dúvidas sobre termos 🔍"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "3",
+                            "title": "Resumo de artigo 📄"
+                        }
+                    }
+                ]
+            }
+        }
+        await send_message(phone_number, interactive_content, db, message_type="interactive")
+        
+        # WhatsApp only allows 3 buttons per message, so we need to send a second message with the remaining options
+        interactive_content_2 = {
+            "type": "button",
+            "body": {
+                "text": "Mais opções:"
+            },
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "4",
+                            "title": "Sugestão de pauta 📨"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "5",
+                            "title": "Descadastre-se 📤"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "6",
+                            "title": "Sobre o BOTO ℹ️"
+                        }
+                    }
+                ]
+            }
+        }
+        await send_message(phone_number, interactive_content_2, db, message_type="interactive")
+        return chatbot.state
+
+    # Process the user's selection
     if message in ['1', 'subscribe', 'inscrever', 'notícias']:
         chatbot.select_subscribe()
         await send_message(phone_number, message_loader.get_message('location.request'), db)
@@ -56,12 +128,81 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
         await send_message(phone_number, message_loader.get_message('about.info'), db)
         await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
         chatbot.end_conversation()
-        
     elif message in ['5', 'desinscrever', 'cancelar']:
         chatbot.select_unsubscribe()
-        await send_message(phone_number, message_loader.get_message('unsubscribe.confirm'), db)
+        # The unsubscribe handler now sends interactive buttons
+        # No need to send message here as it will be sent by the handler
     else:
+        # For invalid options, show the menu with interactive buttons
         await send_message(phone_number, message_loader.get_message('menu.invalid_option'), db)
+        
+        # Send interactive buttons for menu options
+        interactive_content = {
+            "type": "button",
+            "body": {
+                "text": "Por favor, selecione uma das opções abaixo:"
+            },
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "1",
+                            "title": "Inscreva-se 🔧"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "2",
+                            "title": "Dúvidas sobre termos 🔍"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "3",
+                            "title": "Resumo de artigo 📄"
+                        }
+                    }
+                ]
+            }
+        }
+        await send_message(phone_number, interactive_content, db, message_type="interactive")
+        
+        # Send second message with remaining options
+        interactive_content_2 = {
+            "type": "button",
+            "body": {
+                "text": "Mais opções:"
+            },
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "4",
+                            "title": "Sugestão de pauta 📨"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "5",
+                            "title": "Descadastre-se 📤"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "6",
+                            "title": "Sobre o BOTO ℹ️"
+                        }
+                    }
+                ]
+            }
+        }
+        await send_message(phone_number, interactive_content_2, db, message_type="interactive")
 
     return chatbot.state
 
@@ -325,7 +466,33 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
 
                 await send_message(phone_number, data["summary"], db)
                 chatbot.get_feedback()
-                await send_message(phone_number, message_loader.get_message('feedback.request'), next(get_db()))
+                
+                # Send an interactive button message for feedback
+                interactive_content = {
+                    "type": "button",
+                    "body": {
+                        "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
+                    },
+                    "action": {
+                        "buttons": [
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": "sim",
+                                    "title": "Sim"
+                                }
+                            },
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": "não",
+                                    "title": "Não"
+                                }
+                            }
+                        ]
+                    }
+                }
+                await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
             else:
                 await send_message(phone_number, message_loader.get_message('error.term_not_found'), db)
                 await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
@@ -338,17 +505,19 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
     return chatbot.state
 
 async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
-    """Handle the feedback state logic"""
+    """Handle the feedback state logic with interactive UI buttons"""
     db = next(get_db())
     try:
         message = message.strip()
-        if message in ['1', '2']:
+        # Process feedback response (from button click or text message)
+        if message in ['1', '2', 'sim', 'não']:
             # Get the interaction ID from chatbot state
             interaction_id = await chatbot.get_current_interaction_id(phone_number)
             if interaction_id:
                 interaction = db.query(UserInteraction).filter(UserInteraction.id == interaction_id).first()
                 if interaction:
-                    interaction.feedback = message == '1'  # True for '1', False for '2'
+                    # True for '1' or 'sim', False for '2' or 'não'
+                    interaction.feedback = message in ['1', 'sim']
                     interaction.updated_at = datetime.utcnow()
                     db.commit()
                     logger.info(f"Updated feedback for interaction {interaction_id}: {interaction.feedback}")
@@ -360,7 +529,32 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
             chatbot.end_conversation()
             await send_message(phone_number, message_loader.get_message('return_success'), db)
         else:
-            await send_message(phone_number, message_loader.get_message('feedback.request'), db)
+            # Send an interactive button message for feedback
+            interactive_content = {
+                "type": "button",
+                "body": {
+                    "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
+                },
+                "action": {
+                    "buttons": [
+                        {
+                            "type": "reply",
+                            "reply": {
+                                "id": "sim",
+                                "title": "Sim"
+                            }
+                        },
+                        {
+                            "type": "reply",
+                            "reply": {
+                                "id": "não",
+                                "title": "Não"
+                            }
+                        }
+                    ]
+                }
+            }
+            await send_message(phone_number, interactive_content, db, message_type="interactive")
     except Exception as e:
         logger.error(f"Error in feedback handler: {str(e)}")
         await send_message(phone_number, message_loader.get_message('error.general_error'), db)
@@ -400,7 +594,33 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
 
                 await send_message(phone_number, data["results"][0]["summary_content"], db)
                 chatbot.get_feedback()
-                await send_message(phone_number, message_loader.get_message('feedback.request'), next(get_db()))
+                
+                # Send an interactive button message for feedback
+                interactive_content = {
+                    "type": "button",
+                    "body": {
+                        "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
+                    },
+                    "action": {
+                        "buttons": [
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": "sim",
+                                    "title": "Sim"
+                                }
+                            },
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": "não",
+                                    "title": "Não"
+                                }
+                            }
+                        ]
+                    }
+                }
+                await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
             else:
                 await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
                 await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
@@ -443,7 +663,7 @@ async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, mess
     return chatbot.state
 
 async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
-    """Handle the unsubscribe state logic"""
+    """Handle the unsubscribe state logic with interactive buttons"""
     db = next(get_db())
     user = chatbot.get_user(phone_number)
     if not user:
@@ -451,10 +671,40 @@ async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message:
         return chatbot.state
 
     try:
-        # confirmation_response = chatgpt_service.parse_confirmation(message)
+        # If this is the first call to unsubscribe (initial state), show the interactive buttons
+        if message.lower() == '5' or message.lower() in ['desinscrever', 'cancelar', 'unsubscribe']:
+            # Send an interactive button message for unsubscribe confirmation
+            interactive_content = {
+                "type": "button",
+                "body": {
+                    "text": message_loader.get_message('unsubscribe.confirm').split('\n\n')[0]  # Get the main text part
+                },
+                "action": {
+                    "buttons": [
+                        {
+                            "type": "reply",
+                            "reply": {
+                                "id": "1",
+                                "title": "Sim, descadastrar"
+                            }
+                        },
+                        {
+                            "type": "reply",
+                            "reply": {
+                                "id": "2",
+                                "title": "Não, continuar"
+                            }
+                        }
+                    ]
+                }
+            }
+            await send_message(phone_number, interactive_content, db, message_type="interactive")
+            return chatbot.state
+
+        # Process the user's response
         confirmation_response = message
-        if confirmation_response is not None:
-            if confirmation_response == '1':
+        if confirmation_response in ['1', '2', 'sim', 'não']:
+            if confirmation_response in ['1', 'sim']:
                 # Deactivate the user
                 user.is_active = False
                 db.commit()
@@ -464,7 +714,35 @@ async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message:
 
             chatbot.end_conversation()
         else:
+            # For any other message, show the invalid option message and send buttons again
             await send_message(phone_number, message_loader.get_message('unsubscribe.invalid_option'), db)
+            
+            # Send interactive buttons again
+            interactive_content = {
+                "type": "button",
+                "body": {
+                    "text": message_loader.get_message('unsubscribe.confirm').split('\n\n')[0]  # Get the main text part
+                },
+                "action": {
+                    "buttons": [
+                        {
+                            "type": "reply",
+                            "reply": {
+                                "id": "1",
+                                "title": "Sim, descadastrar"
+                            }
+                        },
+                        {
+                            "type": "reply",
+                            "reply": {
+                                "id": "2",
+                                "title": "Não, continuar"
+                            }
+                        }
+                    ]
+                }
+            }
+            await send_message(phone_number, interactive_content, db, message_type="interactive")
 
     except Exception as e:
         logger.error(f"Error in unsubscribe handler: {str(e)}")
@@ -539,7 +817,33 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
 
                 await send_message(phone_number, data["results"][0]["summary_content"], db)
                 chatbot.get_feedback()
-                await send_message(phone_number, message_loader.get_message('feedback.request'), next(get_db()))
+
+                # Send an interactive button message for feedback
+                interactive_content = {
+                    "type": "button",
+                    "body": {
+                        "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
+                    },
+                    "action": {
+                        "buttons": [
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": "sim",
+                                    "title": "Sim"
+                                }
+                            },
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": "não",
+                                    "title": "Não"
+                                }
+                            }
+                        ]
+                    }
+                }
+                await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
             else:
                 await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
                 await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
