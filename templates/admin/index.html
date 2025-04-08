@@ -332,6 +332,13 @@
                         {
                             label: 'Delivered',
                             data: [],
+                            borderColor: 'rgb(255, 165, 0)',
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'Failed',
+                            data: [],
                             borderColor: 'rgb(255, 99, 132)',
                             tension: 0.1,
                             fill: false
@@ -410,6 +417,7 @@
                     statusDistChart.data.datasets[1].data = statusStats.read;
                     statusDistChart.data.datasets[2].data = statusStats.sent;
                     statusDistChart.data.datasets[3].data = statusStats.delivered;
+                    statusDistChart.data.datasets[4].data = statusStats.failed;
                     statusDistChart.update();
                 }
 

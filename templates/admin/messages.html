@@ -71,7 +71,7 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="badge bg-{{ 'success' if message.status == 'delivered' or message.status == 'read' else 'warning' if message.status == 'sent' else 'danger' }}">
+                                            <span class="badge bg-{{ 'success' if message.status == 'delivered' or message.status == 'read' else 'info' if message.status == 'received' else 'warning' if message.status == 'sent' else 'danger' }}">
                                                 {{ message.status or 'unknown' }}
                                             </span>
                                         </td>

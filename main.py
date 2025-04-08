@@ -354,6 +354,7 @@ async def get_status_stats(db: Session = Depends(get_db)):
         read = []
         sent = []
         delivered = []
+        failed = []  # Track failed statuses
 
         # Calculate stats for each week
         current_date = start_date
@@ -396,6 +397,15 @@ async def get_status_stats(db: Session = Depends(get_db)):
                 )\
                 .scalar()
 
+            # Get failed messages for this week
+            failed_count = db.query(func.count(models.Message.id))\
+                .filter(
+                    models.Message.status == 'failed',
+                    models.Message.created_at > current_date,
+                    models.Message.created_at <= week_end
+                )\
+                .scalar()
+
             # Format date for labels (e.g., "Mar 12")
             week_label = current_date.strftime("%b %d")
 
@@ -404,6 +414,7 @@ async def get_status_stats(db: Session = Depends(get_db)):
             read.append(read_count)
             sent.append(sent_count)
             delivered.append(delivered_count)
+            failed.append(failed_count)
 
             current_date = week_end
 
@@ -412,7 +423,8 @@ async def get_status_stats(db: Session = Depends(get_db)):
             "received": received,
             "read": read,
             "sent": sent,
-            "delivered": delivered
+            "delivered": delivered,
+            "failed": failed  # Include failed statuses in the response
         }
     except Exception as e:
         logger.error(f"Error fetching status stats: {e}")
