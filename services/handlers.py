@@ -344,7 +344,7 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
         message = message.strip()
         if message in ['1', '2']:
             # Get the interaction ID from chatbot state
-            interaction_id = chatbot.get_current_interaction_id()
+            interaction_id = await chatbot.get_current_interaction_id(phone_number)
             if interaction_id:
                 interaction = db.query(UserInteraction).filter(UserInteraction.id == interaction_id).first()
                 if interaction:
@@ -396,7 +396,7 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
                 db.commit()
 
                 # Store interaction ID in chatbot state for feedback
-                chatbot.set_current_interaction_id(interaction.id)
+                await chatbot.set_current_interaction_id(interaction.id, phone_number)
 
                 await send_message(phone_number, data["results"][0]["summary_content"], db)
                 chatbot.get_feedback()
@@ -432,7 +432,7 @@ async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, mess
         db.commit()
 
         # Store interaction ID in chatbot state for potential future feedback
-        chatbot.set_current_interaction_id(interaction.id)
+        await chatbot.set_current_interaction_id(interaction.id, phone_number)
 
         chatbot.end_conversation()
         await send_message(phone_number, message_loader.get_message('menu.news_suggestion_reply'), db)
@@ -535,7 +535,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
                 db.commit()
 
                 # Store interaction ID in chatbot state for feedback
-                chatbot.set_current_interaction_id(interaction.id)
+                await chatbot.set_current_interaction_id(interaction.id, phone_number)
 
                 await send_message(phone_number, data["results"][0]["summary_content"], db)
                 chatbot.get_feedback()
