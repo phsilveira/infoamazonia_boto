@@ -162,6 +162,7 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
         last_24h = datetime.utcnow() - timedelta(days=1)
         messages_sent = db.query(func.count(models.Message.id))\
             .filter(models.Message.message_type == 'outgoing')\
+            .filter(models.Message.status == 'sent')\
             .filter(models.Message.created_at >= last_24h)\
             .scalar()
 
