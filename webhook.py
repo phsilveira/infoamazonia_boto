@@ -97,8 +97,8 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
         else:
             logger.warning("Redis client not available, continuing without state")
 
-        # Initialize chatbot and process message
-        chatbot = ChatBot(db)
+        # Initialize chatbot and process message with Redis client
+        chatbot = ChatBot(db, redis_client)
         if current_state:
             chatbot.set_state(current_state)
 

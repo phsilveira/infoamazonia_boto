@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 import models
 import logging
 from utils.message_loader import message_loader
+import redis.asyncio as redis
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -11,9 +13,9 @@ class ChatBot:
               'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 
               'get_news_suggestion', 'feedback_state', 'unsubscribe_state', 'monthly_news_response']
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, redis_client: Optional[redis.Redis] = None):
         self.db = db
-        self.current_interaction_id = None
+        self.redis_client = redis_client
         self.machine = Machine(
             model=self,
             states=ChatBot.states,
@@ -157,10 +159,41 @@ class ChatBot:
             self.db.rollback()
             raise e
 
-    def set_current_interaction_id(self, interaction_id: int):
-        """Set the current interaction ID"""
-        self.current_interaction_id = interaction_id
+    async def set_current_interaction_id(self, interaction_id: int, phone_number: str):
+        """Set the current interaction ID in Redis"""
+        if self.redis_client:
+            try:
+                # Use the phone number as part of the key to make it unique per user
+                redis_key = f"interaction:{phone_number}"
+                await self.redis_client.set(redis_key, str(interaction_id))
+                logger.info(f"Saved interaction ID {interaction_id} for phone {phone_number} in Redis")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to save interaction ID in Redis: {e}")
+                # Fallback to instance variable if Redis fails
+                self.current_interaction_id = interaction_id
+                return False
+        else:
+            # Fallback to instance variable if Redis is not available
+            logger.warning("Redis client not available, using instance variable for interaction ID")
+            self.current_interaction_id = interaction_id
+            return False
 
-    def get_current_interaction_id(self) -> int:
-        """Get the current interaction ID"""
-        return self.current_interaction_id
+    async def get_current_interaction_id(self, phone_number: str) -> Optional[int]:
+        """Get the current interaction ID from Redis"""
+        if self.redis_client:
+            try:
+                redis_key = f"interaction:{phone_number}"
+                interaction_id = await self.redis_client.get(redis_key)
+                if interaction_id:
+                    return int(interaction_id)
+                logger.warning(f"No interaction ID found in Redis for phone {phone_number}")
+                return None
+            except Exception as e:
+                logger.error(f"Failed to get interaction ID from Redis: {e}")
+                # Fallback to instance variable if Redis fails
+                return self.current_interaction_id
+        else:
+            # Fallback to instance variable if Redis is not available
+            logger.warning("Redis client not available, using instance variable for interaction ID")
+            return self.current_interaction_id
