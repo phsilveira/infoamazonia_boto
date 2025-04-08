@@ -1,6 +1,7 @@
 import logging
-from typing import Optional, Dict, Tuple, List
-import openai
+import os
+import base64
+from typing import Optional, Dict, Tuple, List, Union
 from config import settings
 from utils.prompt_loader import prompt_loader
 
@@ -8,24 +9,40 @@ logger = logging.getLogger(__name__)
 
 class ChatGPTService:
     def __init__(self):
-        # Initialize OpenAI client with API key
         try:
-            # Create client for OpenAI version 1.3.3
-            from openai import OpenAI
-            self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-            logger.info("OpenAI client initialized successfully")
+            # Check if we should use Azure OpenAI
+            if settings.USE_AZURE_OPENAI:
+                from openai import AzureOpenAI
+                
+                # Initialize Azure OpenAI client
+                self.client = AzureOpenAI(
+                    azure_endpoint=settings.AZURE_ENDPOINT_URL,
+                    api_key=settings.AZURE_OPENAI_API_KEY,
+                    api_version=settings.AZURE_API_VERSION
+                )
+                self.azure_deployment = settings.AZURE_DEPLOYMENT_NAME
+                self.use_azure = True
+                logger.info(f"Azure OpenAI client initialized successfully with deployment {self.azure_deployment}")
+            else:
+                # Use standard OpenAI client
+                from openai import OpenAI
+                self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+                self.use_azure = False
+                logger.info("Standard OpenAI client initialized successfully")
+                
         except Exception as e:
             logger.error(f"Error initializing OpenAI client: {str(e)}")
-            # As a fallback, use the module-level client configuration
-            openai.api_key = settings.OPENAI_API_KEY
-            self.client = openai
-            logger.info("Using module-level OpenAI client")
+            raise
 
     def generate_embedding(self, text: str) -> list:
         """Generate an embedding vector for the given text using OpenAI's API."""
         try:
+            # For embeddings, the API interface is the same between standard and Azure OpenAI
+            # Just use a different model name if using Azure
+            model = "text-embedding-ada-002"
+            
             response = self.client.embeddings.create(
-                model="text-embedding-ada-002",
+                model=model,
                 input=text
             )
             return response.data[0].embedding
@@ -44,11 +61,20 @@ class ChatGPTService:
                 {"role": "user", "content": f"Query: {query}\n\nContext: {context}"}
             ]
 
-            response = self.client.chat.completions.create(
-                model="gpt-4",
-                messages=messages,
-                temperature=0.2
-            )
+            # Common parameters
+            params = {
+                "messages": messages,
+                "temperature": 0.2,
+                "max_tokens": 800
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = self.azure_deployment
+            else:
+                params["model"] = "gpt-4"
+                
+            response = self.client.chat.completions.create(**params)
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f"Error generating completion: {e}")
@@ -63,11 +89,20 @@ class ChatGPTService:
                 {"role": "user", "content": f"Title: {title}\n\nContent: {content}"}
             ]
 
-            response = self.client.chat.completions.create(
-                model="gpt-4",
-                messages=messages,
-                temperature=0.5
-            )
+            # Common parameters
+            params = {
+                "messages": messages,
+                "temperature": 0.5,
+                "max_tokens": 800
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = self.azure_deployment
+            else:
+                params["model"] = "gpt-4"
+                
+            response = self.client.chat.completions.create(**params)
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f"Error generating term summary: {e}")
@@ -82,11 +117,20 @@ class ChatGPTService:
                 {"role": "user", "content": f"Title: {title}\n\nContent: {content}\n\nURL: {url}"}
             ]
 
-            response = self.client.chat.completions.create(
-                model="gpt-4",
-                messages=messages,
-                temperature=0.5
-            )
+            # Common parameters
+            params = {
+                "messages": messages,
+                "temperature": 0.5,
+                "max_tokens": 800
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = self.azure_deployment
+            else:
+                params["model"] = "gpt-4"
+                
+            response = self.client.chat.completions.create(**params)
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f"Error generating article summary: {e}")
@@ -100,15 +144,23 @@ class ChatGPTService:
                                              interaction_type=interaction_type, 
                                              queries=queries)
             
-            completion = self.client.chat.completions.create(
-                model="gpt-4",
-                messages=[
+            # Common parameters
+            params = {
+                "messages": [
                     {"role": "system", "content": prompt['system']},
                     {"role": "user", "content": prompt['user']}
                 ],
-                temperature=prompt.get('temperature', 0.3),
-                max_tokens=prompt.get('max_tokens', 250)
-            )
+                "temperature": prompt.get('temperature', 0.3),
+                "max_tokens": prompt.get('max_tokens', 250)
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = self.azure_deployment
+            else:
+                params["model"] = "gpt-4"
+                
+            completion = self.client.chat.completions.create(**params)
             return completion.choices[0].message.content
         except Exception as e:
             logger.error(f"Error summarizing queries: {str(e)}")
@@ -122,15 +174,23 @@ class ChatGPTService:
                                              user_input=user_input, 
                                              template_message=template_message)
             
-            completion = self.client.chat.completions.create(
-                model="gpt-4",
-                messages=[
+            # Common parameters
+            params = {
+                "messages": [
                     {"role": "system", "content": prompt['system']},
                     {"role": "user", "content": prompt['user']}
                 ],
-                temperature=prompt.get('temperature', 0.1),
-                max_tokens=prompt.get('max_tokens', 150)
-            )
+                "temperature": prompt.get('temperature', 0.1),
+                "max_tokens": prompt.get('max_tokens', 150)
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = self.azure_deployment
+            else:
+                params["model"] = "gpt-4"
+                
+            completion = self.client.chat.completions.create(**params)
             return completion.choices[0].message.content
         except Exception as e:
             logger.error(f"Error calling ChatGPT API: {str(e)}")
@@ -142,15 +202,23 @@ class ChatGPTService:
             # Get the validate_location prompt from the prompt loader
             prompt = prompt_loader.get_prompt('gpt-4.validate_location', location=location)
             
-            completion = self.client.chat.completions.create(
-                model="gpt-4",
-                messages=[
+            # Common parameters
+            params = {
+                "messages": [
                     {"role": "system", "content": prompt['system']},
                     {"role": "user", "content": prompt['user']}
                 ],
-                temperature=prompt.get('temperature', 0.1),
-                max_tokens=prompt.get('max_tokens', 150)
-            )
+                "temperature": prompt.get('temperature', 0.1),
+                "max_tokens": prompt.get('max_tokens', 150)
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = self.azure_deployment
+            else:
+                params["model"] = "gpt-4"
+                
+            completion = self.client.chat.completions.create(**params)
             result = completion.choices[0].message.content.split('|')
             is_valid = result[0] == 'VALID'
             corrected_location = result[1] if len(result) > 2 else location
@@ -174,15 +242,23 @@ class ChatGPTService:
             # Get the validate_subject prompt from the prompt loader
             prompt = prompt_loader.get_prompt('gpt-4.validate_subject', subject=subject)
             
-            completion = self.client.chat.completions.create(
-                model="gpt-4",
-                messages=[
+            # Common parameters
+            params = {
+                "messages": [
                     {"role": "system", "content": prompt['system']},
                     {"role": "user", "content": prompt['user']}
                 ],
-                temperature=prompt.get('temperature', 0.1),
-                max_tokens=prompt.get('max_tokens', 150)
-            )
+                "temperature": prompt.get('temperature', 0.1),
+                "max_tokens": prompt.get('max_tokens', 150)
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = self.azure_deployment
+            else:
+                params["model"] = "gpt-4"
+                
+            completion = self.client.chat.completions.create(**params)
             result = completion.choices[0].message.content.split('|')
             is_valid = result[0] == 'VALID'
             corrected_subject = result[1] if len(result) > 2 else subject
@@ -209,15 +285,23 @@ class ChatGPTService:
             # Get the validate_schedule prompt from the prompt loader
             prompt = prompt_loader.get_prompt('gpt-4.validate_schedule', schedule=schedule)
             
-            completion = self.client.chat.completions.create(
-                model="gpt-4",
-                messages=[
+            # Common parameters
+            params = {
+                "messages": [
                     {"role": "system", "content": prompt['system']},
                     {"role": "user", "content": prompt['user']}
                 ],
-                temperature=prompt.get('temperature', 0.1),
-                max_tokens=prompt.get('max_tokens', 150)
-            )
+                "temperature": prompt.get('temperature', 0.1),
+                "max_tokens": prompt.get('max_tokens', 150)
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = self.azure_deployment
+            else:
+                params["model"] = "gpt-4"
+                
+            completion = self.client.chat.completions.create(**params)
             result = completion.choices[0].message.content.split('|')
             is_valid = result[0] == 'VALID'
             key = result[1] if len(result) > 1 else schedule
@@ -225,4 +309,152 @@ class ChatGPTService:
         except Exception as e:
             logger.error(f"Error validating schedule: {str(e)}")
             return False, "Could not validate schedule"
+            
+    def process_image(self, image_path: str, prompt: str = None, system_prompt: str = None) -> str:
+        """
+        Process an image using vision capabilities of the model.
+        Compatible with both Azure OpenAI and standard OpenAI.
+        
+        Args:
+            image_path: Path to the image file
+            prompt: Optional prompt to guide the image analysis
+            system_prompt: Optional system prompt to set context
+            
+        Returns:
+            The model's response as a string
+        """
+        try:
+            # Read and encode the image
+            with open(image_path, "rb") as image_file:
+                encoded_image = base64.b64encode(image_file.read()).decode('ascii')
+            
+            # Prepare messages with the image
+            messages = []
+            
+            # Add system message if provided
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            
+            # Create content array with text and image
+            content = []
+            
+            # Add text prompt if provided
+            if prompt:
+                content.append({"type": "text", "text": prompt})
+            
+            # Add image content
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{encoded_image}"
+                }
+            })
+            
+            # Add the user message with content
+            messages.append({"role": "user", "content": content})
+            
+            # Common parameters
+            params = {
+                "messages": messages,
+                "temperature": 0.7,
+                "max_tokens": 800
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                # For Azure, use the vision-capable deployment
+                params["model"] = self.azure_deployment
+            else:
+                # For standard OpenAI, use GPT-4 Vision
+                params["model"] = "gpt-4-vision-preview"
+            
+            # Make the API call
+            response = self.client.chat.completions.create(**params)
+            return response.choices[0].message.content
+            
+        except Exception as e:
+            logger.error(f"Error processing image: {e}")
+            raise
+            
+    async def generate_streaming_completion(self, messages: List[Dict], model: str = None, 
+                                           temperature: float = 0.7, 
+                                           max_tokens: int = 800):
+        """
+        Generate a streaming completion that works with both Azure and OpenAI APIs.
+        
+        Args:
+            messages: List of message dictionaries (system, user, assistant)
+            model: Optional model override
+            temperature: Controls randomness (0 to 1)
+            max_tokens: Maximum number of tokens to generate
+            
+        Returns:
+            An asynchronous generator that yields response chunks
+        """
+        try:
+            # Common parameters
+            params = {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": True
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = model or self.azure_deployment
+            else:
+                params["model"] = model or "gpt-4"
+            
+            # Make the streaming API call
+            stream = self.client.chat.completions.create(**params)
+            
+            # Process the stream
+            for chunk in stream:
+                if hasattr(chunk.choices[0].delta, "content"):
+                    if chunk.choices[0].delta.content:
+                        content = chunk.choices[0].delta.content
+                        yield content
+            
+        except Exception as e:
+            logger.error(f"Error generating streaming completion: {e}")
+            raise
+            
+    async def generate_completion_with_full_response(self, messages: List[Dict], model: str = None, 
+                                                    temperature: float = 0.7,
+                                                    max_tokens: int = 800) -> str:
+        """
+        Generate a completion and return the full response as a string.
+        This is a separate method from the streaming version that yields chunks.
+        
+        Args:
+            messages: List of message dictionaries (system, user, assistant)
+            model: Optional model override
+            temperature: Controls randomness (0 to 1)
+            max_tokens: Maximum number of tokens to generate
+            
+        Returns:
+            The full response as a string
+        """
+        try:
+            # Common parameters
+            params = {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = model or self.azure_deployment
+            else:
+                params["model"] = model or "gpt-4"
+            
+            # Make the API call (non-streaming)
+            response = self.client.chat.completions.create(**params)
+            return response.choices[0].message.content
+            
+        except Exception as e:
+            logger.error(f"Error generating completion: {e}")
+            raise
             

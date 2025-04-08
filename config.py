@@ -35,6 +35,13 @@ class Settings(BaseSettings):
 
     # OpenAI Configuration
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    
+    # Azure OpenAI Configuration
+    USE_AZURE_OPENAI: bool = os.getenv("USE_AZURE_OPENAI", "False") == "True"
+    AZURE_OPENAI_API_KEY: str = os.getenv("AZURE_OPENAI_API_KEY", "")
+    AZURE_ENDPOINT_URL: str = os.getenv("ENDPOINT_URL", "https://boto.openai.azure.com/")
+    AZURE_DEPLOYMENT_NAME: str = os.getenv("DEPLOYMENT_NAME", "gpt-4o-mini")
+    AZURE_API_VERSION: str = os.getenv("AZURE_API_VERSION", "2024-05-01-preview")
 
     # Google Maps
     GOOGLEMAPS_API_KEY: str = os.getenv("GOOGLEMAPS_API_KEY", "")
