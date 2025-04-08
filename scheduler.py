@@ -371,10 +371,10 @@ async def start_scheduler():
             misfire_grace_time=300
         )
 
-        # Immediate news every 6 hours
+        # Immediate news every 3 hours
         scheduler.add_job(
             send_immediately_news_template,
-            trigger=CronTrigger(hour='*/6', minute=0, timezone=SP_TIMEZONE),
+            trigger=CronTrigger(hour='*/3', minute=0, timezone=SP_TIMEZONE),
             id='send_immediately_news_template',
             replace_existing=True,
             misfire_grace_time=300

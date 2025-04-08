@@ -153,38 +153,38 @@ class SchedulerRun(Base):
     def __repr__(self):
         return f'<SchedulerRun {self.task_name}:{self.status}>'
 
-class Article(Base):
-    __tablename__ = 'articles'
+# class Article(Base):
+#     __tablename__ = 'articles'
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    title = Column(Text, nullable=False)
-    content = Column(Text, nullable=False)
-    summary_content = Column(Text)  # New column for article summaries
-    article_metadata = Column(JSONB)
-    embedding = Column(Vector(1536))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+#     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+#     title = Column(Text, nullable=False)
+#     content = Column(Text, nullable=False)
+#     summary_content = Column(Text)  # New column for article summaries
+#     article_metadata = Column(JSONB)
+#     embedding = Column(Vector(1536))
+#     created_at = Column(DateTime, default=datetime.utcnow)
+#     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Original fields from News class
-    original_id = Column(String)
-    collection_date = Column(DateTime)
-    url = Column(Text)
-    author = Column(String)
-    published_date = Column(DateTime)
-    description = Column(Text)
-    news_source = Column(String)
-    language = Column(String)
-    topics = Column(ARRAY(String))
-    subtopics = Column(ARRAY(String))
-    keywords = Column(ARRAY(String))
+#     # Original fields from News class
+#     original_id = Column(String)
+#     collection_date = Column(DateTime)
+#     url = Column(Text)
+#     author = Column(String)
+#     published_date = Column(DateTime)
+#     description = Column(Text)
+#     news_source = Column(String)
+#     language = Column(String)
+#     topics = Column(ARRAY(String))
+#     subtopics = Column(ARRAY(String))
+#     keywords = Column(ARRAY(String))
 
-    __table_args__ = (
-        Index('idx_article_metadata', article_metadata, postgresql_using='gin'),
-        Index(
-            'idx_article_embedding', 
-            'embedding',
-            postgresql_using='ivfflat',
-            postgresql_ops={'embedding': 'vector_cosine_ops'},
-            postgresql_with={'lists': 100}
-        ),
-    )
+#     __table_args__ = (
+#         Index('idx_article_metadata', article_metadata, postgresql_using='gin'),
+#         Index(
+#             'idx_article_embedding', 
+#             'embedding',
+#             postgresql_using='ivfflat',
+#             postgresql_ops={'embedding': 'vector_cosine_ops'},
+#             postgresql_with={'lists': 100}
+#         ),
+#     )
