@@ -32,18 +32,18 @@ gpt-4:
       🔗 Leia a reportagem completa em [infoamazonia.org]: Se houver, inclua um link ou sugestão para mais informações.
   # Summarize a list of user queries for a specific interaction type
   summarize_queries:
-    system: "You are a helpful assistant that summarizes user interactions and identifies common patterns."
+    system: "Você é um assistente útil que resume interações do usuário e identifica padrões comuns."
     user: |
-      Please analyze and summarize these user queries for {interaction_type}:
+      Por favor, analise e resuma estas consultas de usuário para {interaction_type}:
 
       {queries}
 
-      Provide a concise summary that includes:
-      1. Most common topics or themes
-      2. Types of information users are seeking
-      3. Notable patterns in user behavior
+      Forneça um resumo conciso que inclua:
+      1. Tópicos ou temas mais comuns
+      2. Tipos de informações que os usuários estão procurando
+      3. Padrões notáveis no comportamento do usuário
 
-      Keep the summary short and focused on key insights.
+      Mantenha o resumo curto e focado em insights principais.
     temperature: 0.3
     max_tokens: 250
   
