@@ -14,6 +14,7 @@ import logging
 from config import settings
 from sqlalchemy import desc
 from services.chatgpt import ChatGPTService # Fixed import
+from cache_utils import invalidate_dashboard_caches  # Import cache invalidation utility
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,10 @@ async def create_user(
         db.add(user)
         db.commit()
         db.refresh(user)
+        
+        # Invalidate dashboard caches after user creation
+        await invalidate_dashboard_caches(request)
+        logger.info(f"Cache invalidated after creating user: {user.id}")
 
         return RedirectResponse(
             url=f"/admin/users/{user.id}",
@@ -268,6 +273,11 @@ async def add_user_subject(
         )
         db.add(subject)
         db.commit()
+        
+        # Invalidate dashboard caches
+        await invalidate_dashboard_caches(request)
+        logger.info(f"Cache invalidated after adding subject to user {user_id}")
+        
         return RedirectResponse(url=f"/admin/users/{user_id}", status_code=status.HTTP_302_FOUND)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -540,6 +550,10 @@ async def update_user_status(
 
         user.is_active = (status == 'active')
         db.commit()
+        
+        # Invalidate dashboard caches
+        await invalidate_dashboard_caches(request)
+        logger.info(f"Cache invalidated after updating user status: {user_id}")
 
         return RedirectResponse(
             url=f"/admin/users/{user_id}",
@@ -572,6 +586,10 @@ async def update_user_schedule(
 
         user.schedule = schedule
         db.commit()
+        
+        # Invalidate dashboard caches
+        await invalidate_dashboard_caches(request)
+        logger.info(f"Cache invalidated after updating user schedule: {user_id}")
 
         return RedirectResponse(
             url=f"/admin/users/{user_id}",

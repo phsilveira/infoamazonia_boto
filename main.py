@@ -18,8 +18,11 @@ import redis.asyncio as redis
 import logging
 import asyncio
 import httpx
+import json
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc
+from functools import wraps
+from cache_utils import get_cache, set_cache, invalidate_cache, invalidate_dashboard_caches
 
 # Configure logging with more detail
 logging.basicConfig(
@@ -30,6 +33,44 @@ logger = logging.getLogger(__name__)
 
 # Create all database tables
 models.Base.metadata.create_all(bind=engine)
+
+def cached(expire_seconds: int = 300, prefix: str = "cache"):
+    """Decorator for caching endpoint responses"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Get the request object from kwargs
+            request = next((kwargs[k] for k in kwargs if isinstance(kwargs[k], Request)), None)
+            
+            if not request or not hasattr(request.app.state, 'redis') or not request.app.state.redis:
+                # No Redis connection or request, just execute the function
+                return await func(*args, **kwargs)
+            
+            # Generate a cache key based on function name and arguments
+            # Exclude certain types from the cache key
+            cache_args = {}
+            for k, v in kwargs.items():
+                if not isinstance(v, (Request, Session, models.Admin)):
+                    cache_args[k] = v
+            
+            # Create a cache key with function name and arguments
+            cache_key = f"{prefix}:{func.__name__}:{json.dumps(cache_args, sort_keys=True)}"
+            
+            # Try to get from cache first
+            cached_data = await get_cache(cache_key, request)
+            if cached_data is not None:
+                return cached_data
+            
+            # Execute the function and cache the result
+            result = await func(*args, **kwargs)
+            
+            # Only cache successful responses (avoid JSONResponse with error status)
+            if not isinstance(result, JSONResponse) or getattr(result, 'status_code', 200) < 400:
+                await set_cache(cache_key, result, request, expire_seconds)
+            
+            return result
+        return wrapper
+    return decorator
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -149,7 +190,8 @@ async def logout():
     return response
 
 @app.get("/api/dashboard/stats")
-async def get_dashboard_stats(db: Session = Depends(get_db)):
+@cached(expire_seconds=60, prefix="dashboard")  # Cache for 1 minute
+async def get_dashboard_stats(request: Request, db: Session = Depends(get_db)):
     try:
         # Get latest metrics
         latest_metrics = db.query(models.Metrics).order_by(desc(models.Metrics.date)).first()
@@ -183,7 +225,8 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
         )
 
 @app.get("/api/dashboard/recent-users")
-async def get_recent_users(db: Session = Depends(get_db)):
+@cached(expire_seconds=60, prefix="dashboard")  # Cache for 1 minute
+async def get_recent_users(request: Request, db: Session = Depends(get_db)):
     try:
         recent_users = db.query(models.User)\
             .order_by(desc(models.User.created_at))\
@@ -203,7 +246,8 @@ async def get_recent_users(db: Session = Depends(get_db)):
         )
 
 @app.get("/api/dashboard/news-sources")
-async def get_news_sources(db: Session = Depends(get_db)):
+@cached(expire_seconds=60, prefix="dashboard")  # Cache for 1 minute
+async def get_news_sources(request: Request, db: Session = Depends(get_db)):
     try:
         sources = db.query(models.NewsSource)\
             .order_by(desc(models.NewsSource.created_at))\
@@ -223,7 +267,8 @@ async def get_news_sources(db: Session = Depends(get_db)):
         )
 
 @app.get("/api/dashboard/user-stats")
-async def get_user_stats(db: Session = Depends(get_db)):
+@cached(expire_seconds=300, prefix="dashboard")  # Cache for 5 minutes (longer since this is an expensive query)
+async def get_user_stats(request: Request, db: Session = Depends(get_db)):
     try:
         # Get the last 12 weeks of data
         end_date = datetime.utcnow()
@@ -286,7 +331,8 @@ async def get_user_stats(db: Session = Depends(get_db)):
         )
 
 @app.get("/api/dashboard/message-stats")
-async def get_message_stats(db: Session = Depends(get_db)):
+@cached(expire_seconds=300, prefix="dashboard")  # Cache for 5 minutes (longer since this is an expensive query)
+async def get_message_stats(request: Request, db: Session = Depends(get_db)):
     try:
         # Get the last 12 weeks of data
         end_date = datetime.utcnow()
@@ -343,7 +389,8 @@ async def get_message_stats(db: Session = Depends(get_db)):
         )
 
 @app.get("/api/dashboard/status-stats")
-async def get_status_stats(db: Session = Depends(get_db)):
+@cached(expire_seconds=300, prefix="dashboard")  # Cache for 5 minutes (longer since this is an expensive query)
+async def get_status_stats(request: Request, db: Session = Depends(get_db)):
     try:
         # Get the last 12 weeks of data
         end_date = datetime.utcnow()
@@ -435,7 +482,8 @@ async def get_status_stats(db: Session = Depends(get_db)):
         )
 
 @app.get("/api/v1/analytics/ctr-stats")
-async def get_ctr_stats():
+@cached(expire_seconds=600, prefix="analytics")  # Cache for 10 minutes since it's an external API call
+async def get_ctr_stats(request: Request):
     """Get click-through rate statistics from external API"""
     try:
         # Using httpx for HTTP request
@@ -451,7 +499,9 @@ async def get_ctr_stats():
         )
 
 @app.get("/api/scheduler/runs")
+@cached(expire_seconds=120, prefix="scheduler")  # Cache for 2 minutes
 async def get_scheduler_runs(
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(auth.get_current_admin)
 ):
