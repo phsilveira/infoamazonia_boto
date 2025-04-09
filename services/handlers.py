@@ -644,7 +644,7 @@ async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, mess
         interaction = UserInteraction(
             user_id=user_id,
             phone_number=phone_number,
-            category='news_suggestion',
+            category='article',
             query=message,
             response=message_loader.get_message('menu.news_suggestion_reply')
         )
@@ -805,7 +805,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
                 interaction = UserInteraction(
                     user_id=user_id,
                     phone_number=phone_number,
-                    category='monthly_news_response',
+                    category='news_response',
                     query=selected_title,
                     response=data["results"][0]["summary_content"]
                 )
