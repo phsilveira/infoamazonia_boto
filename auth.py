@@ -75,8 +75,8 @@ def generate_reset_token(length=32):
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
-def create_password_reset_token(email: str, db: Session):
-    """Create a password reset token for a user with the given email"""
+async def create_password_reset_token(email: str, db: Session, request: Request = None):
+    """Create a password reset token for a user with the given email using Redis"""
     admin = db.query(models.Admin).filter(models.Admin.email == email).first()
     if not admin:
         # Don't reveal that the email doesn't exist
@@ -86,41 +86,51 @@ def create_password_reset_token(email: str, db: Session):
     reset_token = generate_reset_token()
     
     # Set token expiration (24 hours from now)
-    expires = datetime.utcnow() + timedelta(hours=RESET_TOKEN_EXPIRE_HOURS)
+    expires = RESET_TOKEN_EXPIRE_HOURS * 3600  # Convert hours to seconds for Redis
     
-    # Save the token and expiration in the database
-    admin.reset_token = reset_token
-    admin.reset_token_expires = expires
-    db.commit()
+    if request and hasattr(request.app.state, 'redis') and request.app.state.redis:
+        # Store token in Redis with expiration
+        # Format: reset:{token} = admin_id
+        redis_key = f"reset:{reset_token}"
+        await request.app.state.redis.set(redis_key, str(admin.id), ex=expires)
+    else:
+        # Fallback if Redis is not available - we won't store the token
+        # You might want to log this as an error
+        print("Warning: Redis not available for password reset token storage")
+        return None
     
     return reset_token
 
-def verify_reset_token(token: str, db: Session):
+async def verify_reset_token(token: str, db: Session, request: Request = None):
     """Verify if a password reset token is valid and return the associated admin"""
-    admin = db.query(models.Admin).filter(models.Admin.reset_token == token).first()
+    if not request or not hasattr(request.app.state, 'redis') or not request.app.state.redis:
+        # Redis not available
+        return None
     
-    if not admin:
+    # Format: reset:{token} = admin_id
+    redis_key = f"reset:{token}"
+    admin_id = await request.app.state.redis.get(redis_key)
+    
+    if not admin_id:
         return None
-        
-    # Check if token is expired
-    if admin.reset_token_expires and admin.reset_token_expires < datetime.utcnow():
-        return None
-        
-    return admin
+    
+    # Get admin from database
+    return db.query(models.Admin).filter(models.Admin.id == int(admin_id)).first()
 
-def reset_password(token: str, new_password: str, db: Session):
-    """Reset a user's password using a valid reset token"""
-    admin = verify_reset_token(token, db)
+async def reset_password(token: str, new_password: str, db: Session, request: Request = None):
+    """Reset a user's password using a valid reset token stored in Redis"""
+    admin = await verify_reset_token(token, db, request)
     
     if not admin:
         return False
         
     # Update password
     admin.hashed_password = get_password_hash(new_password)
-    
-    # Clear the reset token
-    admin.reset_token = None
-    admin.reset_token_expires = None
-    
     db.commit()
+    
+    # Delete the token from Redis
+    if request and hasattr(request.app.state, 'redis') and request.app.state.redis:
+        redis_key = f"reset:{token}"
+        await request.app.state.redis.delete(redis_key)
+    
     return True

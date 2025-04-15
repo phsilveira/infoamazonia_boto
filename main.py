@@ -170,7 +170,7 @@ async def request_password_reset(
     db: Session = Depends(get_db)
 ):
     # Check if email exists in database
-    reset_token = auth.create_password_reset_token(email, db)
+    reset_token = await auth.create_password_reset_token(email, db, request)
     
     # Always show success message, even if email not found (security measure)
     # In a real application, you would send an email with the reset link
@@ -194,7 +194,7 @@ async def reset_password_page(
     db: Session = Depends(get_db)
 ):
     # Verify token is valid
-    admin = auth.verify_reset_token(token, db)
+    admin = await auth.verify_reset_token(token, db, request)
     if not admin:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
     
@@ -223,7 +223,7 @@ async def reset_password_submit(
         )
     
     # Reset the password
-    success = auth.reset_password(token, password, db)
+    success = await auth.reset_password(token, password, db, request)
     if not success:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
     

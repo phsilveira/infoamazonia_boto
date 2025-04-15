@@ -67,8 +67,6 @@ class Admin(Base):
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
     role = Column(String)
-    reset_token = Column(String, nullable=True)
-    reset_token_expires = Column(DateTime, nullable=True)
 
 class Metrics(Base):
     __tablename__ = "metrics"
