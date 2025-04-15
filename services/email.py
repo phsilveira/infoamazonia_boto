@@ -28,6 +28,7 @@ def send_email(recipient_email, subject, html_content, text_content=None):
         text_content = re.sub('<[^<]+?>', '', text_content)
     
     try:
+        # Get API key and domain from settings
         api_key = settings.MAILGUN_API_KEY
         domain = settings.MAILGUN_DOMAIN
         
@@ -35,20 +36,32 @@ def send_email(recipient_email, subject, html_content, text_content=None):
             logger.error("Missing Mailgun API key or domain.")
             return False
         
+        # Log info for debugging
+        logger.info(f"Sending email to {recipient_email} using domain {domain}")
+        
+        # Prepare the email data
+        data = {
+            "from": f"InfoAmazonia Admin <postmaster@{domain}>",
+            "to": f"Admin <{recipient_email}>",
+            "subject": subject,
+            "text": text_content
+        }
+        
+        # Add HTML content if provided
+        if html_content:
+            data["html"] = html_content
+        
+        # Make the API request
         response = requests.post(
             f"https://api.mailgun.net/v3/{domain}/messages",
             auth=("api", api_key),
-            data={
-                "from": f"InfoAmazonia <no-reply@{domain}>",
-                "to": recipient_email,
-                "subject": subject,
-                "text": text_content,
-                "html": html_content
-            }
+            data=data
         )
         
+        # Check response
         if response.status_code == 200:
             logger.info(f"Email sent successfully to {recipient_email}")
+            logger.info(f"Response: {response.text}")
             return True
         else:
             logger.error(f"Failed to send email. Status: {response.status_code}, Response: {response.text}")

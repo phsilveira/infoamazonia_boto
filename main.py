@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, desc
 from functools import wraps
 from cache_utils import get_cache, set_cache, invalidate_cache, invalidate_dashboard_caches
+from services.email import send_password_reset_email
 
 # Configure logging with more detail
 logging.basicConfig(
