@@ -61,7 +61,7 @@ async def admin_list(
     
     return templates.TemplateResponse(
         "admin/admin_list.html",
-        {"request": request, "admins": admins, "current_admin": current_admin}
+        {"request": request, "admins": admins, "admin": current_admin}
     )
 
 @router.get("/admins/create", response_class=HTMLResponse)
@@ -76,7 +76,7 @@ async def create_admin_form(
     
     return templates.TemplateResponse(
         "admin/admin_create.html",
-        {"request": request, "current_admin": current_admin}
+        {"request": request, "admin": current_admin}
     )
 
 @router.post("/admins/create", response_class=HTMLResponse)
@@ -108,7 +108,7 @@ async def create_admin(
                 "username": username,
                 "email": email,
                 "role": role,
-                "current_admin": current_admin
+                "admin": current_admin
             }
         )
     
@@ -148,7 +148,7 @@ async def edit_admin_form(
     
     return templates.TemplateResponse(
         "admin/admin_edit.html",
-        {"request": request, "admin": admin, "current_admin": current_admin}
+        {"request": request, "admin_to_edit": admin, "admin": current_admin}
     )
 
 @router.post("/admins/{admin_id}/edit", response_class=HTMLResponse)
@@ -184,9 +184,9 @@ async def update_admin(
             "admin/admin_edit.html",
             {
                 "request": request,
-                "admin": admin,
+                "admin_to_edit": admin,
                 "error": "Username or email already exists for another admin",
-                "current_admin": current_admin
+                "admin": current_admin
             }
         )
     
@@ -231,7 +231,7 @@ async def delete_admin_confirmation(
     
     return templates.TemplateResponse(
         "admin/admin_delete.html",
-        {"request": request, "admin": admin, "current_admin": current_admin}
+        {"request": request, "admin_to_delete": admin, "admin": current_admin}
     )
 
 @router.post("/admins/{admin_id}/delete", response_class=HTMLResponse)
