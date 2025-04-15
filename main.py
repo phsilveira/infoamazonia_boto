@@ -8,7 +8,6 @@ from database import engine, get_db
 from admin import router as admin_router
 from webhook import router as webhook_router
 from routers.location import router as location_router
-from admin_management import router as admin_management_router
 from datetime import timedelta
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -149,7 +148,6 @@ app.middleware("http")(auth_middleware)
 app.include_router(admin_router)
 app.include_router(webhook_router)
 app.include_router(location_router)
-app.include_router(admin_management_router)
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -257,8 +255,6 @@ async def login_for_access_token(
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request, current_admin: models.Admin = Depends(auth.get_current_admin)):
-    # Log the current admin's role for debugging
-    logger.info(f"Current admin: {current_admin.username}, role: {current_admin.role}")
     return templates.TemplateResponse(
         "admin/index.html",
         {"request": request, "admin": current_admin}
