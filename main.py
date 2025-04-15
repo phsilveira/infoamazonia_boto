@@ -8,6 +8,7 @@ from database import engine, get_db
 from admin import router as admin_router
 from webhook import router as webhook_router
 from routers.location import router as location_router
+from admin_management import router as admin_management_router
 from datetime import timedelta
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse

@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Delete Admin User{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-2 text-gray-800">Delete Admin User</h1>
+    <p class="mb-4">Permanently remove an administrator account from the system.</p>
+
+    <div class="card shadow mb-4 border-left-danger">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-danger">Confirm Deletion</h6>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Warning!</h4>
+                <p>You are about to permanently delete the following admin account. This action cannot be undone.</p>
+            </div>
+
+            <div class="mb-4">
+                <h5>Account Details:</h5>
+                <ul class="list-group">
+                    <li class="list-group-item"><strong>ID:</strong> {{ admin.id }}</li>
+                    <li class="list-group-item"><strong>Username:</strong> {{ admin.username }}</li>
+                    <li class="list-group-item"><strong>Email:</strong> {{ admin.email }}</li>
+                    <li class="list-group-item"><strong>Role:</strong> {{ admin.role }}</li>
+                </ul>
+            </div>
+
+            <form method="post" action="/admin-management/admins/{{ admin.id }}/delete">
+                <div class="form-group">
+                    <a href="/admin-management/admins" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Confirm Deletion
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

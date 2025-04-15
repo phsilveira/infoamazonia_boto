@@ -1,0 +1,89 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Admin Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-2 text-gray-800">Admin Management</h1>
+    <p class="mb-4">Manage administrator accounts for the InfoAmazonia dashboard.</p>
+
+    {% if current_admin.role == 'superadmin' %}
+    <div class="mb-4">
+        <a href="/admin-management/admins/create" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add New Admin
+        </a>
+    </div>
+    {% endif %}
+
+    {% if message %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Admin List Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">System Administrators</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="adminsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admin in admins %}
+                        <tr>
+                            <td>{{ admin.id }}</td>
+                            <td>{{ admin.username }}</td>
+                            <td>{{ admin.email }}</td>
+                            <td>
+                                <span class="badge {% if admin.role == 'superadmin' %}badge-danger{% else %}badge-primary{% endif %}">
+                                    {{ admin.role }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if admin.is_active %}badge-success{% else %}badge-secondary{% endif %}">
+                                    {% if admin.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="/admin-management/admins/{{ admin.id }}/edit" class="btn btn-info btn-sm">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                {% if current_admin.role == 'superadmin' and current_admin.id != admin.id %}
+                                <a href="/admin-management/admins/{{ admin.id }}/delete" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#adminsTable').DataTable({
+            "order": [[ 0, "asc" ]]
+        });
+    });
+</script>
+{% endblock %}
