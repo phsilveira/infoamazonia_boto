@@ -1,59 +1,54 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Create Admin User{% endblock %}
+{% block title %}Create Admin - InfoAmazonia Admin{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <h1 class="h3 mb-2 text-gray-800">Create Admin User</h1>
-    <p class="mb-4">Add a new administrator account to the system.</p>
-
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Admin Details</h6>
-        </div>
-        <div class="card-body">
-            {% if error %}
-            <div class="alert alert-danger" role="alert">
-                {{ error }}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Create New Admin</h1>
+            
+            <div class="mb-3">
+                <a href="/admin-management/admins" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Admin List
+                </a>
             </div>
+
+            {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
             {% endif %}
 
-            <form method="post" action="/admin-management/admins/create">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" class="form-control" id="username" name="username" value="{{ username or '' }}" required>
-                    <small class="form-text text-muted">Choose a unique username for the admin account.</small>
+            <div class="card">
+                <div class="card-header">
+                    <h5>Admin Information</h5>
                 </div>
-                
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" class="form-control" id="email" name="email" value="{{ email or '' }}" required>
-                    <small class="form-text text-muted">Email will be used for password recovery.</small>
+                <div class="card-body">
+                    <form method="post" action="/admin-management/admins/create">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="admin">Admin</option>
+                                {% if admin.role == 'superadmin' %}
+                                <option value="superadmin">Superadmin</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create Admin</button>
+                    </form>
                 </div>
-                
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" required>
-                    <small class="form-text text-muted">Choose a strong password with at least 8 characters.</small>
-                </div>
-                
-                <div class="form-group">
-                    <label for="role">Role</label>
-                    <select class="form-control" id="role" name="role" required>
-                        <option value="admin" {% if role == 'admin' %}selected{% endif %}>Admin</option>
-                        <option value="superadmin" {% if role == 'superadmin' %}selected{% endif %}>Superadmin</option>
-                    </select>
-                    <small class="form-text text-muted">
-                        <strong>Admin:</strong> Can manage users and content<br>
-                        <strong>Superadmin:</strong> Full access including admin management
-                    </small>
-                </div>
-                
-                <div class="form-group">
-                    <a href="/admin-management/admins" class="btn btn-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-primary">Create Admin</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>

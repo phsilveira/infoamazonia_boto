@@ -1,40 +1,57 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Delete Admin User{% endblock %}
+{% block title %}Delete Admin - InfoAmazonia Admin{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <h1 class="h3 mb-2 text-gray-800">Delete Admin User</h1>
-    <p class="mb-4">Permanently remove an administrator account from the system.</p>
-
-    <div class="card shadow mb-4 border-left-danger">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-danger">Confirm Deletion</h6>
-        </div>
-        <div class="card-body">
-            <div class="alert alert-warning" role="alert">
-                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Warning!</h4>
-                <p>You are about to permanently delete the following admin account. This action cannot be undone.</p>
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Delete Admin User</h1>
+            
+            <div class="mb-3">
+                <a href="/admin-management/admins" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Admin List
+                </a>
             </div>
 
-            <div class="mb-4">
-                <h5>Account Details:</h5>
-                <ul class="list-group">
-                    <li class="list-group-item"><strong>ID:</strong> {{ admin.id }}</li>
-                    <li class="list-group-item"><strong>Username:</strong> {{ admin.username }}</li>
-                    <li class="list-group-item"><strong>Email:</strong> {{ admin.email }}</li>
-                    <li class="list-group-item"><strong>Role:</strong> {{ admin.role }}</li>
-                </ul>
-            </div>
-
-            <form method="post" action="/admin-management/admins/{{ admin.id }}/delete">
-                <div class="form-group">
-                    <a href="/admin-management/admins" class="btn btn-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash"></i> Confirm Deletion
-                    </button>
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5>Confirm Deletion</h5>
                 </div>
-            </form>
+                <div class="card-body">
+                    <p class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> Warning: This action cannot be undone.
+                    </p>
+                    
+                    <p>Are you sure you want to delete the following admin user?</p>
+                    
+                    <table class="table">
+                        <tr>
+                            <th>ID:</th>
+                            <td>{{ admin_to_delete.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Username:</th>
+                            <td>{{ admin_to_delete.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email:</th>
+                            <td>{{ admin_to_delete.email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Role:</th>
+                            <td>{{ admin_to_delete.role }}</td>
+                        </tr>
+                    </table>
+                    
+                    <form method="post" action="/admin-management/admins/{{ admin_to_delete.id }}/delete">
+                        <div class="d-flex">
+                            <button type="submit" class="btn btn-danger me-2">Yes, Delete Admin</button>
+                            <a href="/admin-management/admins" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>
