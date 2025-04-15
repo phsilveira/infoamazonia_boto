@@ -7,7 +7,7 @@ import re
 
 async def auth_middleware(request: Request, call_next: Callable):
     # Paths that don't require authentication
-    public_paths = ['/login', '/token', '/static', '/webhook']
+    public_paths = ['/login', '/token', '/static', '/webhook', '/forgot-password', '/reset-password']
 
     # Check if the current path is public
     is_public = any(request.url.path.startswith(path) for path in public_paths)
