@@ -257,6 +257,8 @@ async def login_for_access_token(
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request, current_admin: models.Admin = Depends(auth.get_current_admin)):
+    # Log the current admin's role for debugging
+    logger.info(f"Current admin: {current_admin.username}, role: {current_admin.role}")
     return templates.TemplateResponse(
         "admin/index.html",
         {"request": request, "admin": current_admin}
