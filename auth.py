@@ -78,13 +78,22 @@ def generate_reset_token(length=32):
 
 async def create_password_reset_token(email: str, db: Session, request: Request = None):
     """Create a password reset token for a user with the given email using Redis"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Attempting to create password reset token for email: {email}")
+    
     admin = db.query(models.Admin).filter(models.Admin.email == email).first()
     if not admin:
+        logger.info(f"No admin found with email {email}")
         # Don't reveal that the email doesn't exist
         return None
     
+    logger.info(f"Admin found with ID: {admin.id}, username: {admin.username}")
+    
     # Generate a secure random token
     reset_token = generate_reset_token()
+    logger.info(f"Generated reset token: {reset_token[:5]}...{reset_token[-5:]}")
     
     # Set token expiration (24 hours from now)
     expires = RESET_TOKEN_EXPIRE_HOURS * 3600  # Convert hours to seconds for Redis
@@ -93,45 +102,107 @@ async def create_password_reset_token(email: str, db: Session, request: Request 
         # Store token in Redis with expiration
         # Format: reset:{token} = admin_id
         redis_key = f"reset:{reset_token}"
-        await request.app.state.redis.set(redis_key, str(admin.id), ex=expires)
+        logger.info(f"Storing token in Redis with key: {redis_key}, admin ID: {admin.id}, expiration: {expires}s")
+        
+        try:
+            await request.app.state.redis.set(redis_key, str(admin.id), ex=expires)
+            logger.info("Token successfully stored in Redis")
+        except Exception as e:
+            logger.error(f"Failed to store token in Redis: {str(e)}")
+            return None
     else:
         # Fallback if Redis is not available - we won't store the token
-        # You might want to log this as an error
-        print("Warning: Redis not available for password reset token storage")
+        logger.error("Redis not available for password reset token storage")
+        if not request:
+            logger.error("Request object is None")
+        elif not hasattr(request.app.state, 'redis'):
+            logger.error("app.state does not have redis attribute")
+        elif not request.app.state.redis:
+            logger.error("app.state.redis is None")
         return None
     
+    logger.info(f"Returning reset token: {reset_token[:5]}...{reset_token[-5:]}")
     return reset_token
 
 async def verify_reset_token(token: str, db: Session, request: Request = None):
     """Verify if a password reset token is valid and return the associated admin"""
-    if not request or not hasattr(request.app.state, 'redis') or not request.app.state.redis:
-        # Redis not available
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Verifying reset token: {token[:5]}...{token[-5:]}")
+    
+    if not request:
+        logger.error("Request object is None during token verification")
+        return None
+    elif not hasattr(request.app.state, 'redis'):
+        logger.error("app.state does not have redis attribute during token verification")
+        return None
+    elif not request.app.state.redis:
+        logger.error("app.state.redis is None during token verification")
         return None
     
     # Format: reset:{token} = admin_id
     redis_key = f"reset:{token}"
-    admin_id = await request.app.state.redis.get(redis_key)
+    logger.info(f"Looking up Redis key: {redis_key}")
     
-    if not admin_id:
+    try:
+        admin_id = await request.app.state.redis.get(redis_key)
+        logger.info(f"Redis lookup result: {admin_id}")
+        
+        if not admin_id:
+            logger.info(f"No admin ID found for token in Redis")
+            return None
+        
+        # Get admin from database
+        admin = db.query(models.Admin).filter(models.Admin.id == int(admin_id)).first()
+        
+        if admin:
+            logger.info(f"Admin found with ID: {admin.id}, username: {admin.username}")
+        else:
+            logger.info(f"No admin found with ID: {admin_id}")
+            
+        return admin
+    except Exception as e:
+        logger.error(f"Error verifying reset token: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return None
-    
-    # Get admin from database
-    return db.query(models.Admin).filter(models.Admin.id == int(admin_id)).first()
 
 async def reset_password(token: str, new_password: str, db: Session, request: Request = None):
     """Reset a user's password using a valid reset token stored in Redis"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Attempting to reset password with token: {token[:5]}...{token[-5:]}")
+    
     admin = await verify_reset_token(token, db, request)
     
     if not admin:
+        logger.error("Failed to verify reset token")
         return False
+    
+    logger.info(f"Token verified successfully for admin: {admin.id}, {admin.username}")
+    
+    try:    
+        # Update password
+        admin.hashed_password = get_password_hash(new_password)
+        logger.info("Password hashed successfully")
         
-    # Update password
-    admin.hashed_password = get_password_hash(new_password)
-    db.commit()
-    
-    # Delete the token from Redis
-    if request and hasattr(request.app.state, 'redis') and request.app.state.redis:
-        redis_key = f"reset:{token}"
-        await request.app.state.redis.delete(redis_key)
-    
-    return True
+        db.commit()
+        logger.info("Password updated in database")
+        
+        # Delete the token from Redis
+        if request and hasattr(request.app.state, 'redis') and request.app.state.redis:
+            redis_key = f"reset:{token}"
+            logger.info(f"Deleting token from Redis: {redis_key}")
+            await request.app.state.redis.delete(redis_key)
+            logger.info("Token deleted from Redis")
+        else:
+            logger.warning("Could not delete token from Redis - Redis not available")
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error resetting password: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return False

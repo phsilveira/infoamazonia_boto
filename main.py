@@ -170,8 +170,18 @@ async def request_password_reset(
     email: str = Form(...),
     db: Session = Depends(get_db)
 ):
+    # Log the request
+    logger.info(f"Password reset requested for email: {email}")
+    
     # Check if email exists in database
+    logger.info("Attempting to create password reset token...")
     reset_token = await auth.create_password_reset_token(email, db, request)
+    
+    # Log token status
+    if reset_token:
+        logger.info(f"Token generated successfully for {email}: {reset_token[:5]}...{reset_token[-5:]}")
+    else:
+        logger.info(f"No token generated for {email} - email not found or Redis error")
     
     # Always show success message, even if email not found (security measure)
     message = f"If an account with this email exists, a password reset link has been sent to your email."
@@ -181,13 +191,16 @@ async def request_password_reset(
         base_url = str(request.base_url).rstrip('/')
         reset_link = f"{base_url}{request.url_for('reset_password_page')}?token={reset_token}"
         
-        # Log the action (don't include the full link in production)
-        logger.info(f"Password reset requested for {email}. Reset link generated.")
+        # Log the reset link details (be careful in production environments)
+        logger.info(f"Generated reset link: {reset_link}")
         
+        logger.info(f"Attempting to send password reset email to {email}...")
         # Send the password reset email
         email_sent = send_password_reset_email(email, reset_link)
         
-        if not email_sent:
+        if email_sent:
+            logger.info(f"Password reset email successfully sent to {email}")
+        else:
             logger.error(f"Failed to send password reset email to {email}")
             # Still show success message to prevent user enumeration
     

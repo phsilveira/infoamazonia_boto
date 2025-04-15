@@ -32,6 +32,10 @@ def send_email(recipient_email, subject, html_content, text_content=None):
         api_key = settings.MAILGUN_API_KEY
         domain = settings.MAILGUN_DOMAIN
         
+        # Debug: Print environment variables values (masked for security)
+        logger.info(f"MAILGUN_API_KEY present: {bool(api_key)}, length: {len(api_key) if api_key else 0}")
+        logger.info(f"MAILGUN_DOMAIN: {domain}")
+        
         if not api_key or not domain:
             logger.error("Missing Mailgun API key or domain.")
             return False
@@ -47,16 +51,30 @@ def send_email(recipient_email, subject, html_content, text_content=None):
             "text": text_content
         }
         
+        # Debug: Print request data (without sensitive info)
+        safe_data = data.copy()
+        logger.info(f"Email data: {safe_data}")
+        
         # Add HTML content if provided
         if html_content:
             data["html"] = html_content
+            logger.info("HTML content added to email")
+        
+        # Build the API URL
+        api_url = f"https://api.mailgun.net/v3/{domain}/messages"
+        logger.info(f"Mailgun API URL: {api_url}")
         
         # Make the API request
+        logger.info("Attempting to send email via Mailgun API...")
         response = requests.post(
-            f"https://api.mailgun.net/v3/{domain}/messages",
+            api_url,
             auth=("api", api_key),
             data=data
         )
+        
+        # Log detailed response
+        logger.info(f"Mailgun API Response Status Code: {response.status_code}")
+        logger.info(f"Mailgun API Response Headers: {dict(response.headers)}")
         
         # Check response
         if response.status_code == 200:
@@ -68,7 +86,9 @@ def send_email(recipient_email, subject, html_content, text_content=None):
             return False
             
     except Exception as e:
+        import traceback
         logger.error(f"Error sending email: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return False
 
 def send_password_reset_email(email, reset_link):

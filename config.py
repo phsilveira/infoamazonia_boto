@@ -82,7 +82,13 @@ async def get_redis():
     Create and return a Redis client instance.
     Includes retry logic and better error handling.
     """
+    # Log Redis connection details (without exposing passwords)
+    logger.info(f"Initializing Redis connection to {settings.REDIS_HOST}:{settings.REDIS_PORT}")
+    logger.info(f"Redis decode_responses: True, DB: {settings.REDIS_DB}")
+    logger.info(f"Redis password set: {settings.REDIS_PASSWORD is not None}")
+    
     try:
+        logger.info("Creating Redis client...")
         redis_client = redis.Redis(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
@@ -93,13 +99,35 @@ async def get_redis():
             retry_on_timeout=True,
             health_check_interval=30
         )
-        # Test the connection
-        await redis_client.ping()
-        logger.info("Successfully connected to Redis")
+        
+        # Test the connection with detailed logging
+        logger.info("Testing Redis connection with ping...")
+        ping_result = await redis_client.ping()
+        logger.info(f"Redis ping result: {ping_result}")
+        
+        # Check if we can read/write to Redis
+        logger.info("Testing Redis read/write functionality...")
+        test_key = "test:connection"
+        test_value = "connection_test"
+        await redis_client.set(test_key, test_value, ex=60)  # Expire in 60 seconds
+        read_value = await redis_client.get(test_key)
+        
+        if read_value == test_value:
+            logger.info("Redis read/write test successful")
+        else:
+            logger.warning(f"Redis read/write test failed. Expected '{test_value}', got '{read_value}'")
+        
+        logger.info("Successfully connected to Redis and verified functionality")
         return redis_client
+        
     except redis.ConnectionError as e:
         logger.error(f"Failed to connect to Redis: {e}")
+        import traceback
+        logger.error(f"Redis connection error traceback: {traceback.format_exc()}")
         return None
+        
     except Exception as e:
         logger.error(f"Unexpected error creating Redis client: {e}")
+        import traceback
+        logger.error(f"Redis error traceback: {traceback.format_exc()}")
         return None
