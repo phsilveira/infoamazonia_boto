@@ -1,0 +1,126 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Admin User Details - InfoAmazonia Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-lg font-medium text-gray-900">Admin User Details</h1>
+        <a href="/admin/admin-users" class="text-sm text-gray-600 hover:text-gray-900">← Back</a>
+    </div>
+
+    <!-- Admin Info -->
+    <dl class="bg-white rounded-lg shadow-sm p-4 grid grid-cols-2 gap-4 mb-6">
+        <div>
+            <dt class="text-xs font-medium text-gray-500">Username</dt>
+            <dd class="mt-1">{{ admin_user.username }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-gray-500">Email</dt>
+            <dd class="mt-1">{{ admin_user.email }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-gray-500">Role</dt>
+            <dd class="mt-1">
+                <form method="POST" action="/admin/admin-users/{{ admin_user.id }}/role" class="inline">
+                    <select name="role" 
+                            onchange="this.form.submit()" 
+                            class="form-select text-xs px-2 py-1 rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="admin" {{ 'selected' if admin_user.role == 'admin' else '' }}>Admin</option>
+                        <option value="editor" {{ 'selected' if admin_user.role == 'editor' else '' }}>Editor</option>
+                        <option value="viewer" {{ 'selected' if admin_user.role == 'viewer' else '' }}>Viewer</option>
+                    </select>
+                </form>
+            </dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-gray-500">Status</dt>
+            <dd class="mt-1">
+                <form method="POST" action="/admin/admin-users/{{ admin_user.id }}/status" class="inline">
+                    <select name="is_active" 
+                            onchange="this.form.submit()" 
+                            class="form-select text-xs px-2 py-1 rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="true" {{ 'selected' if admin_user.is_active else '' }}>Active</option>
+                        <option value="false" {{ 'selected' if not admin_user.is_active else '' }}>Inactive</option>
+                    </select>
+                </form>
+            </dd>
+        </div>
+    </dl>
+
+    <!-- Reset Password -->
+    <div class="bg-white rounded-lg shadow-sm mb-6">
+        <div class="px-4 py-3 border-b">
+            <h2 class="font-medium">Reset Password</h2>
+        </div>
+        <div class="p-4">
+            <form method="POST" action="/admin/admin-users/{{ admin_user.id }}/reset-password">
+                <div class="mb-3">
+                    <label for="new_password" class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="new_password" name="new_password" required>
+                </div>
+                <div class="mb-3">
+                    <label for="confirm_password" class="form-label">Confirm Password</label>
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Reset Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Admin User -->
+    <div class="bg-white rounded-lg shadow-sm">
+        <div class="px-4 py-3 border-b">
+            <h2 class="font-medium text-danger">Danger Zone</h2>
+        </div>
+        <div class="p-4">
+            <p class="text-sm text-gray-600 mb-3">Permanently delete this admin user and all of their data.</p>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAdminModal">
+                Delete Admin User
+            </button>
+        </div>
+    </div>
+
+    <!-- Delete Admin Confirmation Modal -->
+    <div class="modal fade" id="deleteAdminModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete Admin User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the admin user "{{ admin_user.username }}"? This action cannot be undone.</p>
+                    <p class="text-danger"><strong>Warning:</strong> This will permanently remove the admin user and all of their data.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="POST" action="/admin/admin-users/{{ admin_user.id }}/delete" class="d-inline">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle modal backdrop removal
+    const deleteAdminModal = document.getElementById('deleteAdminModal');
+    if (deleteAdminModal) {
+        deleteAdminModal.addEventListener('hidden.bs.modal', function () {
+            document.body.classList.remove('modal-open');
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
