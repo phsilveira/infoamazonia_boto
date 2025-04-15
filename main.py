@@ -188,8 +188,9 @@ async def request_password_reset(
     
     if reset_token:
         # Generate the reset link with the token
-        base_url = str(request.base_url).rstrip('/')
-        reset_link = f"{base_url}{request.url_for('reset_password_page')}?token={reset_token}"
+        # Use URL for directly to avoid duplicating the base URL
+        reset_url = request.url_for('reset_password_page')
+        reset_link = f"{reset_url}?token={reset_token}"
         
         # Log the reset link details (be careful in production environments)
         logger.info(f"Generated reset link: {reset_link}")
