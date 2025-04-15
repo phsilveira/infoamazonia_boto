@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Form, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -154,6 +154,83 @@ async def login_page(request: Request):
     return templates.TemplateResponse(
         "admin/login.html",
         {"request": request}
+    )
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    return templates.TemplateResponse(
+        "admin/forgot_password.html",
+        {"request": request}
+    )
+
+@app.post("/forgot-password", response_class=HTMLResponse)
+async def request_password_reset(
+    request: Request,
+    email: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    # Check if email exists in database
+    reset_token = auth.create_password_reset_token(email, db)
+    
+    # Always show success message, even if email not found (security measure)
+    # In a real application, you would send an email with the reset link
+    # For demonstration purposes, we'll just provide the link directly
+    message = f"If an account with this email exists, a password reset link has been sent."
+    
+    if reset_token:
+        reset_link = f"{request.url_for('reset_password_page')}?token={reset_token}"
+        logger.info(f"Password reset requested for {email}. Reset link: {reset_link}")
+        message = f"Password reset link: {reset_link}"
+    
+    return templates.TemplateResponse(
+        "admin/forgot_password_confirmation.html",
+        {"request": request, "message": message}
+    )
+
+@app.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_page(
+    request: Request,
+    token: str = Query(...),
+    db: Session = Depends(get_db)
+):
+    # Verify token is valid
+    admin = auth.verify_reset_token(token, db)
+    if not admin:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    return templates.TemplateResponse(
+        "admin/reset_password.html",
+        {"request": request, "token": token}
+    )
+
+@app.post("/reset-password", response_class=HTMLResponse)
+async def reset_password_submit(
+    request: Request,
+    token: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    # Check if passwords match
+    if password != confirm_password:
+        return templates.TemplateResponse(
+            "admin/reset_password.html",
+            {
+                "request": request, 
+                "token": token,
+                "error": "Passwords do not match"
+            }
+        )
+    
+    # Reset the password
+    success = auth.reset_password(token, password, db)
+    if not success:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    # Redirect to login with success message
+    return templates.TemplateResponse(
+        "admin/login.html",
+        {"request": request, "message": "Password has been reset successfully. You can now log in."}
     )
 
 @app.post("/token")

@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
+import secrets
+import string
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status, Request
@@ -7,10 +9,12 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 import models
 from database import get_db, SessionLocal
+from config import settings
 
-SECRET_KEY = "your-secret-key-here"  # In production, use environment variable
+SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+RESET_TOKEN_EXPIRE_HOURS = 24  # Token valid for 24 hours
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -65,3 +69,58 @@ async def get_current_admin(request: Request, db: Session = Depends(get_db)):
         return admin
     except JWTError:
         raise credentials_exception
+
+def generate_reset_token(length=32):
+    """Generate a secure random token for password reset"""
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+def create_password_reset_token(email: str, db: Session):
+    """Create a password reset token for a user with the given email"""
+    admin = db.query(models.Admin).filter(models.Admin.email == email).first()
+    if not admin:
+        # Don't reveal that the email doesn't exist
+        return None
+    
+    # Generate a secure random token
+    reset_token = generate_reset_token()
+    
+    # Set token expiration (24 hours from now)
+    expires = datetime.utcnow() + timedelta(hours=RESET_TOKEN_EXPIRE_HOURS)
+    
+    # Save the token and expiration in the database
+    admin.reset_token = reset_token
+    admin.reset_token_expires = expires
+    db.commit()
+    
+    return reset_token
+
+def verify_reset_token(token: str, db: Session):
+    """Verify if a password reset token is valid and return the associated admin"""
+    admin = db.query(models.Admin).filter(models.Admin.reset_token == token).first()
+    
+    if not admin:
+        return None
+        
+    # Check if token is expired
+    if admin.reset_token_expires and admin.reset_token_expires < datetime.utcnow():
+        return None
+        
+    return admin
+
+def reset_password(token: str, new_password: str, db: Session):
+    """Reset a user's password using a valid reset token"""
+    admin = verify_reset_token(token, db)
+    
+    if not admin:
+        return False
+        
+    # Update password
+    admin.hashed_password = get_password_hash(new_password)
+    
+    # Clear the reset token
+    admin.reset_token = None
+    admin.reset_token_expires = None
+    
+    db.commit()
+    return True

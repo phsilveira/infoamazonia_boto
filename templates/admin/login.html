@@ -21,8 +21,16 @@
                                 <label for="password" class="form-label">Password</label>
                                 <input type="password" class="form-control" id="password" name="password" required>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100">Login</button>
+                            <button type="submit" class="btn btn-primary w-100 mb-3">Login</button>
+                            <div class="text-center">
+                                <a href="/forgot-password" class="text-decoration-none">Forgot Password?</a>
+                            </div>
                             <input type="hidden" name="grant_type" value="password">
+                            {% if message %}
+                            <div class="alert alert-success mt-3">
+                                {{ message }}
+                            </div>
+                            {% endif %}
                         </form>
                     </div>
                 </div>
