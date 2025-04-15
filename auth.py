@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 import models
 from database import get_db, SessionLocal
 from config import settings
+from services.email import send_password_reset_email
 
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"

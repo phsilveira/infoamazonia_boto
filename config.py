@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     
+    # Mailgun Email Settings
+    MAILGUN_API_KEY: str = os.getenv("MAILGUN_API_KEY", "")
+    MAILGUN_DOMAIN: str = os.getenv("MAILGUN_DOMAIN", "")
+    
     # Articles API
     ARTICLES_API_URL: str = os.getenv("ARTICLES_API_URL", "https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/articles/list")
     SEARCH_BASE_URL: str = os.getenv("SEARCH_BASE_URL", "https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev")

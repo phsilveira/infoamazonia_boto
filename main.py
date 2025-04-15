@@ -173,14 +173,22 @@ async def request_password_reset(
     reset_token = await auth.create_password_reset_token(email, db, request)
     
     # Always show success message, even if email not found (security measure)
-    # In a real application, you would send an email with the reset link
-    # For demonstration purposes, we'll just provide the link directly
-    message = f"If an account with this email exists, a password reset link has been sent."
+    message = f"If an account with this email exists, a password reset link has been sent to your email."
     
     if reset_token:
-        reset_link = f"{request.url_for('reset_password_page')}?token={reset_token}"
-        logger.info(f"Password reset requested for {email}. Reset link: {reset_link}")
-        message = f"Password reset link: {reset_link}"
+        # Generate the reset link with the token
+        base_url = str(request.base_url).rstrip('/')
+        reset_link = f"{base_url}{request.url_for('reset_password_page')}?token={reset_token}"
+        
+        # Log the action (don't include the full link in production)
+        logger.info(f"Password reset requested for {email}. Reset link generated.")
+        
+        # Send the password reset email
+        email_sent = send_password_reset_email(email, reset_link)
+        
+        if not email_sent:
+            logger.error(f"Failed to send password reset email to {email}")
+            # Still show success message to prevent user enumeration
     
     return templates.TemplateResponse(
         "admin/forgot_password_confirmation.html",
