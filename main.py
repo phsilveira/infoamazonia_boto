@@ -149,6 +149,7 @@ app.middleware("http")(auth_middleware)
 app.include_router(admin_router)
 app.include_router(webhook_router)
 app.include_router(location_router)
+app.include_router(admin_management_router)
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
