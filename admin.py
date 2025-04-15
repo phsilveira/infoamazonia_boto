@@ -4,7 +4,7 @@ from typing import List
 import models
 import schemas
 from database import get_db
-from auth import get_current_admin
+from auth import get_current_admin, get_password_hash
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from datetime import datetime, timezone
@@ -12,7 +12,7 @@ import json
 import httpx
 import logging
 from config import settings
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from services.chatgpt import ChatGPTService # Fixed import
 from cache_utils import invalidate_dashboard_caches  # Import cache invalidation utility
 
@@ -601,3 +601,227 @@ async def update_user_schedule(
             status_code=500,
             detail=f"Failed to update user schedule: {str(e)}"
         )
+@router.get("/admin-users", response_class=HTMLResponse)
+async def list_admin_users(
+    request: Request,
+    search: str = None,
+    status: str = None,
+    sort: str = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """List all admin users with filtering options."""
+    # Start with a base query
+    query = db.query(models.Admin)
+    
+    # Apply search filter if provided
+    if search:
+        query = query.filter(
+            or_(
+                models.Admin.username.ilike(f"%{search}%"),
+                models.Admin.email.ilike(f"%{search}%")
+            )
+        )
+    
+    # Apply status filter if provided
+    if status:
+        is_active = status == "active"
+        query = query.filter(models.Admin.is_active == is_active)
+    
+    # Apply sorting if provided
+    if sort:
+        if sort == "id_asc":
+            query = query.order_by(models.Admin.id.asc())
+        elif sort == "id_desc":
+            query = query.order_by(models.Admin.id.desc())
+        elif sort == "username_asc":
+            query = query.order_by(models.Admin.username.asc())
+        elif sort == "username_desc":
+            query = query.order_by(models.Admin.username.desc())
+        else:
+            query = query.order_by(models.Admin.id.asc())
+    else:
+        # Default sorting
+        query = query.order_by(models.Admin.id.asc())
+    
+    # Apply pagination
+    admins = query.offset(skip).limit(limit).all()
+    
+    return templates.TemplateResponse(
+        "admin/admin-users.html",
+        {"request": request, "admins": admins}
+    )
+
+
+@router.post("/admin-users/create", response_class=HTMLResponse)
+async def create_admin_user(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    role: str = Form(...),
+    is_active: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Create a new admin user."""
+    # Check if the admin already exists
+    existing_admin = db.query(models.Admin).filter(
+        or_(
+            models.Admin.username == username,
+            models.Admin.email == email
+        )
+    ).first()
+    
+    if existing_admin:
+        # Redirect back with error
+        return templates.TemplateResponse(
+            "admin/admin-users.html",
+            {
+                "request": request,
+                "admins": db.query(models.Admin).all(),
+                "error": f"Admin with that username or email already exists."
+            }
+        )
+    
+    # Create the new admin
+    new_admin = models.Admin(
+        username=username,
+        email=email,
+        hashed_password=get_password_hash(password),
+        role=role,
+        is_active=is_active.lower() == "true"
+    )
+    
+    db.add(new_admin)
+    db.commit()
+    db.refresh(new_admin)
+    
+    return RedirectResponse(url="/admin/admin-users", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/admin-users/{admin_id}", response_class=HTMLResponse)
+async def get_admin_user(
+    request: Request,
+    admin_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Get admin user details."""
+    admin_user = db.query(models.Admin).filter(models.Admin.id == admin_id).first()
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    
+    return templates.TemplateResponse(
+        "admin/admin-user-detail.html",
+        {"request": request, "admin_user": admin_user}
+    )
+
+
+@router.post("/admin-users/{admin_id}/role", response_class=RedirectResponse)
+async def update_admin_role(
+    request: Request,
+    admin_id: int,
+    role: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Update admin user role."""
+    admin_user = db.query(models.Admin).filter(models.Admin.id == admin_id).first()
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    
+    # Don't allow changing your own role
+    if admin_user.id == current_admin.id:
+        return RedirectResponse(
+            url=f"/admin/admin-users/{admin_id}?error=Cannot change your own role",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+    
+    admin_user.role = role
+    db.commit()
+    
+    return RedirectResponse(url=f"/admin/admin-users/{admin_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/admin-users/{admin_id}/status", response_class=RedirectResponse)
+async def update_admin_status(
+    request: Request,
+    admin_id: int,
+    is_active: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Update admin user status."""
+    admin_user = db.query(models.Admin).filter(models.Admin.id == admin_id).first()
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    
+    # Don't allow deactivating yourself
+    if admin_user.id == current_admin.id:
+        return RedirectResponse(
+            url=f"/admin/admin-users/{admin_id}?error=Cannot change your own status",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+    
+    admin_user.is_active = is_active.lower() == "true"
+    db.commit()
+    
+    return RedirectResponse(url=f"/admin/admin-users/{admin_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/admin-users/{admin_id}/reset-password", response_class=RedirectResponse)
+async def reset_admin_password(
+    request: Request,
+    admin_id: int,
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Reset admin user password."""
+    admin_user = db.query(models.Admin).filter(models.Admin.id == admin_id).first()
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    
+    # Verify passwords match
+    if new_password != confirm_password:
+        return RedirectResponse(
+            url=f"/admin/admin-users/{admin_id}?error=Passwords do not match",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+    
+    admin_user.hashed_password = get_password_hash(new_password)
+    db.commit()
+    
+    return RedirectResponse(
+        url=f"/admin/admin-users/{admin_id}?success=Password updated successfully",
+        status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+@router.post("/admin-users/{admin_id}/delete", response_class=RedirectResponse)
+async def delete_admin_user(
+    request: Request,
+    admin_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Delete admin user."""
+    admin_user = db.query(models.Admin).filter(models.Admin.id == admin_id).first()
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    
+    # Don't allow deleting yourself
+    if admin_user.id == current_admin.id:
+        return RedirectResponse(
+            url=f"/admin/admin-users/{admin_id}?error=Cannot delete your own account",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+    
+    db.delete(admin_user)
+    db.commit()
+    
+    return RedirectResponse(url="/admin/admin-users", status_code=status.HTTP_303_SEE_OTHER)
