@@ -39,14 +39,14 @@ class ChatBot:
             trigger='select_subscribe',
             source=['menu_state', 'get_user_location'],
             dest='modify_subscription_state',
-            conditions=['has_saved_location']
+            conditions='has_saved_location'
         )
         
         self.machine.add_transition(
             trigger='select_subscribe',
             source=['menu_state', 'get_user_location'],
             dest='get_user_location',
-            conditions=['has_no_saved_location']
+            unless='has_saved_location'
         )
         
         # Transitions from modify_subscription_state based on user selection

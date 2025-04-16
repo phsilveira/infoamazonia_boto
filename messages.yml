@@ -133,6 +133,17 @@ return_to_menu_from_subscription: "Digite *menu* para voltar a menu principal."
 
 return_success: "Obrigado! Caso tenha outras dúvidas, digite outro termo relacionado ou escolha uma nova opção no menu principal."
 
+# Subscription modification
+subscription:
+  modify_options: |
+    🔄 O que você gostaria de modificar na sua inscrição?
+
+    1️⃣ Atualizar localização 📍 
+    2️⃣ Atualizar temas de interesse 📚
+    3️⃣ Mudar frequência de recebimento 🕒
+
+    Digite o número da opção desejada:
+
 # Error messages
 error:
   user_not_found: "Usuário não encontrado"

@@ -114,7 +114,7 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
     if message in ['1', 'subscribe', 'inscrever', 'notícias']:
         # The chatbot will automatically route to modify_subscription_state or get_user_location
         # based on whether the user already has locations saved
-        chatbot.select_subscribe()
+        chatbot.select_subscribe(phone_number)
         
         # If user has a location preference, they'll be sent to modify_subscription_state, 
         # otherwise to get_user_location as before
