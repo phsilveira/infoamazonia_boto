@@ -112,8 +112,16 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
 
     # Process the user's selection
     if message in ['1', 'subscribe', 'inscrever', 'notícias']:
+        # The chatbot will automatically route to modify_subscription_state or get_user_location
+        # based on whether the user already has locations saved
         chatbot.select_subscribe()
-        await send_message(phone_number, message_loader.get_message('location.request'), db)
+        
+        # If user has a location preference, they'll be sent to modify_subscription_state, 
+        # otherwise to get_user_location as before
+        if chatbot.state == 'modify_subscription_state':
+            await send_message(phone_number, message_loader.get_message('subscription.modify_options'), db)
+        else:
+            await send_message(phone_number, message_loader.get_message('location.request'), db)
     elif message in ['2', 'termo']:
         chatbot.select_term_info()
         await send_message(phone_number, message_loader.get_message('menu.term_info'), db)
@@ -369,6 +377,71 @@ async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str
         await send_message(phone_number, message_loader.get_message('error.save_subject', error=str(e)), db)
     
 
+    return chatbot.state
+
+async def handle_modify_subscription_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
+    """Handle the modify subscription state logic"""
+    message = message.lower().strip()
+    db = next(get_db())
+    user = chatbot.get_user(phone_number)
+    
+    if not user:
+        await send_message(phone_number, message_loader.get_message('error.user_not_found'), db)
+        chatbot.show_menu()
+        return chatbot.state
+    
+    # Check for 'voltar' keyword to go back to main menu
+    if message.lower().strip() == 'voltar':
+        chatbot.show_menu()
+        menu_message = message_loader.get_message('menu.main')
+        await send_message(phone_number, menu_message, db)
+        return chatbot.state
+    
+    # Process the user's selection for which part of subscription to modify
+    if message in ['1', 'local', 'localização', 'location']:
+        chatbot.select_location_modification()
+        await send_message(phone_number, message_loader.get_message('location.request'), db)
+    elif message in ['2', 'tema', 'assunto', 'subject']:
+        chatbot.select_subject_modification()
+        await send_message(phone_number, message_loader.get_message('subject.request'), db)
+    elif message in ['3', 'frequência', 'schedule', 'programação']:
+        chatbot.select_schedule_modification()
+        await send_message(phone_number, message_loader.get_message('schedule.request'), db)
+    else:
+        # For invalid options, remind the user of the available choices
+        interactive_content = {
+            "type": "button",
+            "body": {
+                "text": "O que você gostaria de modificar na sua inscrição?"
+            },
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "1",
+                            "title": "Localização 📍"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "2",
+                            "title": "Temas de interesse 📚"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "3",
+                            "title": "Frequência de recebimento 🕒"
+                        }
+                    }
+                ]
+            }
+        }
+        await send_message(phone_number, interactive_content, db, message_type="interactive")
+    
     return chatbot.state
 
 async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:

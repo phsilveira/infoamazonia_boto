@@ -9,7 +9,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 class ChatBot:
-    states = ['start', 'register', 'menu_state', 'get_user_location', 'get_user_subject', 
+    states = ['start', 'register', 'menu_state', 'modify_subscription_state', 'get_user_location', 'get_user_subject', 
               'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 
               'get_news_suggestion', 'feedback_state', 'unsubscribe_state', 'monthly_news_response']
 
@@ -38,7 +38,34 @@ class ChatBot:
         self.machine.add_transition(
             trigger='select_subscribe',
             source=['menu_state', 'get_user_location'],
+            dest='modify_subscription_state',
+            conditions=['has_saved_location']
+        )
+        
+        self.machine.add_transition(
+            trigger='select_subscribe',
+            source=['menu_state', 'get_user_location'],
+            dest='get_user_location',
+            conditions=['has_no_saved_location']
+        )
+        
+        # Transitions from modify_subscription_state based on user selection
+        self.machine.add_transition(
+            trigger='select_location_modification',
+            source='modify_subscription_state',
             dest='get_user_location'
+        )
+        
+        self.machine.add_transition(
+            trigger='select_subject_modification',
+            source='modify_subscription_state',
+            dest='get_user_subject'
+        )
+        
+        self.machine.add_transition(
+            trigger='select_schedule_modification',
+            source='modify_subscription_state',
+            dest='get_user_schedule'
         )
         self.machine.add_transition(
             trigger='proceed_to_subjects',
@@ -123,6 +150,19 @@ class ChatBot:
     def get_user(self, phone_number: str):
         """Get an existing user by phone number"""
         return self.db.query(models.User).filter_by(phone_number=phone_number).first()
+    
+    def has_saved_location(self, phone_number: str):
+        """Check if user has at least one saved location"""
+        user = self.get_user(phone_number)
+        if not user:
+            return False
+        
+        locations = self.db.query(models.Location).filter_by(user_id=user.id).first()
+        return locations is not None
+    
+    def has_no_saved_location(self, phone_number: str):
+        """Check if user doesn't have any saved location"""
+        return not self.has_saved_location(phone_number)
 
     def save_location(self, user_id: int, location_name: str):
         """Save a new location for the user"""
