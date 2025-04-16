@@ -16,6 +16,7 @@ class ChatBot:
     def __init__(self, db: Session, redis_client: Optional[redis.Redis] = None):
         self.db = db
         self.redis_client = redis_client
+        self.current_phone_number = None  # Store the current phone number for condition methods
         self.machine = Machine(
             model=self,
             states=ChatBot.states,
@@ -151,8 +152,14 @@ class ChatBot:
         """Get an existing user by phone number"""
         return self.db.query(models.User).filter_by(phone_number=phone_number).first()
     
-    def has_saved_location(self, phone_number: str):
+    def has_saved_location(self, phone_number=None):
         """Check if user has at least one saved location"""
+        # Use the provided phone_number or fall back to the stored one
+        phone_number = phone_number or self.current_phone_number
+        if not phone_number:
+            logger.error("No phone number provided for has_saved_location check")
+            return False
+            
         user = self.get_user(phone_number)
         if not user:
             return False
@@ -160,8 +167,10 @@ class ChatBot:
         locations = self.db.query(models.Location).filter_by(user_id=user.id).first()
         return locations is not None
     
-    def has_no_saved_location(self, phone_number: str):
+    def has_no_saved_location(self, phone_number=None):
         """Check if user doesn't have any saved location"""
+        # Use the provided phone_number or fall back to the stored one
+        phone_number = phone_number or self.current_phone_number
         return not self.has_saved_location(phone_number)
 
     def save_location(self, user_id: int, location_name: str):
@@ -237,3 +246,9 @@ class ChatBot:
             # Fallback to instance variable if Redis is not available
             logger.warning("Redis client not available, using instance variable for interaction ID")
             return self.current_interaction_id
+            
+    def set_current_phone_number(self, phone_number: str):
+        """Store the current phone number to be used by condition methods"""
+        self.current_phone_number = phone_number
+        logger.info(f"Set current phone number to: {phone_number}")
+        return True

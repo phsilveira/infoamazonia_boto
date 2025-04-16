@@ -112,9 +112,9 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
 
     # Process the user's selection
     if message in ['1', 'subscribe', 'inscrever', 'notícias']:
-        # The chatbot will automatically route to modify_subscription_state or get_user_location
-        # based on whether the user already has locations saved
-        chatbot.select_subscribe(phone_number)
+        # Store the phone number first, then trigger the transition
+        chatbot.set_current_phone_number(phone_number)
+        chatbot.select_subscribe()
         
         # If user has a location preference, they'll be sent to modify_subscription_state, 
         # otherwise to get_user_location as before
@@ -384,6 +384,9 @@ async def handle_modify_subscription_state(chatbot: ChatBot, phone_number: str, 
     message = message.lower().strip()
     db = next(get_db())
     user = chatbot.get_user(phone_number)
+    
+    # Store the phone number for condition methods
+    chatbot.set_current_phone_number(phone_number)
     
     if not user:
         await send_message(phone_number, message_loader.get_message('error.user_not_found'), db)
