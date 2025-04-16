@@ -96,16 +96,224 @@ async def list_users(
 @router.get("/news-sources", response_class=HTMLResponse)
 async def list_news_sources(
     request: Request,
+    search: str = None,
+    status: str = None,
+    sort: str = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
-    sources = db.query(models.NewsSource).offset(skip).limit(limit).all()
+    # Start with a base query
+    query = db.query(models.NewsSource)
+    
+    # Apply search filter if provided
+    if search:
+        query = query.filter(
+            or_(
+                models.NewsSource.name.ilike(f"%{search}%"),
+                models.NewsSource.url.ilike(f"%{search}%")
+            )
+        )
+    
+    # Apply status filter if provided
+    if status:
+        is_active = status == "active"
+        query = query.filter(models.NewsSource.is_active == is_active)
+    
+    # Apply sorting if provided
+    if sort == "created_at_asc":
+        query = query.order_by(models.NewsSource.created_at.asc())
+    elif sort == "name_asc":
+        query = query.order_by(models.NewsSource.name.asc())
+    elif sort == "name_desc":
+        query = query.order_by(models.NewsSource.name.desc())
+    else:  # Default to newest first
+        query = query.order_by(models.NewsSource.created_at.desc())
+    
+    sources = query.offset(skip).limit(limit).all()
+    
     return templates.TemplateResponse(
         "admin/news-sources.html",
         {"request": request, "sources": sources}
     )
+
+@router.post("/news-sources/create", response_class=HTMLResponse)
+async def create_news_source(
+    request: Request,
+    name: str = Form(...),
+    url: str = Form(...),
+    status: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        # Check if a news source with this URL already exists
+        existing_source = db.query(models.NewsSource).filter(models.NewsSource.url == url).first()
+        if existing_source:
+            # Return error
+            sources = db.query(models.NewsSource).order_by(desc(models.NewsSource.created_at)).all()
+            return templates.TemplateResponse(
+                "admin/news-sources.html",
+                {
+                    "request": request, 
+                    "sources": sources,
+                    "error": "A news source with this URL already exists."
+                }
+            )
+        
+        # Create new news source
+        source = models.NewsSource(
+            name=name,
+            url=url,
+            is_active=(status == 'active')
+        )
+        db.add(source)
+        db.commit()
+        db.refresh(source)
+        
+        # Invalidate dashboard caches after news source creation
+        await invalidate_dashboard_caches(request)
+        logger.info(f"Cache invalidated after creating news source: {source.id}")
+
+        return RedirectResponse(
+            url="/admin/news-sources",
+            status_code=302
+        )
+    except Exception as e:
+        logger.error(f"Error creating news source: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create news source: {str(e)}"
+        )
+
+@router.get("/news-sources/{source_id}", response_class=HTMLResponse)
+async def get_news_source(
+    request: Request,
+    source_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    # Get the news source
+    source = db.query(models.NewsSource).filter(models.NewsSource.id == source_id).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="News source not found")
+    
+    return templates.TemplateResponse(
+        "admin/news-source-detail.html",
+        {"request": request, "source": source}
+    )
+
+@router.post("/news-sources/{source_id}/status", response_class=RedirectResponse)
+async def update_news_source_status(
+    request: Request,
+    source_id: int,
+    status: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        source = db.query(models.NewsSource).filter(models.NewsSource.id == source_id).first()
+        if not source:
+            raise HTTPException(status_code=404, detail="News source not found")
+        
+        # Update status
+        source.is_active = status == "active"
+        db.commit()
+        
+        # Invalidate dashboard caches after status update
+        await invalidate_dashboard_caches(request)
+        
+        return RedirectResponse(
+            url=f"/admin/news-sources/{source_id}",
+            status_code=status.HTTP_302_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Error updating news source status: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update news source status: {str(e)}"
+        )
+
+@router.post("/news-sources/{source_id}/edit", response_class=RedirectResponse)
+async def edit_news_source(
+    request: Request,
+    source_id: int,
+    name: str = Form(...),
+    url: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        source = db.query(models.NewsSource).filter(models.NewsSource.id == source_id).first()
+        if not source:
+            raise HTTPException(status_code=404, detail="News source not found")
+        
+        # Check if URL is already taken by another source
+        existing_source = db.query(models.NewsSource).filter(
+            models.NewsSource.url == url,
+            models.NewsSource.id != source_id
+        ).first()
+        
+        if existing_source:
+            # Return with error
+            return templates.TemplateResponse(
+                "admin/news-source-detail.html",
+                {
+                    "request": request,
+                    "source": source,
+                    "error": "A news source with this URL already exists."
+                }
+            )
+        
+        # Update source details
+        source.name = name
+        source.url = url
+        db.commit()
+        
+        # Invalidate dashboard caches after edit
+        await invalidate_dashboard_caches(request)
+        
+        return RedirectResponse(
+            url=f"/admin/news-sources/{source_id}",
+            status_code=status.HTTP_302_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Error updating news source: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update news source: {str(e)}"
+        )
+
+@router.post("/news-sources/{source_id}/delete", response_class=RedirectResponse)
+async def delete_news_source(
+    request: Request,
+    source_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    try:
+        source = db.query(models.NewsSource).filter(models.NewsSource.id == source_id).first()
+        if not source:
+            raise HTTPException(status_code=404, detail="News source not found")
+        
+        # Delete the source
+        db.delete(source)
+        db.commit()
+        
+        # Invalidate dashboard caches after deletion
+        await invalidate_dashboard_caches(request)
+        
+        return RedirectResponse(
+            url="/admin/news-sources",
+            status_code=status.HTTP_302_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Error deleting news source: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete news source: {str(e)}"
+        )
 
 @router.get("/metrics", response_class=HTMLResponse)
 async def get_metrics(
