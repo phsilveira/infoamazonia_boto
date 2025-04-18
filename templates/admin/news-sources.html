@@ -1,44 +1,44 @@
 {% extends "admin/base.html" %}
 
-{% block title %}News Sources - InfoAmazonia Admin{% endblock %}
+{% block title %}Fontes de Notícias - Administrador InfoAmazonia{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>News Sources</h2>
+    <h2>Fontes de Notícias</h2>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSourceModal">
-        Add New Source
+        Adicionar Nova Fonte
     </button>
 </div>
 
-<!-- Filters -->
+<!-- Filtros -->
 <div class="card mb-4">
     <div class="card-body">
         <form action="/admin/news-sources" method="get" class="row g-3">
             <div class="col-md-4">
-                <label class="form-label">Name or URL</label>
+                <label class="form-label">Nome ou URL</label>
                 <input type="text" class="form-control" name="search" value="{{ request.query_params.get('search', '') }}">
             </div>
             <div class="col-md-3">
                 <label class="form-label">Status</label>
                 <select class="form-select" name="status">
-                    <option value="">All</option>
-                    <option value="active" {% if request.query_params.get('status') == 'active' %}selected{% endif %}>Active</option>
-                    <option value="inactive" {% if request.query_params.get('status') == 'inactive' %}selected{% endif %}>Inactive</option>
+                    <option value="">Todos</option>
+                    <option value="active" {% if request.query_params.get('status') == 'active' %}selected{% endif %}>Ativo</option>
+                    <option value="inactive" {% if request.query_params.get('status') == 'inactive' %}selected{% endif %}>Inativo</option>
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label">Sort By</label>
+                <label class="form-label">Ordenar Por</label>
                 <select class="form-select" name="sort">
-                    <option value="created_at_desc" {% if request.query_params.get('sort') == 'created_at_desc' %}selected{% endif %}>Newest First</option>
-                    <option value="created_at_asc" {% if request.query_params.get('sort') == 'created_at_asc' %}selected{% endif %}>Oldest First</option>
-                    <option value="name_asc" {% if request.query_params.get('sort') == 'name_asc' %}selected{% endif %}>Name (A-Z)</option>
-                    <option value="name_desc" {% if request.query_params.get('sort') == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+                    <option value="created_at_desc" {% if request.query_params.get('sort') == 'created_at_desc' %}selected{% endif %}>Mais Recentes</option>
+                    <option value="created_at_asc" {% if request.query_params.get('sort') == 'created_at_asc' %}selected{% endif %}>Mais Antigos</option>
+                    <option value="name_asc" {% if request.query_params.get('sort') == 'name_asc' %}selected{% endif %}>Nome (A-Z)</option>
+                    <option value="name_desc" {% if request.query_params.get('sort') == 'name_desc' %}selected{% endif %}>Nome (Z-A)</option>
                 </select>
             </div>
             <div class="col-md-2 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-primary flex-grow-1">Apply</button>
+                <button type="submit" class="btn btn-primary flex-grow-1">Aplicar</button>
                 {% if request.query_params %}
-                <a href="/admin/news-sources" class="btn btn-outline-secondary">Clear</a>
+                <a href="/admin/news-sources" class="btn btn-outline-secondary">Limpar</a>
                 {% endif %}
             </div>
         </form>
@@ -50,11 +50,11 @@
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Name</th>
+                <th>Nome</th>
                 <th>URL</th>
                 <th>Status</th>
-                <th>Created At</th>
-                <th>Actions</th>
+                <th>Criado Em</th>
+                <th>Ações</th>
             </tr>
         </thead>
         <tbody>
@@ -65,14 +65,14 @@
                 <td><a href="{{ source.url }}" target="_blank">{{ source.url }}</a></td>
                 <td>
                     {% if source.is_active %}
-                    <span class="badge bg-success">Active</span>
+                    <span class="badge bg-success">Ativo</span>
                     {% else %}
-                    <span class="badge bg-danger">Inactive</span>
+                    <span class="badge bg-danger">Inativo</span>
                     {% endif %}
                 </td>
                 <td>{{ source.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                 <td>
-                    <a href="/admin/news-sources/{{ source.id }}" class="btn btn-sm btn-primary">View/Edit</a>
+                    <a href="/admin/news-sources/{{ source.id }}" class="btn btn-sm btn-primary">Visualizar/Editar</a>
                 </td>
             </tr>
             {% endfor %}
@@ -80,13 +80,13 @@
     </table>
 </div>
 
-<!-- Add Source Modal -->
+<!-- Modal Adicionar Fonte -->
 <div class="modal fade" id="addSourceModal" tabindex="-1" aria-labelledby="addSourceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addSourceModalLabel">Add News Source</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="addSourceModalLabel">Adicionar Fonte de Notícias</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <form method="POST" action="/admin/news-sources/create">
                 <div class="modal-body">
@@ -96,7 +96,7 @@
                     </div>
                     {% endif %}
                     <div class="mb-3">
-                        <label for="name" class="form-label">Name</label>
+                        <label for="name" class="form-label">Nome</label>
                         <input type="text" class="form-control" id="name" name="name" required>
                     </div>
                     <div class="mb-3">
@@ -106,14 +106,14 @@
                     <div class="mb-3">
                         <label for="status" class="form-label">Status</label>
                         <select class="form-select" id="status" name="status" required>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
+                            <option value="active">Ativo</option>
+                            <option value="inactive">Inativo</option>
                         </select>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Source</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Adicionar Fonte</button>
                 </div>
             </form>
         </div>
