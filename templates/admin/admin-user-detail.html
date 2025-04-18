@@ -1,19 +1,19 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Admin User Details - InfoAmazonia Admin{% endblock %}
+{% block title %}Detalhes de Usuário Admin - InfoAmazonia Admin{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto px-4 py-6">
-    <!-- Header -->
+    <!-- Cabeçalho -->
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-lg font-medium text-gray-900">Admin User Details</h1>
-        <a href="/admin/admin-users" class="text-sm text-gray-600 hover:text-gray-900">← Back</a>
+        <h1 class="text-lg font-medium text-gray-900">Detalhes de Usuário Admin</h1>
+        <a href="/admin/admin-users" class="text-sm text-gray-600 hover:text-gray-900">← Voltar</a>
     </div>
 
-    <!-- Admin Info -->
+    <!-- Informações do Admin -->
     <dl class="bg-white rounded-lg shadow-sm p-4 grid grid-cols-2 gap-4 mb-6">
         <div>
-            <dt class="text-xs font-medium text-gray-500">Username</dt>
+            <dt class="text-xs font-medium text-gray-500">Nome de Usuário</dt>
             <dd class="mt-1">{{ admin_user.username }}</dd>
         </div>
         <div>
@@ -21,7 +21,7 @@
             <dd class="mt-1">{{ admin_user.email }}</dd>
         </div>
         <div>
-            <dt class="text-xs font-medium text-gray-500">Role</dt>
+            <dt class="text-xs font-medium text-gray-500">Função</dt>
             <dd class="mt-1">
                 <form method="POST" action="/admin/admin-users/{{ admin_user.id }}/role" class="inline">
                     <select name="role" 
@@ -29,7 +29,7 @@
                             class="form-select text-xs px-2 py-1 rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="admin" {{ 'selected' if admin_user.role == 'admin' else '' }}>Admin</option>
                         <option value="editor" {{ 'selected' if admin_user.role == 'editor' else '' }}>Editor</option>
-                        <option value="viewer" {{ 'selected' if admin_user.role == 'viewer' else '' }}>Viewer</option>
+                        <option value="viewer" {{ 'selected' if admin_user.role == 'viewer' else '' }}>Visualizador</option>
                     </select>
                 </form>
             </dd>
@@ -41,63 +41,63 @@
                     <select name="is_active" 
                             onchange="this.form.submit()" 
                             class="form-select text-xs px-2 py-1 rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="true" {{ 'selected' if admin_user.is_active else '' }}>Active</option>
-                        <option value="false" {{ 'selected' if not admin_user.is_active else '' }}>Inactive</option>
+                        <option value="true" {{ 'selected' if admin_user.is_active else '' }}>Ativo</option>
+                        <option value="false" {{ 'selected' if not admin_user.is_active else '' }}>Inativo</option>
                     </select>
                 </form>
             </dd>
         </div>
     </dl>
 
-    <!-- Reset Password -->
+    <!-- Redefinir Senha -->
     <div class="bg-white rounded-lg shadow-sm mb-6">
         <div class="px-4 py-3 border-b">
-            <h2 class="font-medium">Reset Password</h2>
+            <h2 class="font-medium">Redefinir Senha</h2>
         </div>
         <div class="p-4">
             <form method="POST" action="/admin/admin-users/{{ admin_user.id }}/reset-password">
                 <div class="mb-3">
-                    <label for="new_password" class="form-label">New Password</label>
+                    <label for="new_password" class="form-label">Nova Senha</label>
                     <input type="password" class="form-control" id="new_password" name="new_password" required>
                 </div>
                 <div class="mb-3">
-                    <label for="confirm_password" class="form-label">Confirm Password</label>
+                    <label for="confirm_password" class="form-label">Confirmar Senha</label>
                     <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                 </div>
-                <button type="submit" class="btn btn-primary">Reset Password</button>
+                <button type="submit" class="btn btn-primary">Redefinir Senha</button>
             </form>
         </div>
     </div>
 
-    <!-- Delete Admin User -->
+    <!-- Excluir Usuário Admin -->
     <div class="bg-white rounded-lg shadow-sm">
         <div class="px-4 py-3 border-b">
-            <h2 class="font-medium text-danger">Danger Zone</h2>
+            <h2 class="font-medium text-danger">Zona de Perigo</h2>
         </div>
         <div class="p-4">
-            <p class="text-sm text-gray-600 mb-3">Permanently delete this admin user and all of their data.</p>
+            <p class="text-sm text-gray-600 mb-3">Excluir permanentemente este usuário admin e todos os seus dados.</p>
             <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAdminModal">
-                Delete Admin User
+                Excluir Usuário Admin
             </button>
         </div>
     </div>
 
-    <!-- Delete Admin Confirmation Modal -->
+    <!-- Modal de Confirmação para Excluir Admin -->
     <div class="modal fade" id="deleteAdminModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Delete Admin User</h5>
+                    <h5 class="modal-title">Excluir Usuário Admin</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Are you sure you want to delete the admin user "{{ admin_user.username }}"? This action cannot be undone.</p>
-                    <p class="text-danger"><strong>Warning:</strong> This will permanently remove the admin user and all of their data.</p>
+                    <p>Tem certeza que deseja excluir o usuário admin "{{ admin_user.username }}"? Esta ação não pode ser desfeita.</p>
+                    <p class="text-danger"><strong>Aviso:</strong> Isso removerá permanentemente o usuário admin e todos os seus dados.</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <form method="POST" action="/admin/admin-users/{{ admin_user.id }}/delete" class="d-inline">
-                        <button type="submit" class="btn btn-danger">Delete</button>
+                        <button type="submit" class="btn btn-danger">Excluir</button>
                     </form>
                 </div>
             </div>
@@ -110,7 +110,7 @@
 {{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle modal backdrop removal
+    // Lidar com a remoção do backdrop do modal
     const deleteAdminModal = document.getElementById('deleteAdminModal');
     if (deleteAdminModal) {
         deleteAdminModal.addEventListener('hidden.bs.modal', function () {

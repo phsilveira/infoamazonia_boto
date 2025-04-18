@@ -119,31 +119,31 @@
         </div>
     </div>
 
-    <!-- Add Subject Modal -->
+    <!-- Modal de Adicionar Assunto -->
     <div class="modal fade" id="addSubjectModal" tabindex="-1" aria-labelledby="addSubjectModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addSubjectModalLabel">Add Subject</h5>
+                    <h5 class="modal-title" id="addSubjectModalLabel">Adicionar Assunto</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="POST" action="/admin/users/{{ user.id }}/subjects">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="subject_name" class="form-label">Subject Name</label>
+                            <label for="subject_name" class="form-label">Nome do Assunto</label>
                             <input type="text" class="form-control" id="subject_name" name="subject_name" required>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add Subject</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Adicionar Assunto</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Add Location Modal -->
+    <!-- Modal de Adicionar Localização -->
     <div class="modal fade {% if show_location_modal %}show{% endif %}" 
          id="addLocationModal" 
          tabindex="-1" 
@@ -153,7 +153,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addLocationModalLabel">Add Location</h5>
+                    <h5 class="modal-title" id="addLocationModalLabel">Adicionar Localização</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="POST" action="/admin/users/{{ user.id }}/location">
@@ -164,21 +164,21 @@
                         </div>
                         {% endif %}
                         <div class="mb-3">
-                            <label for="location_name" class="form-label">Location Name</label>
+                            <label for="location_name" class="form-label">Nome da Localização</label>
                             <input type="text" 
                                    class="form-control" 
                                    id="location_name" 
                                    name="location_name" 
                                    required
-                                   placeholder="Enter location name(s)">
+                                   placeholder="Digite o(s) nome(s) da localização">
                             <small class="form-text text-muted">
-                                Enter location name(s) separated by commas, or type "todas" for all locations.
+                                Digite nome(s) de localização separados por vírgulas, ou digite "todas" para todas as localizações.
                             </small>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add Location</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Adicionar Localização</button>
                     </div>
                 </form>
             </div>
@@ -198,42 +198,42 @@
     </script>
     {% endif %}
 
-    <!-- Delete Subject Confirmation Modal -->
+    <!-- Modal de Confirmação de Exclusão de Assunto -->
     <div class="modal fade" id="deleteSubjectModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Delete Subject</h5>
+                    <h5 class="modal-title">Excluir Assunto</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Are you sure you want to delete the subject "<span id="deleteSubjectName"></span>"?</p>
+                    <p>Tem certeza que deseja excluir o assunto "<span id="deleteSubjectName"></span>"?</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <form id="deleteSubjectForm" method="POST" class="d-inline">
-                        <button type="submit" class="btn btn-danger">Delete</button>
+                        <button type="submit" class="btn btn-danger">Excluir</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Delete Location Confirmation Modal -->
+    <!-- Modal de Confirmação de Exclusão de Localização -->
     <div class="modal fade" id="deleteLocationModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Delete Location</h5>
+                    <h5 class="modal-title">Excluir Localização</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Are you sure you want to delete the location "<span id="deleteLocationName"></span>"?</p>
+                    <p>Tem certeza que deseja excluir a localização "<span id="deleteLocationName"></span>"?</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <form id="deleteLocationForm" method="POST" class="d-inline">
-                        <button type="submit" class="btn btn-danger">Delete</button>
+                        <button type="submit" class="btn btn-danger">Excluir</button>
                     </form>
                 </div>
             </div>
@@ -246,7 +246,7 @@
 {{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle Subject deletion
+    // Lidar com exclusão de Assunto
     const deleteSubjectModal = document.getElementById('deleteSubjectModal');
     if (deleteSubjectModal) {
         deleteSubjectModal.addEventListener('show.bs.modal', function(event) {
@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle Location deletion
+    // Lidar com exclusão de Localização
     const deleteLocationModal = document.getElementById('deleteLocationModal');
     if (deleteLocationModal) {
         deleteLocationModal.addEventListener('show.bs.modal', function(event) {
@@ -274,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle modal backdrop removal
+    // Lidar com remoção do backdrop do modal
     const addLocationModal = document.getElementById('addLocationModal');
     if (addLocationModal) {
         addLocationModal.addEventListener('hidden.bs.modal', function () {
