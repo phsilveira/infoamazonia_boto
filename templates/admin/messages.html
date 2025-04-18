@@ -1,29 +1,29 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Message Management - InfoAmazonia Admin{% endblock %}
+{% block title %}Gerenciamento de Mensagens - Administrador InfoAmazonia{% endblock %}
 
 {% block content %}
     <div class="container-fluid mt-4">
 
 
-        <!-- Message History Section -->
+        <!-- Seção de Histórico de Mensagens -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Message History</h5>
+                        <h5 class="mb-0">Histórico de Mensagens</h5>
                     </div>
                     <div class="card-body">
-                        <!-- Filters -->
+                        <!-- Filtros -->
                         <form method="get" action="/admin/messages" class="row mb-3">
                             <div class="col-md-3">
-                                <label class="form-label">Phone Number</label>
-                                <input type="text" class="form-control" name="phone_number" value="{{ phone_number or '' }}" placeholder="Search by phone number">
+                                <label class="form-label">Número de Telefone</label>
+                                <input type="text" class="form-control" name="phone_number" value="{{ phone_number or '' }}" placeholder="Buscar por número de telefone">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">Message Type</label>
+                                <label class="form-label">Tipo de Mensagem</label>
                                 <select class="form-select" name="message_type">
-                                    <option value="">All Types</option>
+                                    <option value="">Todos os Tipos</option>
                                     {% for type in message_type_options %}
                                         <option value="{{ type }}" {% if message_type == type %}selected{% endif %}>{{ type }}</option>
                                     {% endfor %}
@@ -32,31 +32,31 @@
                             <div class="col-md-3">
                                 <label class="form-label">Status</label>
                                 <select class="form-select" name="status">
-                                    <option value="">All Statuses</option>
+                                    <option value="">Todos os Status</option>
                                     {% for stat in status_options %}
                                         <option value="{{ stat }}" {% if status == stat %}selected{% endif %}>{{ stat }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary me-2">Filter</button>
-                                <a href="/admin/messages" class="btn btn-outline-secondary">Reset</a>
+                                <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+                                <a href="/admin/messages" class="btn btn-outline-secondary">Limpar</a>
                             </div>
                         </form>
 
-                        <!-- Messages Table -->
+                        <!-- Tabela de Mensagens -->
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>WhatsApp ID</th>
-                                        <th>Phone Number</th>
-                                        <th>Type</th>
+                                        <th>ID WhatsApp</th>
+                                        <th>Número de Telefone</th>
+                                        <th>Tipo</th>
                                         <th>Status</th>
-                                        <th>Content</th>
-                                        <th>Created At</th>
-                                        <th>Status Timestamp</th>
+                                        <th>Conteúdo</th>
+                                        <th>Criado Em</th>
+                                        <th>Timestamp do Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -72,7 +72,7 @@
                                         </td>
                                         <td>
                                             <span class="badge bg-{{ 'success' if message.status == 'delivered' or message.status == 'read' else 'info' if message.status == 'received' else 'warning' if message.status == 'sent' else 'danger' }}">
-                                                {{ message.status or 'unknown' }}
+                                                {{ message.status or 'desconhecido' }}
                                             </span>
                                         </td>
                                         <td>
@@ -80,29 +80,29 @@
                                                 {{ message.message_content }}
                                             </span>
                                             {% if message.error_code %}
-                                            <div class="text-danger small">Error: {{ message.error_title }}</div>
+                                            <div class="text-danger small">Erro: {{ message.error_title }}</div>
                                             {% endif %}
                                         </td>
                                         <td>{{ message.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                        <td>{{ message.status_timestamp.strftime('%Y-%m-%d %H:%M') if message.status_timestamp else 'N/A' }}</td>
+                                        <td>{{ message.status_timestamp.strftime('%Y-%m-%d %H:%M') if message.status_timestamp else 'N/D' }}</td>
                                     </tr>
                                     {% endfor %}
                                     
                                     {% if not messages %}
                                     <tr>
-                                        <td colspan="8" class="text-center">No messages found</td>
+                                        <td colspan="8" class="text-center">Nenhuma mensagem encontrada</td>
                                     </tr>
                                     {% endif %}
                                 </tbody>
                             </table>
                         </div>
 
-                        <!-- Pagination -->
+                        <!-- Paginação -->
                         {% if total_pages > 1 %}
-                        <nav aria-label="Page navigation" class="mt-3">
+                        <nav aria-label="Navegação de página" class="mt-3">
                             <ul class="pagination justify-content-center">
                                 <li class="page-item {{ 'disabled' if page == 1 else '' }}">
-                                    <a class="page-link" href="?page={{ page - 1 }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}">Previous</a>
+                                    <a class="page-link" href="?page={{ page - 1 }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}">Anterior</a>
                                 </li>
                                 
                                 {% if page > 4 %}
@@ -126,12 +126,12 @@
                                 {% endif %}
                                 
                                 <li class="page-item {{ 'disabled' if page == total_pages else '' }}">
-                                    <a class="page-link" href="?page={{ page + 1 }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}">Next</a>
+                                    <a class="page-link" href="?page={{ page + 1 }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}">Próximo</a>
                                 </li>
                             </ul>
                         </nav>
                         <div class="text-center text-muted small">
-                            Showing {{ (page - 1) * page_size + 1 }}-{{ (page - 1) * page_size + messages|length }} of {{ total_messages }} messages
+                            Exibindo {{ (page - 1) * page_size + 1 }}-{{ (page - 1) * page_size + messages|length }} de {{ total_messages }} mensagens
                         </div>
                         {% endif %}
                     </div>
@@ -140,13 +140,13 @@
         </div>
 
         <div class="row">
-            <!-- Message Templates Section -->
+            <!-- Seção de Modelos de Mensagem -->
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Message Templates</h5>
+                        <h5 class="mb-0">Modelos de Mensagem</h5>
                         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newTemplateModal">
-                            Create New Template
+                            Criar Novo Modelo
                         </button>
                     </div>
                     <div class="card-body">
@@ -154,9 +154,9 @@
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>Name</th>
-                                        <th>Content</th>
-                                        <th>Variables</th>
+                                        <th>Nome</th>
+                                        <th>Conteúdo</th>
+                                        <th>Variáveis</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
@@ -172,9 +172,9 @@
                                         <td>{{ template.variables }}</td>
                                         <td>
                                             {% if template.is_active %}
-                                            <span class="badge bg-success">Active</span>
+                                            <span class="badge bg-success">Ativo</span>
                                             {% else %}
-                                            <span class="badge bg-danger">Inactive</span>
+                                            <span class="badge bg-danger">Inativo</span>
                                             {% endif %}
                                         </td>
                                     </tr>
