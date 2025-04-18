@@ -9,6 +9,7 @@ from admin import router as admin_router
 from webhook import router as webhook_router
 from routers.location import router as location_router
 from datetime import timedelta
+from typing import Optional
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from middleware import auth_middleware
@@ -151,10 +152,10 @@ app.include_router(webhook_router)
 app.include_router(location_router)
 
 @app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
+async def login_page(request: Request, error: Optional[str] = None):
     return templates.TemplateResponse(
         "admin/login.html",
-        {"request": request}
+        {"request": request, "error": error}
     )
 
 @app.get("/forgot-password", response_class=HTMLResponse)
@@ -258,6 +259,7 @@ async def reset_password_submit(
 
 @app.post("/token")
 async def login_for_access_token(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -271,11 +273,16 @@ async def login_for_access_token(
     ).first()
     
     if not admin or not auth.verify_password(form_data.password, admin.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username/email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+        # Instead of raising an exception, return to login page with error
+        return templates.TemplateResponse(
+            "admin/login.html",
+            {
+                "request": request, 
+                "error": "Incorrect username/email or password"
+            },
+            status_code=status.HTTP_401_UNAUTHORIZED
         )
+    
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
         data={"sub": admin.username}, expires_delta=access_token_expires

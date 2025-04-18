@@ -221,7 +221,7 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
 
     try:
         # Check for 'voltar' keyword to go back to main menu
-        if message.lower().strip() == 'voltar':
+        if message.lower().strip() in ['voltar', 'menu']:
             chatbot.show_menu()
             menu_message = message_loader.get_message('menu.main')
             await send_message(phone_number, menu_message, db)
