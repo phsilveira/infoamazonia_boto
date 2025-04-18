@@ -869,12 +869,16 @@ async def create_admin_user(
     username: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
+    confirm_password: str = Form(...),
     role: str = Form(...),
     is_active: str = Form(...),
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
     """Create a new admin user."""
+    # Get all admins for potential error response
+    all_admins = db.query(models.Admin).all()
+    
     # Check if the admin already exists
     existing_admin = db.query(models.Admin).filter(
         or_(
@@ -889,8 +893,30 @@ async def create_admin_user(
             "admin/admin-users.html",
             {
                 "request": request,
-                "admins": db.query(models.Admin).all(),
+                "admins": all_admins,
                 "error": f"Admin with that username or email already exists."
+            }
+        )
+    
+    # Check if passwords match
+    if password != confirm_password:
+        return templates.TemplateResponse(
+            "admin/admin-users.html",
+            {
+                "request": request,
+                "admins": all_admins,
+                "error": "Passwords do not match."
+            }
+        )
+    
+    # Check password length
+    if len(password) < 6:
+        return templates.TemplateResponse(
+            "admin/admin-users.html",
+            {
+                "request": request,
+                "admins": all_admins,
+                "error": "Password must be at least 6 characters long."
             }
         )
     
@@ -998,6 +1024,13 @@ async def reset_admin_password(
     if new_password != confirm_password:
         return RedirectResponse(
             url=f"/admin/admin-users/{admin_id}?error=Passwords do not match",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+    
+    # Check password length
+    if len(new_password) < 6:
+        return RedirectResponse(
+            url=f"/admin/admin-users/{admin_id}?error=Password must be at least 6 characters long",
             status_code=status.HTTP_303_SEE_OTHER
         )
     
