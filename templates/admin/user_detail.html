@@ -2,16 +2,16 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto px-4 py-6">
-    <!-- Header -->
+    <!-- Cabeçalho -->
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-lg font-medium text-gray-900">User Details</h1>
-        <a href="/admin/users" class="text-sm text-gray-600 hover:text-gray-900">← Back</a>
+        <h1 class="text-lg font-medium text-gray-900">Detalhes do Usuário</h1>
+        <a href="/admin/users" class="text-sm text-gray-600 hover:text-gray-900">← Voltar</a>
     </div>
 
-    <!-- User Info -->
+    <!-- Informações do Usuário -->
     <dl class="bg-white rounded-lg shadow-sm p-4 grid grid-cols-2 gap-4 mb-6">
         <div>
-            <dt class="text-xs font-medium text-gray-500">Phone</dt>
+            <dt class="text-xs font-medium text-gray-500">Telefone</dt>
             <dd class="mt-1">{{ user.phone_number }}</dd>
         </div>
         <div>
@@ -21,14 +21,14 @@
                     <select name="status" 
                             onchange="this.form.submit()" 
                             class="form-select text-xs px-2 py-1 rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="active" {{ 'selected' if user.is_active else '' }}>Active</option>
-                        <option value="inactive" {{ 'selected' if not user.is_active else '' }}>Inactive</option>
+                        <option value="active" {{ 'selected' if user.is_active else '' }}>Ativo</option>
+                        <option value="inactive" {{ 'selected' if not user.is_active else '' }}>Inativo</option>
                     </select>
                 </form>
             </dd>
         </div>
         <div>
-            <dt class="text-xs font-medium text-gray-500">Schedule</dt>
+            <dt class="text-xs font-medium text-gray-500">Agendamento</dt>
             <dd class="mt-1">
                 <form method="POST" action="/admin/users/{{ user.id }}/schedule" class="inline">
                     <select name="schedule" 
@@ -43,18 +43,18 @@
             </dd>
         </div>
         <div>
-            <dt class="text-xs font-medium text-gray-500">Created</dt>
+            <dt class="text-xs font-medium text-gray-500">Criado em</dt>
             <dd class="mt-1">{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
         </div>
     </dl>
 
-    <!-- Subjects -->
+    <!-- Assuntos -->
     <div class="bg-white rounded-lg shadow-sm mb-6">
         <div class="px-4 py-3 border-b flex justify-between items-center">
-            <h2 class="font-medium">Subjects</h2>
+            <h2 class="font-medium">Assuntos</h2>
             <button type="button" data-bs-toggle="modal" data-bs-target="#addSubjectModal"
                     class="btn btn-primary flex-grow-1">
-                Add Subject
+                Adicionar Assunto
             </button>
         </div>
         <div class="p-4">
@@ -77,18 +77,18 @@
                     {% endfor %}
                 </div>
             {% else %}
-                <p class="text-sm text-gray-500 text-center py-3">No subjects added</p>
+                <p class="text-sm text-gray-500 text-center py-3">Nenhum assunto adicionado</p>
             {% endif %}
         </div>
     </div>
 
-    <!-- Locations -->
+    <!-- Localizações -->
     <div class="bg-white rounded-lg shadow-sm">
         <div class="px-4 py-3 border-b flex justify-between items-center">
-            <h2 class="font-medium">Locations</h2>
+            <h2 class="font-medium">Localizações</h2>
             <button type="button" data-bs-toggle="modal" data-bs-target="#addLocationModal"
                     class="px-2.5 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded">
-                Add Location
+                Adicionar Localização
             </button>
         </div>
         <div class="p-4">
@@ -114,7 +114,7 @@
                     {% endfor %}
                 </div>
             {% else %}
-                <p class="text-sm text-gray-500 text-center py-3">No locations added</p>
+                <p class="text-sm text-gray-500 text-center py-3">Nenhuma localização adicionada</p>
             {% endif %}
         </div>
     </div>
