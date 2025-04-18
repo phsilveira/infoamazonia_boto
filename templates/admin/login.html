@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Login - InfoAmazonia</title>
+    <title>Login Administrador - InfoAmazonia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/admin.css" rel="stylesheet">
 </head>
@@ -11,19 +11,19 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-body">
-                        <h3 class="text-center mb-4">InfoAmazonia Admin</h3>
+                        <h3 class="text-center mb-4">Administrador InfoAmazonia</h3>
                         <form method="post" action="/token">
                             <div class="mb-3">
-                                <label for="username" class="form-label">Username or Email</label>
-                                <input type="text" class="form-control" id="username" name="username" placeholder="Enter username or email" required>
+                                <label for="username" class="form-label">Nome de Usuário ou Email</label>
+                                <input type="text" class="form-control" id="username" name="username" placeholder="Digite nome de usuário ou email" required>
                             </div>
                             <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
+                                <label for="password" class="form-label">Senha</label>
                                 <input type="password" class="form-control" id="password" name="password" required>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100 mb-3">Login</button>
+                            <button type="submit" class="btn btn-primary w-100 mb-3">Entrar</button>
                             <div class="text-center">
-                                <a href="/forgot-password" class="text-decoration-none">Forgot Password?</a>
+                                <a href="/forgot-password" class="text-decoration-none">Esqueceu a Senha?</a>
                             </div>
                             <input type="hidden" name="grant_type" value="password">
                             {% if message %}
