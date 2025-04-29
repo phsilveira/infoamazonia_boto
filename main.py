@@ -185,7 +185,7 @@ async def request_password_reset(
         logger.info(f"No token generated for {email} - email not found or Redis error")
     
     # Always show success message, even if email not found (security measure)
-    message = f"If an account with this email exists, a password reset link has been sent to your email."
+    message = f"Se uma conta com esse email exists, o link será enviado para o email cadastrado."
     
     if reset_token:
         # Generate the reset link with the token
@@ -254,7 +254,7 @@ async def reset_password_submit(
     # Redirect to login with success message
     return templates.TemplateResponse(
         "admin/login.html",
-        {"request": request, "message": "Password has been reset successfully. You can now log in."}
+        {"request": request, "message": "Senha foi redefinida com sucesso. Você pode agora entrar."}
     )
 
 @app.post("/token")
@@ -278,7 +278,7 @@ async def login_for_access_token(
             "admin/login.html",
             {
                 "request": request, 
-                "error": "Incorrect username/email or password"
+                "error": "Usuário ou senha incorretos"
             },
             status_code=status.HTTP_401_UNAUTHORIZED
         )

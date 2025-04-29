@@ -49,7 +49,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
 
         # Get news based on API endpoint
         if use_ingestion_api:
-            async with httpx.AsyncClient(timeout=50.0) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 response = await client.post(
                     f'{settings.SEARCH_BASE_URL}/api/v1/ingestion/download-articles',
                     headers={'accept': 'application/json'}

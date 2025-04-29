@@ -4,7 +4,7 @@ from datetime import datetime
 from database import Base
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID
 from sqlalchemy import event, text
-from pgvector.sqlalchemy import Vector
+# from pgvector.sqlalchemy import Vector
 import uuid
 
 

@@ -107,15 +107,15 @@ def send_password_reset_email(email, reset_link):
     html_content = f"""
     <html>
     <body>
-        <h2>Password Reset Request</h2>
-        <p>You requested a password reset for your InfoAmazonia Admin account.</p>
-        <p>Click the link below to reset your password:</p>
-        <p><a href="{reset_link}">Reset Password</a></p>
-        <p>If you did not request a password reset, please ignore this email.</p>
-        <p>The link will expire in 30 minutes.</p>
+        <h2>Solicitação de Redefinição de Senha</h2>
+        <p>Você solicitou uma redefinição de senha para sua conta de Administrador do InfoAmazonia.</p>
+        <p>Clique no link abaixo para redefinir sua senha:</p>
+        <p><a href="{reset_link}">Redefinir Senha</a></p>
+        <p>Se você não solicitou uma redefinição de senha, por favor ignore este e-mail.</p>
+        <p>O link irá expirar em 30 minutos.</p>
         <br>
-        <p>Best regards,</p>
-        <p>InfoAmazonia Team</p>
+        <p>Atenciosamente,</p>
+        <p>Equipe InfoAmazonia</p>
     </body>
     </html>
     """

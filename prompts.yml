@@ -51,7 +51,7 @@ gpt-4:
   get_selected_article_title:
     system: "You are a helpful assistant that retrieves article titles based on user selection."
     user: |
-      Using the following user input '{user_input}', and the JSON structure provided, determine which article title corresponds to the user's numeric selection or article name based on the key 'parameters', a list or the keyword 'MENU' when the user want to go back to the main menu. If the user chooses 1 or provides text matching the first element of the list, return the text of the first element. If the user chooses 2 or provides text matching the second element, return the text of that item and so on:
+      Using the following user input '{user_input}', and the JSON structure provided, determine which article title corresponds to the user's numeric selection or article name based on the key 'parameters', a list or the keyword 'MENU' when the user want to go back to the main menu. Additionally, if the user inserts the text "Ler resumo," return the first article name. If the user chooses 1 or provides text matching the first element of the list, return the text of the first element. If the user chooses 2 or provides text matching the second element, return the text of that item, and so on. 
       
       {template_message}
       

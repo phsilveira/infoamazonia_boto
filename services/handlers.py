@@ -138,8 +138,31 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
         chatbot.end_conversation()
     elif message in ['5', 'desinscrever', 'cancelar']:
         chatbot.select_unsubscribe()
-        # The unsubscribe handler now sends interactive buttons
-        # No need to send message here as it will be sent by the handler
+        interactive_content = {
+            "type": "button",
+            "body": {
+                "text": message_loader.get_message('unsubscribe.confirm').split('\n\n')[0]  # Get the main text part
+            },
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "1",
+                            "title": "Sim, descadastrar"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "2",
+                            "title": "Não, continuar"
+                        }
+                    }
+                ]
+            }
+        }
+        await send_message(phone_number, interactive_content, db, message_type="interactive")
     else:
         # For invalid options, show the menu with interactive buttons
         await send_message(phone_number, message_loader.get_message('menu.invalid_option'), db)

@@ -185,8 +185,16 @@ class ChatBot:
             raise e
 
     def save_subject(self, user_id: int, subject_name: str):
-        """Save a new subject for the user"""
+        """Save a new subject for the user, or update if it already exists"""
         try:
+            # Check if the subject already exists for this user
+            existing_subject = self.db.query(models.Subject).filter_by(user_id=user_id, subject_name=subject_name).first()
+            
+            if existing_subject:
+                # Subject already exists, do nothing
+                return existing_subject
+            
+            # If subject does not exist, save it
             new_subject = models.Subject(subject_name=subject_name, user_id=user_id)
             self.db.add(new_subject)
             self.db.commit()
