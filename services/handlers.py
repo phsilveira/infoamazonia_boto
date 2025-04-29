@@ -496,6 +496,7 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
 
         # Save the standardized key
         chatbot.save_schedule(user.id, schedule_key)
+        chatbot.activate_subscription(user.id)
         chatbot.end_conversation()
 
         # Retrieve the user's location name and subject name

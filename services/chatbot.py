@@ -215,6 +215,19 @@ class ChatBot:
         except Exception as e:
             self.db.rollback()
             raise e
+            
+    def activate_subscription(self, user_id: int):
+        """Activate user subscription by setting is_active to True"""
+        try:
+            user = self.db.query(models.User).get(user_id)
+            if user:
+                user.is_active = True
+                self.db.commit()
+                return user
+            raise Exception("User not found")
+        except Exception as e:
+            self.db.rollback()
+            raise e
 
     async def set_current_interaction_id(self, interaction_id: int, phone_number: str):
         """Set the current interaction ID in Redis"""
