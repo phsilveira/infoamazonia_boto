@@ -324,7 +324,7 @@ async def download_articles_for_source(
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
-    """Download articles for a specific news source"""
+    """Download articles for a specific news source using web scraping"""
     try:
         # Verify source exists
         source = db.query(models.NewsSource).filter(models.NewsSource.id == source_id).first()
@@ -332,9 +332,10 @@ async def download_articles_for_source(
             raise HTTPException(status_code=404, detail="News source not found")
 
         # Import required classes to perform download
-        from services.news import News
-        from services.article_ingestion import ingest_articles
+        from services.article_ingestion import ingest_scraped_articles_from_source, ingest_articles
         from models import Article
+        import sys
+        import types
 
         # Create a wrapper for Flask db session to work with SQLAlchemy
         class DbWrapper:
@@ -349,30 +350,62 @@ async def download_articles_for_source(
         # by adding the query attribute expected by the ingestion code
         Article.query = db.query(Article)
         
-        # Initialize the News class with our database session
-        news = News()
-        # Patch the is_duplicate_news method to use our database
-        news.db = app_db
-        
-        # Fetch news from configured sources
-        result = news.get_news()
-        
-        if not result.get('success', False):
-            logger.error(f"Failed to fetch articles from sources")
-            # Return to the source detail page with error
-            return RedirectResponse(
-                url=f"/admin/news-sources/{source_id}",
-                status_code=status.HTTP_302_FOUND
-            )
-        
-        # Get the number of articles that were added
-        # Pass our db wrapper to ingest_articles
-        import sys
         # Temporarily add the wrapper to the sys modules
-        sys.modules['app'] = type('app', (), {'db': app_db})
+        app_module = types.ModuleType("app")
+        app_module.db = app_db
+        sys.modules['app'] = app_module
         
-        # Now call ingest_articles with our patched environment
-        articles_added_count = ingest_articles(result.get('news', []))
+        # First, try using the web scraper to get articles directly
+        try:
+            logger.info(f"Attempting to scrape articles from source: {source.name} ({source.url})")
+            
+            # Determine language from source metadata or default to Portuguese
+            language = "pt"  # Default language
+            
+            # Start scraping process
+            articles_added_count = ingest_scraped_articles_from_source(
+                source_url=source.url,
+                source_name=source.name,
+                language=language
+            )
+            
+            method_used = "web scraping"
+            
+        except Exception as scrape_error:
+            logger.warning(f"Web scraping failed, falling back to API: {str(scrape_error)}")
+            
+            # Fallback to API if scraping fails
+            try:
+                from services.news import News
+                
+                # Initialize the News class with our database session
+                news = News()
+                news.db = app_db
+                
+                # Fetch news from configured sources
+                result = news.get_news()
+                
+                if not result.get('success', False):
+                    logger.error(f"Failed to fetch articles from sources")
+                    # Clean up temporary module
+                    if 'app' in sys.modules:
+                        del sys.modules['app']
+                    # Return to the source detail page with error
+                    return RedirectResponse(
+                        url=f"/admin/news-sources/{source_id}",
+                        status_code=status.HTTP_302_FOUND
+                    )
+                
+                # Now call ingest_articles with our patched environment
+                articles_added_count = ingest_articles(result.get('news', []))
+                method_used = "API"
+                
+            except Exception as api_error:
+                logger.error(f"API fallback also failed: {str(api_error)}")
+                # Clean up temporary module
+                if 'app' in sys.modules:
+                    del sys.modules['app']
+                raise Exception(f"Both scraping and API methods failed: {str(scrape_error)}; {str(api_error)}")
         
         # Clean up temporary module
         if 'app' in sys.modules:
@@ -380,9 +413,12 @@ async def download_articles_for_source(
 
         # Log the result
         if articles_added_count > 0:
-            logger.info(f"Successfully downloaded and processed {articles_added_count} new articles")
+            logger.info(f"Successfully downloaded and processed {articles_added_count} new articles via {method_used}")
         else:
-            logger.info("No new articles were found or all articles already exist in the database")
+            logger.info(f"No new articles were found or all articles already exist in the database ({method_used})")
+        
+        # Invalidate dashboard caches after adding articles
+        await invalidate_dashboard_caches(request)
         
         # Return to the source detail page
         return RedirectResponse(
