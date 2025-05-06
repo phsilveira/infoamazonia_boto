@@ -73,7 +73,7 @@
                             <tbody>
                                 {% for article in articles %}
                                 <tr>
-                                    <td>{{ article.id }}</td>
+                                    <td>{{ article.id|truncate(10) }}...</td>
                                     <td>{{ article.title }}</td>
                                     <td>{{ article.news_source }}</td>
                                     <td>{{ article.published_date }}</td>

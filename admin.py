@@ -904,7 +904,7 @@ async def list_articles(
 @router.get("/articles/{article_id}", response_class=HTMLResponse)
 async def get_article(
     request: Request,
-    article_id: int,
+    article_id: str,
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
