@@ -1,91 +1,97 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Articles{% endblock %}
+{% block title %}Articles Admin{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container">
+    <h1>Articles</h1>
     <div class="row">
-        <div class="col-12">
-            <div class="card mb-4">
-                <div class="card-header pb-0 d-flex justify-content-between align-items-center">
-                    <h6>Articles Management</h6>
-                    <div>
-                        <form method="get" class="mb-3 d-flex align-items-center" action="/admin/articles">
-                            <div class="mx-2">
-                                <label for="search">Search</label>
-                                <input type="text" class="form-control" id="search" name="search" value="{{ search or '' }}" placeholder="Title, Content">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Articles List</h5>
+                    <div class="d-flex">
+                        <form method="GET" action="/admin/articles" class="d-flex">
+                            <!-- Search input -->
+                            <div class="input-group me-2">
+                                <input type="text" name="search" class="form-control" placeholder="Search articles..." value="{{ search or '' }}">
                             </div>
-                            <div class="mx-2">
-                                <label for="source">Source</label>
-                                <select class="form-control" id="source" name="news_source">
+
+                            <!-- News source filter -->
+                            <div class="input-group me-2">
+                                <select name="news_source" class="form-select">
                                     <option value="">All Sources</option>
                                     {% for source in sources %}
-                                        <option value="{{ source[0] }}" {% if news_source == source[0] %}selected{% endif %}>
-                                            {{ source[0] }}
-                                        </option>
+                                    <option value="{{ source[0] }}" {% if news_source == source[0] %}selected{% endif %}>{{ source[0] }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="mx-2">
-                                <label for="language">Language</label>
-                                <select class="form-control" id="language" name="language">
+
+                            <!-- Language filter -->
+                            <div class="input-group me-2">
+                                <select name="language" class="form-select">
                                     <option value="">All Languages</option>
                                     {% for lang in languages %}
-                                        <option value="{{ lang[0] }}" {% if language == lang[0] %}selected{% endif %}>
-                                            {{ lang[0] }}
-                                        </option>
+                                    <option value="{{ lang[0] }}" {% if language == lang[0] %}selected{% endif %}>{{ lang[0] }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="mx-2 mt-4">
-                                <button type="submit" class="btn btn-primary">Filter</button>
-                                <a href="/admin/articles" class="btn btn-secondary">Reset</a>
+
+                            <!-- Sort order -->
+                            <div class="input-group me-2">
+                                <select name="sort" class="form-select">
+                                    <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Newest First</option>
+                                    <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Oldest First</option>
+                                    <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Title (A-Z)</option>
+                                    <option value="title_desc" {% if sort == 'title_desc' %}selected{% endif %}>Title (Z-A)</option>
+                                </select>
                             </div>
+
+                            <button type="submit" class="btn btn-primary">Filter</button>
                         </form>
                     </div>
                 </div>
-                <div class="card-body px-0 pt-0 pb-2">
-                    <div class="table-responsive p-0">
-                        <table class="table align-items-center mb-0">
+                <div class="card-body">
+                    {% if error %}
+                    <div class="alert alert-danger">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <div class="table-responsive">
+                        <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Title</th>
-                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Source</th>
-                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Published Date</th>
-                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Language</th>
-                                    <th class="text-secondary opacity-7"></th>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Source</th>
+                                    <th>Published Date</th>
+                                    <th>Language</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for article in articles %}
                                 <tr>
+                                    <td>{{ article.id }}</td>
+                                    <td>{{ article.title }}</td>
+                                    <td>{{ article.news_source }}</td>
+                                    <td>{{ article.published_date }}</td>
+                                    <td>{{ article.language }}</td>
                                     <td>
-                                        <div class="d-flex px-2 py-1">
-                                            <div class="d-flex flex-column justify-content-center">
-                                                <h6 class="mb-0 text-sm">{{ article.title | truncate(50) }}</h6>
-                                            </div>
-                                        </div>
+                                        <a href="/admin/articles/{{ article.id }}" class="btn btn-sm btn-info">View</a>
                                     </td>
-                                    <td>
-                                        <p class="text-xs font-weight-bold mb-0">{{ article.news_source }}</p>
-                                    </td>
-                                    <td class="align-middle text-center text-sm">
-                                        <span class="badge badge-sm bg-gradient-success">{{ article.published_date.strftime('%Y-%m-%d') if article.published_date else 'N/A' }}</span>
-                                    </td>
-                                    <td class="align-middle text-center">
-                                        <span class="text-secondary text-xs font-weight-bold">{{ article.language }}</span>
-                                    </td>
-                                    <td class="align-middle">
-                                        <a href="/admin/articles/{{ article.id }}" class="btn btn-sm btn-info">
-                                            View
-                                        </a>
-                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No articles found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
                 </div>
+                
                 <!-- Pagination controls -->
                 <div class="card-footer d-flex justify-content-center">
                     <nav aria-label="Page navigation">
@@ -98,7 +104,11 @@
                             </li>
                             {% endif %}
                             
-                            {% for i in range(max(1, page - 2), min(total_pages + 1, page + 3)) %}
+                            {# Calculate pagination range without using max/min built-ins #}
+                            {% set start_page = page - 2 if page - 2 > 0 else 1 %}
+                            {% set end_page = page + 2 if page + 2 < total_pages else total_pages %}
+                            
+                            {% for i in range(start_page, end_page + 1) %}
                             <li class="page-item {% if i == page %}active{% endif %}">
                                 <a class="page-link" href="{{ pagination_url }}&page={{ i }}">{{ i }}</a>
                             </li>

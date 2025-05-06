@@ -18,8 +18,10 @@ from cache_utils import invalidate_dashboard_caches  # Import cache invalidation
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+# Create templates instance
 templates = Jinja2Templates(directory="templates")
+
+router = APIRouter(prefix="/admin", tags=["admin"])
 chatgpt_service = ChatGPTService()
 
 @router.post("/users/create", response_class=HTMLResponse)
