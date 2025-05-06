@@ -334,8 +334,23 @@ async def download_articles_for_source(
         from services.article_ingestion import ingest_articles
         from models import Article
 
-        # Initialize the News class
+        # Create a wrapper for Flask db session to work with SQLAlchemy
+        class DbWrapper:
+            def __init__(self, db_session):
+                self.session = db_session
+
+        # This is the key - we wrap our FastAPI session to match the Flask app.db format
+        # that the article_ingestion.py code expects
+        app_db = DbWrapper(db)
+        
+        # Patch the Article model for compatibility with Flask SQLAlchemy
+        # by adding the query attribute expected by the ingestion code
+        Article.query = db.query(Article)
+        
+        # Initialize the News class with our database session
         news = News()
+        # Patch the is_duplicate_news method to use our database
+        news.db = app_db
         
         # Fetch news from configured sources
         result = news.get_news()
@@ -349,7 +364,17 @@ async def download_articles_for_source(
             )
         
         # Get the number of articles that were added
+        # Pass our db wrapper to ingest_articles
+        import sys
+        # Temporarily add the wrapper to the sys modules
+        sys.modules['app'] = type('app', (), {'db': app_db})
+        
+        # Now call ingest_articles with our patched environment
         articles_added_count = ingest_articles(result.get('news', []))
+        
+        # Clean up temporary module
+        if 'app' in sys.modules:
+            del sys.modules['app']
 
         # Log the result
         if articles_added_count > 0:

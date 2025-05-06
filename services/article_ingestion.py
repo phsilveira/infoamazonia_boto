@@ -1,6 +1,3 @@
-from app import db
-from models import Article
-from embeddings import generate_embedding, generate_term_summary
 import logging
 from datetime import datetime
 import pytz
@@ -8,6 +5,8 @@ from typing import Dict, Any, List
 import json
 from tenacity import retry, stop_after_attempt, wait_exponential
 from sqlalchemy import text
+# Import locally within functions to allow for dependency injection
+# from services.embeddings import generate_embedding, generate_term_summary
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

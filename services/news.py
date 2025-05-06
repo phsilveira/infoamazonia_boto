@@ -152,12 +152,22 @@ class News:
     def is_duplicate_news(self, news):
         """Check if the news item is a duplicate using database query."""
         from models import Article
-        from app import db
-
-        existing = Article.query.filter(
-            (Article.original_id == news["_id"]) |
-            (Article.url == news["URL"])
-        ).first()
+        
+        # Allow accessing db passed from the caller, or use mock in case it's not provided
+        if hasattr(self, 'db'):
+            db = self.db
+            # Use the provided db session
+            existing = db.session.query(Article).filter(
+                (Article.original_id == news["_id"]) |
+                (Article.url == news["URL"])
+            ).first()
+        else:
+            # Original approach - only works in Flask app context
+            from app import db
+            existing = Article.query.filter(
+                (Article.original_id == news["_id"]) |
+                (Article.url == news["URL"])
+            ).first()
 
         return existing is not None
 
