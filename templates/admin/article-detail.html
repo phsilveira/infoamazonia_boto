@@ -62,8 +62,8 @@
                             <div class="card">
                                 <div class="card-header">Embedding Details</div>
                                 <div class="card-body">
-                                    <p><strong>Has Embedding:</strong> {{ "Yes" if article.embedding else "No" }}</p>
-                                    <p><strong>Vector Dimension:</strong> {{ article.embedding|length if article.embedding else "N/A" }}</p>
+                                    <p><strong>Has Embedding:</strong> {{ "Yes" if article.embedding is not none else "No" }}</p>
+                                    <p><strong>Vector Dimension:</strong> {% if article.embedding is not none %}{{ article.embedding|length }}{% else %}N/A{% endif %}</p>
                                 </div>
                             </div>
                         </div>
