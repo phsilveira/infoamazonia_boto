@@ -39,7 +39,7 @@ class ChatGPTService:
         try:
             # For embeddings, the API interface is the same between standard and Azure OpenAI
             # Just use a different model name if using Azure
-            model = "text-embedding-ada-002"
+            model = "text-embedding-3-small"
             
             response = self.client.embeddings.create(
                 model=model,

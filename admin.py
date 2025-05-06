@@ -822,6 +822,103 @@ async def ctr_stats_page(
                 "error": f"Failed to fetch CTR statistics: {str(e)}"
             }
         )
+    
+@router.get("/articles", response_class=HTMLResponse)
+async def list_articles(
+    request: Request,
+    search: str = None,
+    news_source: str = None,
+    language: str = None,
+    sort: str = None,
+    page: int = 1,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """List all articles with filtering options."""
+    # Start building the query
+    query = db.query(models.Article)
+    
+    # Apply filters if provided
+    if search:
+        query = query.filter(
+            or_(
+                models.Article.title.ilike(f"%{search}%"),
+                models.Article.content.ilike(f"%{search}%"),
+                models.Article.description.ilike(f"%{search}%")
+            )
+        )
+    if news_source:
+        query = query.filter(models.Article.news_source == news_source)
+    if language:
+        query = query.filter(models.Article.language == language)
+    
+    # Apply sorting if provided
+    if sort == "date_asc":
+        query = query.order_by(models.Article.published_date.asc())
+    elif sort == "date_desc":
+        query = query.order_by(models.Article.published_date.desc())
+    elif sort == "title_asc":
+        query = query.order_by(models.Article.title.asc())
+    elif sort == "title_desc":
+        query = query.order_by(models.Article.title.desc())
+    else:
+        # Default sorting by published date (newest first)
+        query = query.order_by(models.Article.published_date.desc())
+    
+    # Count total articles for pagination
+    total_articles = query.count()
+    total_pages = (total_articles + limit - 1) // limit
+    
+    # Apply pagination
+    articles = query.offset((page - 1) * limit).limit(limit).all()
+    
+    # Get unique sources and languages for filter dropdowns
+    sources = db.query(models.Article.news_source).distinct().all()
+    languages = db.query(models.Article.language).distinct().all()
+    
+    # Construct pagination URL
+    pagination_url = f"/admin/articles?news_source={news_source or ''}&language={language or ''}&search={search or ''}"
+    
+    return templates.TemplateResponse(
+        "admin/articles.html",
+        {
+            "request": request,
+            "articles": articles,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages,
+            "total_articles": total_articles,
+            "search": search,
+            "news_source": news_source,
+            "language": language,
+            "sort": sort,
+            "sources": sources,
+            "languages": languages,
+            "pagination_url": pagination_url
+        }
+    )
+
+@router.get("/articles/{article_id}", response_class=HTMLResponse)
+async def get_article(
+    request: Request,
+    article_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Display article details."""
+    article = db.query(models.Article).filter(models.Article.id == article_id).first()
+    
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    return templates.TemplateResponse(
+        "admin/article-detail.html",
+        {
+            "request": request,
+            "article": article
+        }
+    )
 
 @router.post("/users/{user_id}/status", response_class=HTMLResponse)
 async def update_user_status(

@@ -1,0 +1,135 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Article Detail - {{ article.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header pb-0 d-flex justify-content-between align-items-center">
+                    <h6>Article Details</h6>
+                    <a href="/admin/articles" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Articles
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h2>{{ article.title }}</h2>
+                            <div class="d-flex align-items-center mt-3 mb-4">
+                                <span class="badge bg-primary me-2">{{ article.news_source }}</span>
+                                <span class="badge bg-info me-2">{{ article.language }}</span>
+                                <span class="badge bg-success me-2">{{ article.published_date.strftime('%Y-%m-%d %H:%M') if article.published_date else 'N/A' }}</span>
+                                <span class="ms-3 text-muted"><i class="far fa-user me-1"></i>{{ article.author or 'Unknown' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h4 class="text-primary mb-3">Description</h4>
+                            <p>{{ article.description }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h4 class="text-primary mb-3">AI Summary</h4>
+                            <div class="p-3 bg-light rounded">
+                                {{ article.summary_content or 'No summary available' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h4 class="text-primary mb-3">Full Content</h4>
+                            <div class="p-3 bg-light rounded" style="max-height: 500px; overflow-y: auto;">
+                                {{ article.content }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h4 class="text-primary mb-3">Keywords</h4>
+                            <div>
+                                {% if article.keywords %}
+                                    {% for keyword in article.keywords %}
+                                        <span class="badge bg-info me-1 mb-1">{{ keyword }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted">No keywords available</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h4 class="text-primary mb-3">Topics & Subtopics</h4>
+                            <div class="mb-2">
+                                <strong>Topics:</strong>
+                                {% if article.topics %}
+                                    {% for topic in article.topics %}
+                                        <span class="badge bg-primary me-1">{{ topic }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">No topics available</span>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <strong>Subtopics:</strong>
+                                {% if article.subtopics %}
+                                    {% for subtopic in article.subtopics %}
+                                        <span class="badge bg-secondary me-1">{{ subtopic }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">No subtopics available</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h4 class="text-primary mb-3">Metadata</h4>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <tr>
+                                        <th style="width: 200px;">Original ID</th>
+                                        <td>{{ article.original_id }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Collection Date</th>
+                                        <td>{{ article.collection_date.strftime('%Y-%m-%d %H:%M:%S') if article.collection_date else 'N/A' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>URL</th>
+                                        <td>
+                                            <a href="{{ article.url }}" target="_blank" class="text-primary">{{ article.url }}</a>
+                                        </td>
+                                    </tr>
+                                    {% if article.article_metadata and article.article_metadata.location %}
+                                    <tr>
+                                        <th>Location</th>
+                                        <td>
+                                            {% if article.article_metadata.location.city %}
+                                                {{ article.article_metadata.location.city }}
+                                                {% if article.article_metadata.location.country %}, {{ article.article_metadata.location.country }}{% endif %}
+                                            {% elif article.article_metadata.location.country %}
+                                                {{ article.article_metadata.location.country }}
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
