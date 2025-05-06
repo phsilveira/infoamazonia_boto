@@ -41,14 +41,21 @@
         </div>
     </dl>
 
-    <!-- Edit Source button -->
+    <!-- Source Actions -->
     <div class="bg-white rounded-lg shadow-sm mb-6">
-        <div class="px-4 py-3 border-b flex justify-between items-center">
-            <h2 class="font-medium">Source Actions</h2>
-            <button type="button" data-bs-toggle="modal" data-bs-target="#editSourceModal"
-                    class="btn btn-primary flex-grow-1">
-                Edit Source
-            </button>
+        <div class="px-4 py-3 border-b">
+            <h2 class="font-medium mb-3">Source Actions</h2>
+            <div class="flex justify-between items-center gap-3">
+                <button type="button" data-bs-toggle="modal" data-bs-target="#editSourceModal"
+                        class="btn btn-primary flex-grow-1">
+                    Edit Source
+                </button>
+                <form method="POST" action="/admin/news-sources/{{ source.id }}/download-articles" class="flex-grow-1">
+                    <button type="submit" class="btn btn-success w-100">
+                        Download Articles
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
