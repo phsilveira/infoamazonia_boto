@@ -5,16 +5,17 @@ from typing import Dict, Any, List
 import json
 from tenacity import retry, stop_after_attempt, wait_exponential
 from sqlalchemy import text
-# Import locally within functions to allow for dependency injection
-# from services.embeddings import generate_embedding, generate_term_summary
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-def process_article(news_item: Dict[str, Any]) -> Article:
+def process_article(news_item: Dict[str, Any]):
     """Process a news item and create an Article object with retry logic"""
     try:
+        from models import Article
+        from services.embeddings import generate_embedding, generate_term_summary
+        
         logger.debug(f"Processing article: {news_item.get('_id')}")
 
         # Generate article summary
@@ -61,6 +62,17 @@ def process_article(news_item: Dict[str, Any]) -> Article:
 
 def ingest_articles(news_items: List[Dict[str, Any]]) -> int:
     """Ingest multiple articles into the database with proper error handling"""
+    # Import at function scope to allow dependency injection via sys.modules
+    import sys
+    
+    # Get db from app module (injected by admin.py)
+    if 'app' not in sys.modules:
+        logger.error("app module not found. Make sure it's injected before calling this function.")
+        return 0
+        
+    from app import db
+    from models import Article
+    
     articles_added = 0
     errors = []
 
@@ -79,7 +91,7 @@ def ingest_articles(news_items: List[Dict[str, Any]]) -> int:
         try:
             logger.debug(f"Processing article {articles_added + 1} of {len(news_items)}")
 
-            # Check for duplicate
+            # Check for duplicate - using Article.query which should be patched by caller
             existing = Article.query.filter(
                 (Article.original_id == news_item['_id']) |
                 (Article.url == news_item['URL'])

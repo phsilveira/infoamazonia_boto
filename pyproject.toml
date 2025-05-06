@@ -35,4 +35,5 @@ dependencies = [
     "trafilatura>=2.0.0",
     "beautifulsoup4>=4.13.4",
     "lxml>=5.4.0",
+    "tenacity>=9.1.2",
 ]
