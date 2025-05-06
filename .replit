@@ -2,7 +2,7 @@ modules = ["python-3.11", "python3", "postgresql-16"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["fontconfig", "libxcrypt", "libyaml", "postgresql"]
+packages = ["fontconfig", "libxcrypt", "libyaml", "postgresql", "xcodebuild", "zlib"]
 
 [workflows]
 runButton = "Project"
