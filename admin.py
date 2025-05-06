@@ -315,6 +315,59 @@ async def delete_news_source(
             detail=f"Failed to delete news source: {str(e)}"
         )
 
+@router.post("/news-sources/{source_id}/download-articles", response_class=RedirectResponse)
+async def download_articles_for_source(
+    request: Request,
+    source_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Download articles for a specific news source"""
+    try:
+        # Verify source exists
+        source = db.query(models.NewsSource).filter(models.NewsSource.id == source_id).first()
+        if not source:
+            raise HTTPException(status_code=404, detail="News source not found")
+            
+        # Get the external service URL from settings
+        search_base_url = settings.SEARCH_BASE_URL
+        
+        # Call the download-articles endpoint
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            try:
+                response = await client.post(
+                    f'{search_base_url}/api/v1/ingestion/download-articles',
+                    headers={'accept': 'application/json'}
+                )
+                result = response.json()
+                
+                # Add a success/error message based on the result
+                if result.get('success', False):
+                    # Success - add a flash message or return with success
+                    logger.info(f"Successfully downloaded {result.get('total_articles', 0)} articles")
+                    # You can set a flash message here if your app supports it
+                else:
+                    # Error - add a flash message or return with error
+                    logger.error(f"Failed to download articles: {result.get('message', 'Unknown error')}")
+                    # You can set a flash message here if your app supports it
+                
+            except Exception as e:
+                logger.error(f"Error calling download-articles API: {str(e)}")
+                # You can set a flash message here if your app supports it
+                
+        # Return to the source detail page
+        return RedirectResponse(
+            url=f"/admin/news-sources/{source_id}",
+            status_code=status.HTTP_302_FOUND
+        )
+        
+    except Exception as e:
+        logger.error(f"Error downloading articles: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to download articles: {str(e)}"
+        )
+
 @router.get("/metrics", response_class=HTMLResponse)
 async def get_metrics(
     request: Request,
