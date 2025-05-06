@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 import models, schemas, auth
-from database import engine, get_db
+from database import engine, get_db, init_db
 from admin import router as admin_router
 from webhook import router as webhook_router
 from routers.location import router as location_router
@@ -34,6 +34,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Create all database tables
+init_db()
 models.Base.metadata.create_all(bind=engine)
 
 def cached(expire_seconds: int = 300, prefix: str = "cache"):
