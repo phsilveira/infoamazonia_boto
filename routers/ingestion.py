@@ -1,9 +1,9 @@
 from flask import Blueprint, jsonify
-from article_ingestion import ingest_articles
-from news import News
+from services.article_ingestion import ingest_articles
+from services.news import News
 import logging
 from models import Article
-from search import shorten_url  # Import Article model to access the newly added articles
+from services.search import shorten_url  # Import Article model to access the newly added articles
 
 ingestion_bp = Blueprint('ingestion', __name__)
 
