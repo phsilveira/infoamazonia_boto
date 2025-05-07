@@ -654,5 +654,5 @@ if __name__ == "__main__":
         port=8000,
         reload=True,
         log_level="info",
-        access_log=True
+        # access_log=True
     )

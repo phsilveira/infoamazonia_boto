@@ -744,7 +744,7 @@ async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, mess
         interaction = UserInteraction(
             user_id=user_id,
             phone_number=phone_number,
-            category='article',
+            category='news_suggestion',
             query=message,
             response=message_loader.get_message('menu.news_suggestion_reply')
         )

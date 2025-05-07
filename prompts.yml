@@ -41,9 +41,9 @@ gpt-4:
       Forneça um resumo conciso que inclua:
       1. Tópicos ou temas mais comuns
       2. Tipos de informações que os usuários estão procurando
-      3. Padrões notáveis no comportamento do usuário
 
       Mantenha o resumo curto e focado em insights principais.
+      Formate a resposta somente em HTML, não inclua ```html```
     temperature: 0.3
     max_tokens: 250
   
