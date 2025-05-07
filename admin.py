@@ -14,7 +14,7 @@ import logging
 from config import settings
 from sqlalchemy import desc, or_
 from services.chatgpt import ChatGPTService # Fixed import
-from cache_utils import invalidate_dashboard_caches  # Import cache invalidation utility
+from cache_utils import invalidate_dashboard_caches, get_cache, set_cache  # Import cache utilities
 
 logger = logging.getLogger(__name__)
 
@@ -722,11 +722,22 @@ async def list_interactions(
 
 @router.get("/interactions/summaries/{category}") #NEW ROUTE
 async def get_interaction_summaries(
+    request: Request,
     category: str,
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
     try:
+        # Define cache key for this category
+        cache_key = f"interaction_summary:{category}"
+        
+        # Try to get from cache first
+        cached_result = await get_cache(cache_key, request)
+        if cached_result:
+            logger.info(f"Returning cached interaction summary for category: {category}")
+            return cached_result
+            
+        # If not in cache, proceed with generating the summary
         # Get queries for the specified category
         queries = db.query(models.UserInteraction.query)\
             .filter(models.UserInteraction.category == category)\
@@ -736,12 +747,21 @@ async def get_interaction_summaries(
         query_texts = [q[0] for q in queries]
 
         if not query_texts:
-            return {"summary": "No queries found for this category"}
+            result = {"summary": "No queries found for this category"}
+            # Cache the empty result as well
+            await set_cache(cache_key, result, request, expire_seconds=180)  # 3 minutes TTL
+            return result
 
         # Generate summary using ChatGPT
         summary = await chatgpt_service.summarize_queries(query_texts, category)
 
-        return {"summary": summary}
+        # Prepare result
+        result = {"summary": summary}
+        
+        # Store in cache with 3-minute TTL (180 seconds)
+        await set_cache(cache_key, result, request, expire_seconds=180)
+        
+        return result
     except Exception as e:
         logger.error(f"Error generating interaction summaries: {str(e)}")
         raise HTTPException(
