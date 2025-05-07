@@ -126,8 +126,11 @@
             triggerEl.addEventListener('click', function(event) {
                 event.preventDefault()
                 tabTrigger.show()
-                // Load summary when tab is shown
-                const category = this.getAttribute('data-bs-target').replace('#', '')
+                // Get full category name, handling 'news_suggestion' special case
+                let category = this.getAttribute('data-bs-target').replace('#', '')
+                if (category === 'news') {
+                    category = 'news_suggestion'
+                }
                 loadSummary(category)
             })
         })
