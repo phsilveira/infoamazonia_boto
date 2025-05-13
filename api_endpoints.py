@@ -1,13 +1,40 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Body, HTTPException
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_, text
 from database import get_db
 import models
 from datetime import datetime
 import logging
+from typing import Optional, List, Dict, Any
+import unicodedata
+from pydantic import BaseModel
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+class SearchQuery(BaseModel):
+    query: str
+    generate_summary: bool = False
+    system_prompt: Optional[str] = None
+
+class SearchResult(BaseModel):
+    id: str
+    title: str
+    similarity: float
+    url: str
+    short_url: str
+    published_date: Optional[str] = None
+    author: Optional[str] = None
+    description: Optional[str] = None
+    key_words: Optional[List[str]] = None
+
+class SearchResponse(BaseModel):
+    success: bool
+    results: List[SearchResult] = []
+    count: int = 0
+    summary: Optional[str] = None
+    error: Optional[str] = None
 
 @router.get("/api/article-stats")
 async def get_article_stats(request: Request, db: Session = Depends(get_db)):
@@ -47,3 +74,139 @@ async def get_article_stats(request: Request, db: Session = Depends(get_db)):
             "success": False,
             "error": str(e)
         }
+
+@router.post("/api/search")
+async def search_term(
+    request: Request, 
+    search_data: SearchQuery = Body(...),
+    db: Session = Depends(get_db)
+):
+    """Search articles using vector similarity and full-text search"""
+    try:
+        query = search_data.query
+        
+        if not query:
+            return {
+                "success": False,
+                "error": "Query is required"
+            }
+            
+        # Normalize the query
+        query = ''.join(e for e in query if e.isalnum() or e.isspace()).lower()
+        query = unicodedata.normalize("NFKD", query).encode("ASCII", "ignore").decode("utf-8")
+        
+        logger.info(f"Searching for term: '{query}'")
+        
+        # Basic search using SQL LIKE
+        similar_articles = db.query(models.Article).filter(
+            or_(
+                models.Article.title.ilike(f"%{query}%"),
+                models.Article.content.ilike(f"%{query}%"),
+                models.Article.summary_content.ilike(f"%{query}%")
+            )
+        ).limit(10).all()
+        
+        logger.info(f"Found {len(similar_articles)} articles matching the query")
+        
+        results = []
+        for article in similar_articles:
+            # Create a simplified URL for the frontend
+            short_url = f"/admin/articles/{article.id}"
+            
+            # Make sure we have a URL
+            article_url = article.url if article.url else short_url
+            
+            # Calculate a simple similarity score based on title match
+            title_similarity = 0.7  # Base similarity
+            if query.lower() in article.title.lower():
+                title_similarity = 0.9
+            
+            # Add the article to results
+            results.append({
+                "id": str(article.id),
+                "title": article.title,
+                "similarity": title_similarity,
+                "url": article_url,
+                "short_url": short_url,
+                "published_date": article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
+                "author": article.author or "Unknown",
+                "description": article.description or "No description available",
+                "key_words": article.keywords if hasattr(article, 'keywords') and article.keywords else []
+            })
+            
+        # Generate a summary if requested
+        summary = None
+        if search_data.generate_summary and results:
+            # Create a summary message
+            if len(results) > 0:
+                summary = f"Found {len(results)} articles related to '{query}'."
+                
+                # Add a bit more detail about the top result
+                if len(results) > 0:
+                    top_article = results[0]
+                    summary += f"\n\nThe most relevant article is '{top_article['title']}'"
+                    if top_article['author'] and top_article['author'] != "Unknown":
+                        summary += f" by {top_article['author']}"
+                    if top_article['published_date']:
+                        summary += f", published on {top_article['published_date']}"
+                    summary += "."
+            else:
+                summary = f"No articles found for the term '{query}'."
+            
+        return {
+            "success": True,
+            "results": results,
+            "count": len(results),
+            "summary": summary
+        }
+        
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+# Endpoint to render the search_articles.html template
+@router.get("/search-articles")
+async def search_articles_page(request: Request):
+    """Render the search articles page"""
+    from fastapi.templating import Jinja2Templates
+    
+    templates = Jinja2Templates(directory="templates")
+    
+    # Get article statistics for initial render
+    try:
+        db = next(get_db())
+        total_count = db.query(models.Article).count()
+        
+        dates_query = db.query(
+            func.min(models.Article.published_date).label('oldest'),
+            func.max(models.Article.published_date).label('newest')
+        ).first()
+        
+        oldest_date = None
+        newest_date = None
+        
+        if dates_query and dates_query.oldest:
+            oldest_date = dates_query.oldest.strftime('%Y-%m-%d')
+        
+        if dates_query and dates_query.newest:
+            newest_date = dates_query.newest.strftime('%Y-%m-%d')
+            
+        logger.info(f"Initial article stats for search page: {total_count} articles")
+    except Exception as e:
+        logger.error(f"Error fetching initial article stats: {e}")
+        total_count = 0
+        oldest_date = None
+        newest_date = None
+    
+    return templates.TemplateResponse(
+        "search_articles.html", 
+        {
+            "request": request,
+            "total_articles": total_count,
+            "oldest_date": oldest_date,
+            "newest_date": newest_date
+        }
+    )
