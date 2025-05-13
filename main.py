@@ -8,6 +8,7 @@ from database import engine, get_db, init_db
 from admin import router as admin_router
 from webhook import router as webhook_router
 from routers.location import router as location_router
+from api_endpoints import router as api_router
 from datetime import timedelta
 from typing import Optional
 from fastapi.templating import Jinja2Templates
@@ -151,6 +152,7 @@ app.middleware("http")(auth_middleware)
 app.include_router(admin_router)
 app.include_router(webhook_router)
 app.include_router(location_router)
+app.include_router(api_router)
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: Optional[str] = None):
