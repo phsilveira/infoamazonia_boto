@@ -198,7 +198,20 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="6" class="text-center">No articles found.</td>
+                                    <td colspan="{% if used_advanced_search %}7{% else %}6{% endif %}" class="text-center">
+                                        {% if search %}
+                                            <div class="alert alert-info">
+                                                <i class="bi bi-info-circle"></i> No articles found matching your search criteria.
+                                                {% if used_advanced_search %}
+                                                <p class="mb-0 mt-2">Advanced search was used but no results were found. Try simplifying your search terms.</p>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <div class="alert alert-info">
+                                                <i class="bi bi-info-circle"></i> No articles found with the current filters.
+                                            </div>
+                                        {% endif %}
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
