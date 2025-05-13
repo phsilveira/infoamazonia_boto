@@ -1,15 +1,18 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Search Term{% endblock %}
+{% block title %}Semantic Search{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1>Search Term</h1>
+    <h1>Semantic Search</h1>
     <div class="row">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5>Advanced Search</h5>
+                    <h5>Advanced Semantic Search</h5>
+                    <a href="/admin/articles" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Articles
+                    </a>
                 </div>
                 <div class="card-body">
                     <!-- Article Stats -->
@@ -21,15 +24,15 @@
                                     <div class="row">
                                         <div class="col-md-4 text-center">
                                             <h5>Total Articles</h5>
-                                            <h3 id="total-articles-count">Loading...</h3>
+                                            <h3 id="total-articles-count">{{ total_articles }}</h3>
                                         </div>
                                         <div class="col-md-4 text-center">
                                             <h5>Oldest Article</h5>
-                                            <h3 id="oldest-article-date">Loading...</h3>
+                                            <h3 id="oldest-article-date">{{ oldest_date or 'N/A' }}</h3>
                                         </div>
                                         <div class="col-md-4 text-center">
                                             <h5>Newest Article</h5>
-                                            <h3 id="newest-article-date">Loading...</h3>
+                                            <h3 id="newest-article-date">{{ newest_date or 'N/A' }}</h3>
                                         </div>
                                     </div>
                                 </div>
@@ -37,31 +40,30 @@
                         </div>
                     </div>
                     
-                    <!-- Search Types Tabs -->
-                    <ul class="nav nav-tabs mb-3" id="searchTypeTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="search-articles-tab" data-bs-toggle="tab" data-bs-target="#search-articles" type="button" role="tab" aria-controls="search-articles" aria-selected="false">Search Articles</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="search-term-tab" data-bs-toggle="tab" data-bs-target="#search-term" type="button" role="tab" aria-controls="search-term" aria-selected="true">Search Term</button>
-                        </li>
-                    </ul>
+                    <!-- Search Introduction -->
+                    <div class="alert alert-info mb-4">
+                        <h5><i class="bi bi-info-circle"></i> About Semantic Search</h5>
+                        <p>This search engine uses advanced techniques to find articles based on meaning and concepts, not just simple keyword matching. Try searching for topics like "climate change effects" or "amazon river pollution" to see related articles.</p>
+                    </div>
 
                     <!-- Search Form -->
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <div class="card">
+                                <div class="card-header">Search by Term</div>
                                 <div class="card-body">
                                     <form id="search-term-form">
                                         <div class="mb-3">
                                             <label for="query" class="form-label">Search Term</label>
-                                            <input type="text" class="form-control" id="query" name="query" placeholder="Enter search term...">
+                                            <input type="text" class="form-control" id="query" name="query" placeholder="Enter search term or concept...">
                                         </div>
                                         <div class="mb-3 form-check">
                                             <input type="checkbox" class="form-check-input" id="generate_summary" name="generate_summary">
-                                            <label class="form-check-label" for="generate_summary">Generate Summary</label>
+                                            <label class="form-check-label" for="generate_summary">Generate AI Summary of Results</label>
                                         </div>
-                                        <button type="submit" class="btn btn-primary">Search</button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-search"></i> Search
+                                        </button>
                                     </form>
                                 </div>
                             </div>
@@ -91,32 +93,6 @@
 <script>
     // Fetch article stats when the page loads
     document.addEventListener('DOMContentLoaded', function() {
-        fetch('/api/article-stats')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('total-articles-count').textContent = data.stats.total_count;
-                    document.getElementById('oldest-article-date').textContent = data.stats.oldest_date || 'N/A';
-                    document.getElementById('newest-article-date').textContent = data.stats.newest_date || 'N/A';
-                } else {
-                    console.error('Error fetching article stats:', data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching article stats:', error);
-            });
-            
-        // Set up tab functionality for search types
-        const searchArticlesTab = document.getElementById('search-articles-tab');
-        const searchTermTab = document.getElementById('search-term-tab');
-        
-        if (searchArticlesTab && searchTermTab) {
-            searchArticlesTab.addEventListener('click', function(e) {
-                e.preventDefault();
-                window.location.href = '/admin/articles';
-            });
-        }
-        
         // Set up search form submission
         const searchForm = document.getElementById('search-term-form');
         if (searchForm) {
@@ -165,13 +141,18 @@
             const resultsContainer = document.getElementById('results-container');
             let html = '';
             
+            // Show result count
+            html += `<div class="alert alert-success mb-4">Found ${data.count} article(s) matching your query.</div>`;
+            
+            // Show AI summary if available
             if (data.summary) {
                 html += `<div class="card mb-4">
-                    <div class="card-header">Summary</div>
+                    <div class="card-header">AI Summary of Results</div>
                     <div class="card-body">${data.summary.replace(/\n/g, '<br>')}</div>
                 </div>`;
             }
             
+            // Show results
             if (data.results && data.results.length > 0) {
                 html += '<h4>Articles</h4>';
                 html += '<div class="list-group">';
@@ -180,12 +161,15 @@
                         <div class="list-group-item">
                             <div class="d-flex w-100 justify-content-between">
                                 <h5 class="mb-1">${article.title}</h5>
-                                <small>Similarity: ${(article.similarity * 100).toFixed(1)}%</small>
+                                <span class="badge bg-success">Relevance: ${(article.similarity * 100).toFixed(1)}%</span>
                             </div>
                             <p class="mb-1">${article.description || 'No description available.'}</p>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <small>${article.published_date || 'No date'}</small>
-                                <a href="${article.url}" target="_blank" class="btn btn-sm btn-primary">Read Article</a>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small class="text-muted">${article.published_date || 'No date'} ${article.author ? 'by ' + article.author : ''}</small>
+                                <div>
+                                    <a href="${article.short_url}" class="btn btn-sm btn-outline-primary me-2">View Details</a>
+                                    <a href="${article.url}" target="_blank" class="btn btn-sm btn-primary">Read Article</a>
+                                </div>
                             </div>
                         </div>
                     `;

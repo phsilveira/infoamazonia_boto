@@ -96,6 +96,63 @@
                         </li>
                     </ul>
 
+                    <!-- Tab Content -->
+                    <div class="tab-content mb-4">
+                        <!-- Search Articles Tab Content -->
+                        <div class="tab-pane fade show active" id="search-articles" role="tabpanel" aria-labelledby="search-articles-tab">
+                            <div class="card">
+                                <div class="card-body">
+                                    <form method="GET" action="/admin/articles" class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="search" class="form-label">Search Text</label>
+                                            <input type="text" name="search" id="search" class="form-control" placeholder="Search by title, content..." value="{{ search or '' }}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="news_source" class="form-label">News Source</label>
+                                            <select name="news_source" id="news_source" class="form-select">
+                                                <option value="">All Sources</option>
+                                                {% for source in sources %}
+                                                <option value="{{ source[0] }}" {% if news_source == source[0] %}selected{% endif %}>{{ source[0] }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="language" class="form-label">Language</label>
+                                            <select name="language" id="language" class="form-select">
+                                                <option value="">All Languages</option>
+                                                {% for lang in languages %}
+                                                <option value="{{ lang[0] }}" {% if language == lang[0] %}selected{% endif %}>{{ lang[0] }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="sort" class="form-label">Sort Order</label>
+                                            <select name="sort" id="sort" class="form-select">
+                                                <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Newest First</option>
+                                                <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Oldest First</option>
+                                                <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Title (A-Z)</option>
+                                                <option value="title_desc" {% if sort == 'title_desc' %}selected{% endif %}>Title (Z-A)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4 d-flex align-items-end">
+                                            <button type="submit" class="btn btn-primary">Search Articles</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Search Term Tab Content -->
+                        <div class="tab-pane fade" id="search-term" role="tabpanel" aria-labelledby="search-term-tab">
+                            <div class="card">
+                                <div class="card-body">
+                                    <p>Search by specific terms using our semantic search engine. This allows you to find articles by concepts and meaning, not just keywords.</p>
+                                    <a href="/search-articles" class="btn btn-primary">Go to Semantic Search</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
