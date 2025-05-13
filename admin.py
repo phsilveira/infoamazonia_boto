@@ -904,6 +904,10 @@ async def list_articles(
             # Set similarity threshold
             similarity_threshold = 0.1  # Lower threshold for more results
             
+            # Normalize the query - consistent with search_term in api_endpoints.py
+            query_normalized = ''.join(e for e in search if e.isalnum() or e.isspace()).lower()
+            query_normalized = unicodedata.normalize("NFKD", query_normalized).encode("ASCII", "ignore").decode("utf-8")
+            
             # Build the query
             similarity_query = select(
                 models.Article,
@@ -945,10 +949,28 @@ async def list_articles(
             
             # Extract articles and scores
             articles = [article for article, _ in paginated_articles]
-            search_results = [
-                {'id': str(article.id), 'similarity': float(score)} 
-                for article, score in paginated_articles
-            ]
+            
+            # Format search results to match search_term function output
+            search_results = []
+            for article, similarity_score in paginated_articles:
+                # Create a simplified URL for the frontend
+                short_url = f"/admin/articles/{article.id}"
+                
+                # Make sure we have a URL
+                article_url = article.url if article.url else short_url
+                
+                # Add the article to results with the same structure as search_term
+                search_results.append({
+                    "id": str(article.id),
+                    "title": article.title,
+                    "similarity": float(similarity_score),
+                    "url": article_url,
+                    "short_url": short_url,
+                    "published_date": article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
+                    "author": article.author or "Unknown",
+                    "description": article.description or "No description available",
+                    "key_words": article.keywords if hasattr(article, 'keywords') and article.keywords else []
+                })
             
             logger.info(f"Advanced search found {total_articles} results")
             

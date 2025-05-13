@@ -157,6 +157,16 @@
                 html += '<h4>Articles</h4>';
                 html += '<div class="list-group">';
                 data.results.forEach(article => {
+                    // Format keywords if available
+                    let keywordsHtml = '';
+                    if (article.key_words && article.key_words.length > 0) {
+                        keywordsHtml = '<div class="mt-2">';
+                        article.key_words.forEach(keyword => {
+                            keywordsHtml += `<span class="badge bg-secondary me-1">${keyword}</span>`;
+                        });
+                        keywordsHtml += '</div>';
+                    }
+                    
                     html += `
                         <div class="list-group-item">
                             <div class="d-flex w-100 justify-content-between">
@@ -164,8 +174,9 @@
                                 <span class="badge bg-success">Relevance: ${(article.similarity * 100).toFixed(1)}%</span>
                             </div>
                             <p class="mb-1">${article.description || 'No description available.'}</p>
+                            ${keywordsHtml}
                             <div class="d-flex justify-content-between align-items-center mt-2">
-                                <small class="text-muted">${article.published_date || 'No date'} ${article.author ? 'by ' + article.author : ''}</small>
+                                <small class="text-muted">${article.published_date || 'No date'} ${article.author && article.author !== 'Unknown' ? 'by ' + article.author : ''}</small>
                                 <div>
                                     <a href="${article.short_url}" class="btn btn-sm btn-outline-primary me-2">View Details</a>
                                     <a href="${article.url}" target="_blank" class="btn btn-sm btn-primary">Read Article</a>

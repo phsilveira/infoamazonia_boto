@@ -187,7 +187,17 @@
                                     <td>
                                         {% for result in search_results %}
                                             {% if result.id == article.id|string %}
-                                                <span class="badge bg-success">{{ (result.similarity * 100)|round(1) }}%</span>
+                                                <div>
+                                                    <span class="badge bg-success">{{ (result.similarity * 100)|round(1) }}%</span>
+                                                    {% if result.key_words and result.key_words|length > 0 %}
+                                                    <div class="mt-1">
+                                                        <small class="text-muted">Keywords:</small>
+                                                        {% for keyword in result.key_words %}
+                                                            <span class="badge bg-secondary">{{ keyword }}</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
                                             {% endif %}
                                         {% endfor %}
                                     </td>
