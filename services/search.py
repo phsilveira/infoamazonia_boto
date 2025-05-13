@@ -152,7 +152,7 @@ def search_articles():
 
 @search_bp.route('/api/search', methods=['POST'])
 @cache_search_results
-def search():
+def search_term():
     try:
         data = request.get_json()
         query = data.get('query')
@@ -402,5 +402,3 @@ def redirect_to_article(short_id):
 
     # Redirect to the new URL
     return redirect(new_url)
-
-from sqlalchemy import select
