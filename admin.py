@@ -875,42 +875,169 @@ async def list_articles(
     current_admin: models.Admin = Depends(get_current_admin)
 ):
     """List all articles with filtering options."""
+    # Track if we used advanced search
+    used_advanced_search = False
+    search_results = []
+    
     # Start building the query
     query = db.query(models.Article)
     
     # Apply filters if provided
     if search:
-        query = query.filter(
-            or_(
-                models.Article.title.ilike(f"%{search}%"),
-                models.Article.content.ilike(f"%{search}%"),
-                models.Article.description.ilike(f"%{search}%")
+        # Import the search functionality from services/search.py
+        try:
+            import unicodedata
+            from sqlalchemy import func, select
+            import logging
+            
+            logger = logging.getLogger(__name__)
+            
+            # Use advanced search if search term is longer than 3 characters
+            if len(search) > 3:
+                used_advanced_search = True
+                logger.info(f"Using advanced search for query: {search}")
+                
+                # Normalize the query
+                query_normalized = unicodedata.normalize('NFKD', search).encode('ascii', 'ignore').decode('utf-8').lower()
+                
+                # Set similarity threshold
+                similarity_threshold = 0.3  # Adjust this value for more or less strict matching
+                
+                # Use trigram similarity for title fuzzy matching
+                similar_articles_query = select(
+                    models.Article, 
+                    func.similarity(models.Article.title, search).label('similarity_score')
+                ).filter(
+                    (func.similarity(models.Article.title, search) > similarity_threshold) |
+                    (models.Article.title.ilike(f"%{search}%")) |
+                    (models.Article.content.ilike(f"%{search}%")) |
+                    (models.Article.description.ilike(f"%{search}%"))
+                ).order_by(
+                    func.similarity(models.Article.title, search).desc()
+                )
+                
+                # Apply additional filters
+                if news_source:
+                    similar_articles_query = similar_articles_query.filter(models.Article.news_source == news_source)
+                if language:
+                    similar_articles_query = similar_articles_query.filter(models.Article.language == language)
+                
+                # Execute the query
+                similar_articles = db.execute(similar_articles_query).all()
+                
+                # Process the results
+                articles = []
+                for article, similarity_score in similar_articles:
+                    articles.append(article)
+                    # Store similarity score for display
+                    search_results.append({
+                        'id': str(article.id),
+                        'similarity': float(similarity_score) 
+                    })
+                
+                # Count total articles for pagination
+                total_articles = len(articles)
+                total_pages = (total_articles + limit - 1) // limit
+                
+                # Apply pagination manually
+                start_idx = (page - 1) * limit
+                end_idx = min(start_idx + limit, total_articles)
+                articles = articles[start_idx:end_idx]
+                
+            else:
+                # Use standard search for short search terms
+                logger.info(f"Using standard search for query: {search}")
+                query = query.filter(
+                    or_(
+                        models.Article.title.ilike(f"%{search}%"),
+                        models.Article.content.ilike(f"%{search}%"),
+                        models.Article.description.ilike(f"%{search}%")
+                    )
+                )
+                if news_source:
+                    query = query.filter(models.Article.news_source == news_source)
+                if language:
+                    query = query.filter(models.Article.language == language)
+                
+                # Apply sorting if provided
+                if sort == "date_asc":
+                    query = query.order_by(models.Article.published_date.asc())
+                elif sort == "date_desc":
+                    query = query.order_by(models.Article.published_date.desc())
+                elif sort == "title_asc":
+                    query = query.order_by(models.Article.title.asc())
+                elif sort == "title_desc":
+                    query = query.order_by(models.Article.title.desc())
+                else:
+                    # Default sorting by published date (newest first)
+                    query = query.order_by(models.Article.published_date.desc())
+                
+                # Count total articles for pagination
+                total_articles = query.count()
+                total_pages = (total_articles + limit - 1) // limit
+                
+                # Apply pagination
+                articles = query.offset((page - 1) * limit).limit(limit).all()
+        except Exception as e:
+            logger.error(f"Error in advanced search: {e}")
+            # Fall back to standard search
+            query = query.filter(
+                or_(
+                    models.Article.title.ilike(f"%{search}%"),
+                    models.Article.content.ilike(f"%{search}%"),
+                    models.Article.description.ilike(f"%{search}%")
+                )
             )
-        )
-    if news_source:
-        query = query.filter(models.Article.news_source == news_source)
-    if language:
-        query = query.filter(models.Article.language == language)
-    
-    # Apply sorting if provided
-    if sort == "date_asc":
-        query = query.order_by(models.Article.published_date.asc())
-    elif sort == "date_desc":
-        query = query.order_by(models.Article.published_date.desc())
-    elif sort == "title_asc":
-        query = query.order_by(models.Article.title.asc())
-    elif sort == "title_desc":
-        query = query.order_by(models.Article.title.desc())
+            if news_source:
+                query = query.filter(models.Article.news_source == news_source)
+            if language:
+                query = query.filter(models.Article.language == language)
+            
+            # Apply sorting if provided
+            if sort == "date_asc":
+                query = query.order_by(models.Article.published_date.asc())
+            elif sort == "date_desc":
+                query = query.order_by(models.Article.published_date.desc())
+            elif sort == "title_asc":
+                query = query.order_by(models.Article.title.asc())
+            elif sort == "title_desc":
+                query = query.order_by(models.Article.title.desc())
+            else:
+                # Default sorting by published date (newest first)
+                query = query.order_by(models.Article.published_date.desc())
+            
+            # Count total articles for pagination
+            total_articles = query.count()
+            total_pages = (total_articles + limit - 1) // limit
+            
+            # Apply pagination
+            articles = query.offset((page - 1) * limit).limit(limit).all()
     else:
-        # Default sorting by published date (newest first)
-        query = query.order_by(models.Article.published_date.desc())
-    
-    # Count total articles for pagination
-    total_articles = query.count()
-    total_pages = (total_articles + limit - 1) // limit
-    
-    # Apply pagination
-    articles = query.offset((page - 1) * limit).limit(limit).all()
+        # No search term provided, use standard filtering
+        if news_source:
+            query = query.filter(models.Article.news_source == news_source)
+        if language:
+            query = query.filter(models.Article.language == language)
+        
+        # Apply sorting if provided
+        if sort == "date_asc":
+            query = query.order_by(models.Article.published_date.asc())
+        elif sort == "date_desc":
+            query = query.order_by(models.Article.published_date.desc())
+        elif sort == "title_asc":
+            query = query.order_by(models.Article.title.asc())
+        elif sort == "title_desc":
+            query = query.order_by(models.Article.title.desc())
+        else:
+            # Default sorting by published date (newest first)
+            query = query.order_by(models.Article.published_date.desc())
+        
+        # Count total articles for pagination
+        total_articles = query.count()
+        total_pages = (total_articles + limit - 1) // limit
+        
+        # Apply pagination
+        articles = query.offset((page - 1) * limit).limit(limit).all()
     
     # Get unique sources and languages for filter dropdowns
     sources = db.query(models.Article.news_source).distinct().all()
@@ -934,7 +1061,9 @@ async def list_articles(
             "sort": sort,
             "sources": sources,
             "languages": languages,
-            "pagination_url": pagination_url
+            "pagination_url": pagination_url,
+            "used_advanced_search": used_advanced_search,
+            "search_results": search_results
         }
     )
 
