@@ -168,3 +168,41 @@
     </div>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+    // Fetch article stats when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/api/article-stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('total-articles-count').textContent = data.stats.total_count;
+                    document.getElementById('oldest-article-date').textContent = data.stats.oldest_date || 'N/A';
+                    document.getElementById('newest-article-date').textContent = data.stats.newest_date || 'N/A';
+                } else {
+                    console.error('Error fetching article stats:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching article stats:', error);
+            });
+            
+        // Set up tab functionality for search types
+        const searchArticlesTab = document.getElementById('search-articles-tab');
+        const searchTermTab = document.getElementById('search-term-tab');
+        
+        if (searchArticlesTab && searchTermTab) {
+            searchArticlesTab.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = '/admin/articles';
+            });
+            
+            searchTermTab.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = '/search-articles';
+            });
+        }
+    });
+</script>
+{% endblock %}
