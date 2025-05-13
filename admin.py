@@ -332,7 +332,7 @@ async def download_articles_for_source(
             raise HTTPException(status_code=404, detail="News source not found")
 
         # Import required classes to perform download
-        from services.article_ingestion import ingest_scraped_articles_from_source, ingest_articles
+        from services.article_ingestion import process_article, ingest_articles
         from models import Article
         import sys
         import types
@@ -355,57 +355,38 @@ async def download_articles_for_source(
         app_module.db = app_db
         sys.modules['app'] = app_module
         
-        # First, try using the web scraper to get articles directly
         try:
-            logger.info(f"Attempting to scrape articles from source: {source.name} ({source.url})")
+            logger.info(f"Attempting to get articles from source: {source.name} ({source.url})")
+            from services.news import News
             
-            # Determine language from source metadata or default to Portuguese
-            language = "pt"  # Default language
+            # Initialize the News class with our database session
+            news = News()
+            news.db = app_db
             
-            # Start scraping process
-            articles_added_count = ingest_scraped_articles_from_source(
-                source_url=source.url,
-                source_name=source.name,
-                language=language
-            )
+            # Fetch news from configured sources
+            result = news.get_news()
             
-            method_used = "web scraping"
-            
-        except Exception as scrape_error:
-            logger.warning(f"Web scraping failed, falling back to API: {str(scrape_error)}")
-            
-            # Fallback to API if scraping fails
-            try:
-                from services.news import News
-                
-                # Initialize the News class with our database session
-                news = News()
-                news.db = app_db
-                
-                # Fetch news from configured sources
-                result = news.get_news()
-                
-                if not result.get('success', False):
-                    logger.error(f"Failed to fetch articles from sources")
-                    # Clean up temporary module
-                    if 'app' in sys.modules:
-                        del sys.modules['app']
-                    # Return to the source detail page with error
-                    return RedirectResponse(
-                        url=f"/admin/news-sources/{source_id}",
-                        status_code=status.HTTP_302_FOUND
-                    )
-                
-                # Now call ingest_articles with our patched environment
-                articles_added_count = ingest_articles(result.get('news', []))
-                method_used = "API"
-                
-            except Exception as api_error:
-                logger.error(f"API fallback also failed: {str(api_error)}")
+            if not result.get('success', False):
+                logger.error(f"Failed to fetch articles from sources")
                 # Clean up temporary module
                 if 'app' in sys.modules:
                     del sys.modules['app']
-                raise Exception(f"Both scraping and API methods failed: {str(scrape_error)}; {str(api_error)}")
+                # Return to the source detail page with error
+                return RedirectResponse(
+                    url=f"/admin/news-sources/{source_id}",
+                    status_code=status.HTTP_302_FOUND
+                )
+            
+            # Now call ingest_articles with our patched environment
+            articles_added_count = ingest_articles(result.get('news', []))
+            method_used = "process_article and ingest_articles"
+            
+        except Exception as e:
+            logger.error(f"Failed to process articles: {str(e)}")
+            # Clean up temporary module
+            if 'app' in sys.modules:
+                del sys.modules['app']
+            raise Exception(f"Failed to process articles: {str(e)}")
         
         # Clean up temporary module
         if 'app' in sys.modules:
