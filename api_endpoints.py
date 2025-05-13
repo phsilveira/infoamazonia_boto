@@ -136,22 +136,45 @@ async def search_term(
             
         # Generate a summary if requested
         summary = None
-        if search_data.generate_summary and results:
-            # Create a summary message
-            if len(results) > 0:
-                summary = f"Found {len(results)} articles related to '{query}'."
+        if search_data.generate_summary:
+            # Define header template message in Portuguese
+            header = "📖 Aqui está o que descobrimos sobre o termo solicitado:\n\n"
+            
+            if results and len(results) > 0:
+                # Create a summary message for found results
+                summary_text = f"Encontramos {len(results)} artigos relacionados a '{query}'."
                 
-                # Add a bit more detail about the top result
+                # Add details about the top result
+                top_article = results[0]
+                summary_text += f"\n\nO artigo mais relevante é '{top_article['title']}'"
+                if top_article['author'] and top_article['author'] != "Unknown":
+                    summary_text += f" por {top_article['author']}"
+                if top_article['published_date']:
+                    summary_text += f", publicado em {top_article['published_date']}"
+                summary_text += "."
+                
+                # Format with header
+                summary = header + summary_text
+                
+                # Add sources information
                 if len(results) > 0:
-                    top_article = results[0]
-                    summary += f"\n\nThe most relevant article is '{top_article['title']}'"
-                    if top_article['author'] and top_article['author'] != "Unknown":
-                        summary += f" by {top_article['author']}"
-                    if top_article['published_date']:
-                        summary += f", published on {top_article['published_date']}"
-                    summary += "."
+                    sources_text = "\n\n🔗 Fonte(s):"
+                    for article in results[:min(3, len(results))]:
+                        sources_text += f"\n{article['title']}\n🔗 {article['short_url']}\n"
+                    summary += sources_text
             else:
-                summary = f"No articles found for the term '{query}'."
+                # Default message when no results are found
+                summary = """⚠️ Ops, não encontramos uma explicação completa para esse termo.
+
+😕 Isso pode acontecer porque:
+1️⃣ O termo é muito recente ou específico.
+2️⃣ Não há consenso científico sobre o tema.
+3️⃣ Não há informações detalhadas sobre o termo nas nossas fontes.
+
+🔎 Nossa equipe irá investigar esse tema com mais profundidade. Obrigado por nos ajudar a entender o que nossa audiência tem interesse em consumir.
+📌 Enquanto isso, você pode tentar reformular o termo ou buscar algo semelhante.
+↩️ Voltando ao menu inicial...
+"""
             
         return {
             "success": True,
