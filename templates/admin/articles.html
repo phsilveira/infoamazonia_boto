@@ -61,6 +61,41 @@
                     </div>
                     {% endif %}
 
+                    <!-- Article Stats -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">Article Statistics</div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4 text-center">
+                                            <h5>Total Articles</h5>
+                                            <h3 id="total-articles-count">{{ total_articles }}</h3>
+                                        </div>
+                                        <div class="col-md-4 text-center">
+                                            <h5>Oldest Article</h5>
+                                            <h3 id="oldest-article-date">Loading...</h3>
+                                        </div>
+                                        <div class="col-md-4 text-center">
+                                            <h5>Newest Article</h5>
+                                            <h3 id="newest-article-date">Loading...</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Search Types Tabs -->
+                    <ul class="nav nav-tabs mb-3" id="searchTypeTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="search-articles-tab" data-bs-toggle="tab" data-bs-target="#search-articles" type="button" role="tab" aria-controls="search-articles" aria-selected="true">Search Articles</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="search-term-tab" data-bs-toggle="tab" data-bs-target="#search-term" type="button" role="tab" aria-controls="search-term" aria-selected="false">Search Term</button>
+                        </li>
+                    </ul>
+
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
