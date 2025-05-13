@@ -37,7 +37,7 @@ menu:
 
     🔔 Acompanhe nossas reportagens na InfoAmazonia e fique por dentro das novidades!
 
-    Digite *menu* para voltar ao menu principal.
+    Digite *MENU* para voltar ao menu principal.
 
 # Location messages
 location:
@@ -128,11 +128,11 @@ unsubscribe:
   invalid_option: "Por favor, responda 'sim' para confirmar o cancelamento ou 'não' para manter sua inscrição."
 
 # return
-return: "Obrigado! Caso tenha outras dúvidas, digite outro termo relacionado ou escolha uma nova opção no menu principal."
+return: "Obrigado! Digite *MENU*, para ver outras opções"
 
-return_to_menu_from_subscription: "Digite *menu* para voltar a menu principal."
+return_to_menu_from_subscription: "Digite *MENU* para voltar a menu principal"
 
-return_success: "Obrigado! Caso tenha outras dúvidas, digite outro termo relacionado ou escolha uma nova opção no menu principal."
+return_success: "Obrigado! Digite *MENU*, para ver outras opções"
 
 # Subscription modification
 subscription:

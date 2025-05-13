@@ -468,7 +468,7 @@ async def get_message_stats(request: Request, db: Session = Depends(get_db)):
             outgoing = db.query(func.count(models.Message.id))\
                 .filter(
                     models.Message.message_type == 'outgoing',
-                    models.Message.message_type == 'sent',
+                    models.Message.status == 'sent',
                     models.Message.created_at > current_date,
                     models.Message.created_at <= week_end
                 )\

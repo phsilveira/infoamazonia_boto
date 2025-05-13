@@ -34,18 +34,18 @@ gpt-4:
   summarize_queries:
     system: "Você é um assistente útil que resume interações do usuário e identifica padrões comuns."
     user: |
-      Por favor, analise e resuma estas consultas de usuário para {interaction_type}:
+      Por favor, analise e resuma estas consultas de usuário para os {interaction_type}:
 
       {queries}
 
-      Forneça um resumo conciso que inclua:
-      1. Tópicos ou temas mais comuns
-      2. Tipos de informações que os usuários estão procurando
+      1. Forneça uma lista de 3 a 5 tópicos baseado nas palavra chaves.
+      2. Forneça uma lista de 3 a 5 tipos de informações que os usuários estão procurando.
 
-      Mantenha o resumo curto e focado em insights principais.
-      Formate a resposta somente em HTML, não inclua ```html```
-    temperature: 0.3
-    max_tokens: 250
+      Formate a resposta somente em HTML, não inclua ```html``` com os headers:
+        <h3>Tópicos mais comuns</h3>
+        <h3>Informações que os usuários estão procurando</h3>
+    temperature: 0.1
+    max_tokens: 100
   
   # Parse user's numeric selection and get corresponding article title from template message
   get_selected_article_title:
