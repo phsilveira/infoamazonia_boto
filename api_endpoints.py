@@ -169,15 +169,34 @@ async def search_term(
 
 # Endpoint to render the search_articles.html template
 @router.get("/search-articles")
-async def search_articles_page(request: Request):
+async def search_articles_page(request: Request, db: Session = Depends(get_db)):
     """Render the search articles page"""
     from fastapi.templating import Jinja2Templates
+    from fastapi.responses import RedirectResponse
+    from auth import get_current_admin
+    
+    # Check if the user is authenticated
+    try:
+        # Import the auth-related functions
+        from auth import get_token_from_cookie, verify_token
+        
+        # Get the token from cookie
+        token = get_token_from_cookie(request)
+        if not token:
+            return RedirectResponse(url="/login", status_code=302)
+        
+        # Verify the token
+        admin = verify_token(token, db)
+        if not admin:
+            return RedirectResponse(url="/login", status_code=302)
+    except Exception as e:
+        logger.error(f"Authentication error in search page: {e}")
+        return RedirectResponse(url="/login", status_code=302)
     
     templates = Jinja2Templates(directory="templates")
     
     # Get article statistics for initial render
     try:
-        db = next(get_db())
         total_count = db.query(models.Article).count()
         
         dates_query = db.query(
@@ -201,12 +220,14 @@ async def search_articles_page(request: Request):
         oldest_date = None
         newest_date = None
     
+    # Pass admin to the template
     return templates.TemplateResponse(
         "search_articles.html", 
         {
             "request": request,
             "total_articles": total_count,
             "oldest_date": oldest_date,
-            "newest_date": newest_date
+            "newest_date": newest_date,
+            "current_admin": admin  # Pass the admin user to the template
         }
     )
