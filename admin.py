@@ -687,6 +687,75 @@ async def add_user_location(
             }
         )
 
+@router.get("/interactions/export-csv")
+async def export_interactions_csv(
+    request: Request,
+    category: str = None,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Export interactions to CSV with optional category filter."""
+    # Setup logging
+    logger = logging.getLogger(__name__)
+    
+    # Start building the query
+    query = db.query(models.UserInteraction).order_by(models.UserInteraction.created_at.desc())
+    
+    # Apply category filter if provided
+    if category and category != "all":
+        query = query.filter(models.UserInteraction.category == category)
+    
+    # Get all interactions with filters applied (no pagination for export)
+    interactions = query.all()
+    
+    # Create a CSV output
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write CSV header
+    writer.writerow([
+        'ID', 'Phone Number', 'Category', 'Query', 'Response', 
+        'Feedback', 'Created At', 'Updated At'
+    ])
+    
+    # Write interaction data
+    for interaction in interactions:
+        # Format feedback and dates for CSV export
+        feedback = "Positive" if interaction.feedback is True else "Negative" if interaction.feedback is False else "No Feedback"
+        created_at = interaction.created_at.strftime('%Y-%m-%d %H:%M:%S') if interaction.created_at else ''
+        updated_at = interaction.updated_at.strftime('%Y-%m-%d %H:%M:%S') if interaction.updated_at else ''
+        
+        writer.writerow([
+            str(interaction.id),
+            interaction.phone_number or '',
+            interaction.category or '',
+            interaction.query or '',
+            interaction.response or '',
+            feedback,
+            created_at,
+            updated_at
+        ])
+    
+    # Prepare the response
+    output.seek(0)
+    
+    # Generate a filename with timestamp and optional category
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    category_str = f"_{category}" if category and category != "all" else ""
+    filename = f"interactions{category_str}_export_{timestamp}.csv"
+    
+    # Log the export
+    logger.info(f"Exported {len(interactions)} interactions to CSV by admin {current_admin.username}")
+    
+    # Return the CSV file as a downloadable attachment
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
+
 @router.get("/interactions", response_class=HTMLResponse)
 async def list_interactions(
     request: Request,
