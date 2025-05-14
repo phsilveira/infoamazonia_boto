@@ -672,70 +672,96 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
     return chatbot.state
 
 async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
-    """Handle the article info state logic"""
+    """Handle the article info state logic using search_term function directly"""
     db = next(get_db())
     try:
-        import httpx
-        api_url = f"{settings.SEARCH_BASE_URL}/api/v1/search/articles"
-        payload = {"query": message}
+        # Import necessary modules to call search_term directly
+        from api_endpoints import SearchQuery, search_term
+        from fastapi import Request
+        
+        # Create a search query object - no summary generation needed for article lookup
+        search_data = SearchQuery(query=message, generate_summary=False)
+        
+        # Create a simple mock request object
+        class MockRequest:
+            def __init__(self):
+                self.app = None
+        
+        # Call the search_term function directly
+        data = await search_term(MockRequest(), search_data, db)
+        
+        # Check if we found any results
+        if data.get("success") and data.get("results") and len(data.get("results", [])) > 0:
+            # Get only the most similar article (first result)
+            most_similar_article = data["results"][0]
+            
+            # Get the article from database to access full content
+            article = db.query(models.Article).filter(models.Article.id == most_similar_article["id"]).first()
+            
+            if not article:
+                raise Exception(f"Article with ID {most_similar_article['id']} not found in database")
+            
+            # Generate the summary content
+            summary_content = chatgpt_service.generate_article_summary(
+                article.title,
+                article.summary_content,
+                most_similar_article["short_url"]
+            )
+            
+            # Get user if exists
+            user = chatbot.get_user(phone_number)
+            user_id = user.id if user else None
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(api_url, json=payload)
-            data = response.json()
+            # Create user interaction record
+            interaction = UserInteraction(
+                user_id=user_id,
+                phone_number=phone_number,
+                category='article',
+                query=message,
+                response=summary_content
+            )
+            db.add(interaction)
+            db.commit()
 
-            if data.get("success") and data.get('count') > 0:
-                # Get user if exists
-                user = chatbot.get_user(phone_number)
-                user_id = user.id if user else None
+            # Store interaction ID in chatbot state for feedback
+            await chatbot.set_current_interaction_id(interaction.id, phone_number)
 
-                # Create user interaction record
-                interaction = UserInteraction(
-                    user_id=user_id,
-                    phone_number=phone_number,
-                    category='article',
-                    query=message,
-                    response=data["results"][0]["summary_content"]
-                )
-                db.add(interaction)
-                db.commit()
-
-                # Store interaction ID in chatbot state for feedback
-                await chatbot.set_current_interaction_id(interaction.id, phone_number)
-
-                await send_message(phone_number, data["results"][0]["summary_content"], db)
-                chatbot.get_feedback()
-                
-                # Send an interactive button message for feedback
-                interactive_content = {
-                    "type": "button",
-                    "body": {
-                        "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
-                    },
-                    "action": {
-                        "buttons": [
-                            {
-                                "type": "reply",
-                                "reply": {
-                                    "id": "sim",
-                                    "title": "Sim"
-                                }
-                            },
-                            {
-                                "type": "reply",
-                                "reply": {
-                                    "id": "não",
-                                    "title": "Não"
-                                }
+            # Send the article summary to the user
+            await send_message(phone_number, summary_content, db)
+            chatbot.get_feedback()
+            
+            # Send an interactive button message for feedback
+            interactive_content = {
+                "type": "button",
+                "body": {
+                    "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
+                },
+                "action": {
+                    "buttons": [
+                        {
+                            "type": "reply",
+                            "reply": {
+                                "id": "sim",
+                                "title": "Sim"
                             }
-                        ]
-                    }
+                        },
+                        {
+                            "type": "reply",
+                            "reply": {
+                                "id": "não",
+                                "title": "Não"
+                            }
+                        }
+                    ]
                 }
-                await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
-            else:
-                await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
-                await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
-                chatbot.end_conversation()
-
+            }
+            await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
+        else:
+            # No results found
+            await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
+            await send_message(phone_number, message_loader.get_message('menu.main'), db)
+            chatbot.show_menu()
+                
     except Exception as e:
         logger.error(f"Error in article summary handler: {str(e)}")
         await send_message(phone_number, message_loader.get_message('error.general_error'), db)
