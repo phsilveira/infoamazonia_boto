@@ -678,6 +678,7 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
         # Import necessary modules to call search_term directly
         from api_endpoints import SearchQuery, search_term
         from fastapi import Request
+        import models  # Import the models module
         
         # Create a search query object - no summary generation needed for article lookup
         search_data = SearchQuery(query=message, generate_summary=False)
@@ -759,8 +760,8 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
         else:
             # No results found
             await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
-            await send_message(phone_number, message_loader.get_message('menu.main'), db)
-            chatbot.show_menu()
+            await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
+            chatbot.end_conversation()
                 
     except Exception as e:
         logger.error(f"Error in article summary handler: {str(e)}")
