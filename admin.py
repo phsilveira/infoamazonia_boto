@@ -924,8 +924,8 @@ async def export_articles_csv(
     # Write article data
     for article in articles:
         # Format lists and dates for CSV export
-        topics = ', '.join(article.topics) if article.topics else ''
-        keywords = ', '.join(article.keywords) if article.keywords else ''
+        topics = ', '.join(article.topics) if article.topics and isinstance(article.topics, list) else ''
+        keywords = ', '.join(article.keywords) if article.keywords and isinstance(article.keywords, list) else ''
         published_date = article.published_date.strftime('%Y-%m-%d') if article.published_date else ''
         
         writer.writerow([

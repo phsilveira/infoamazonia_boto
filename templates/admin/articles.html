@@ -14,6 +14,9 @@
                         <a href="/admin/news-sources" class="btn btn-sm btn-success me-3">
                             <i class="bi bi-download"></i> Download More Articles
                         </a>
+                        <a href="/admin/articles/export-csv?search={{ search or '' }}&news_source={{ news_source or '' }}&language={{ language or '' }}&sort={{ sort or '' }}" class="btn btn-sm btn-primary me-3">
+                            <i class="bi bi-file-earmark-spreadsheet"></i> Export to CSV
+                        </a>
                         <form method="GET" action="/admin/articles" class="d-flex">
                             <!-- Search input -->
                             <div class="input-group me-2">
@@ -135,7 +138,10 @@
                                             </select>
                                         </div>
                                         <div class="col-md-4 d-flex align-items-end">
-                                            <button type="submit" class="btn btn-primary">Search Articles</button>
+                                            <button type="submit" class="btn btn-primary me-2">Search Articles</button>
+                                            <a href="/admin/articles/export-csv?search={{ search or '' }}&news_source={{ news_source or '' }}&language={{ language or '' }}&sort={{ sort or '' }}" class="btn btn-outline-primary">
+                                                <i class="bi bi-file-earmark-spreadsheet"></i> Export to CSV
+                                            </a>
                                         </div>
                                     </form>
                                 </div>
