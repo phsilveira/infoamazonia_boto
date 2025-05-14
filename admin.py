@@ -6,11 +6,13 @@ import schemas
 from database import get_db
 from auth import get_current_admin, get_password_hash
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from datetime import datetime, timezone
 import json
 import httpx
 import logging
+import csv
+import io
 from config import settings
 from sqlalchemy import desc, or_, func, select, text
 from services.chatgpt import ChatGPTService # Fixed import
@@ -862,6 +864,102 @@ async def ctr_stats_page(
             }
         )
     
+@router.get("/articles/export-csv")
+async def export_articles_csv(
+    request: Request,
+    search: str = None,
+    news_source: str = None,
+    language: str = None,
+    sort: str = None,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Export articles to CSV with current filters applied."""
+    # Setup logging
+    logger = logging.getLogger(__name__)
+    
+    # Start building the query
+    query = db.query(models.Article)
+    
+    # Apply filters if provided
+    if search:
+        query = query.filter(
+            or_(
+                models.Article.title.ilike(f"%{search}%"),
+                models.Article.content.ilike(f"%{search}%"),
+                models.Article.description.ilike(f"%{search}%")
+            )
+        )
+    if news_source:
+        query = query.filter(models.Article.news_source == news_source)
+    if language:
+        query = query.filter(models.Article.language == language)
+    
+    # Apply sorting if provided
+    if sort == "date_asc":
+        query = query.order_by(models.Article.published_date.asc())
+    elif sort == "date_desc":
+        query = query.order_by(models.Article.published_date.desc())
+    elif sort == "title_asc":
+        query = query.order_by(models.Article.title.asc())
+    elif sort == "title_desc":
+        query = query.order_by(models.Article.title.desc())
+    else:
+        # Default sorting by published date (newest first)
+        query = query.order_by(models.Article.published_date.desc())
+    
+    # Get all articles with filters applied (no pagination for export)
+    articles = query.all()
+    
+    # Create a CSV output
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write CSV header
+    writer.writerow([
+        'ID', 'Title', 'Source', 'Published Date', 'Language', 'URL', 
+        'Author', 'Description', 'Topics', 'Keywords'
+    ])
+    
+    # Write article data
+    for article in articles:
+        # Format lists and dates for CSV export
+        topics = ', '.join(article.topics) if article.topics else ''
+        keywords = ', '.join(article.keywords) if article.keywords else ''
+        published_date = article.published_date.strftime('%Y-%m-%d') if article.published_date else ''
+        
+        writer.writerow([
+            str(article.id),
+            article.title,
+            article.news_source or '',
+            published_date,
+            article.language or '',
+            article.url or '',
+            article.author or '',
+            article.description or '',
+            topics,
+            keywords
+        ])
+    
+    # Prepare the response
+    output.seek(0)
+    
+    # Generate a filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"articles_export_{timestamp}.csv"
+    
+    # Log the export
+    logger.info(f"Exported {len(articles)} articles to CSV by admin {current_admin.username}")
+    
+    # Return the CSV file as a downloadable attachment
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
+
 @router.get("/articles", response_class=HTMLResponse)
 async def list_articles(
     request: Request,
