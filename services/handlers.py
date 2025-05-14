@@ -537,67 +537,77 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
     """Handle the term info state logic"""
     db = next(get_db())
     try:
-        import httpx
-        api_url = f"{settings.SEARCH_BASE_URL}/api/v1/search/term"
-        payload = {"query": message, "generate_summary": True}
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(api_url, json=payload)
-            data = response.json()
-
-            if data.get("success") and data.get("summary") and int(data.get('count')) > 0:
-                # Get user if exists
-                user = chatbot.get_user(phone_number)
-                user_id = user.id if user else None
-
-                # Create user interaction record
-                interaction = UserInteraction(
-                    user_id=user_id,
-                    phone_number=phone_number,
-                    category='term',
-                    query=message,
-                    response=data["summary"]
-                )
-                db.add(interaction)
-                db.commit()
-
-                # Store interaction ID in chatbot state for feedback
-                await chatbot.set_current_interaction_id(interaction.id, phone_number)
-
-                await send_message(phone_number, data["summary"], db)
-                chatbot.get_feedback()
-                
-                # Send an interactive button message for feedback
-                interactive_content = {
-                    "type": "button",
-                    "body": {
-                        "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
-                    },
-                    "action": {
-                        "buttons": [
-                            {
-                                "type": "reply",
-                                "reply": {
-                                    "id": "sim",
-                                    "title": "Sim"
-                                }
-                            },
-                            {
-                                "type": "reply",
-                                "reply": {
-                                    "id": "não",
-                                    "title": "Não"
-                                }
+        # Import necessary modules to call search_term directly instead of making HTTP request
+        from api_endpoints import SearchQuery, search_term
+        from fastapi import Request
+        
+        # Create a search query object - same parameters as in the API endpoint
+        search_data = SearchQuery(query=message, generate_summary=True)
+        
+        # Create a simple mock request object - only needed to satisfy FastAPI dependency
+        class MockRequest:
+            def __init__(self):
+                self.app = None
+        
+        # Call the search_term function directly with our parameters
+        data = await search_term(MockRequest(), search_data, db)
+        
+        # Check if we found results and have a summary
+        if data.get("success") and data.get("summary") and int(data.get("count", 0)) > 0:
+            # Get user if exists
+            user = chatbot.get_user(phone_number)
+            user_id = user.id if user else None
+            
+            # Create interaction record
+            interaction = UserInteraction(
+                user_id=user_id,
+                phone_number=phone_number,
+                category="term",
+                query=message,
+                response=data["summary"]
+            )
+            db.add(interaction)
+            db.commit()
+            
+            # Store interaction ID for feedback
+            await chatbot.set_current_interaction_id(interaction.id, phone_number)
+            
+            # Send the summary response to the user
+            await send_message(phone_number, data["summary"], db)
+            chatbot.get_feedback()
+            
+            # Send feedback buttons
+            interactive_content = {
+                "type": "button",
+                "body": {
+                    "text": message_loader.get_message("feedback.request").split("\n")[0]
+                },
+                "action": {
+                    "buttons": [
+                        {
+                            "type": "reply",
+                            "reply": {
+                                "id": "sim",
+                                "title": "Sim"
                             }
-                        ]
-                    }
+                        },
+                        {
+                            "type": "reply",
+                            "reply": {
+                                "id": "não",
+                                "title": "Não"
+                            }
+                        }
+                    ]
                 }
-                await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
-            else:
-                await send_message(phone_number, message_loader.get_message('error.term_not_found'), db)
-                await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
-                chatbot.end_conversation()
-
+            }
+            await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
+        else:
+            # No results found
+            await send_message(phone_number, message_loader.get_message("error.term_not_found"), db)
+            await send_message(phone_number, message_loader.get_message("menu.main"), db)
+            chatbot.show_menu()
+            
     except Exception as e:
         logger.error(f"Error in term info handler: {str(e)}")
         await send_message(phone_number, message_loader.get_message('error.general_error'), db)
