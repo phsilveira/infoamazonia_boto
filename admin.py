@@ -14,7 +14,7 @@ import logging
 import csv
 import io
 from config import settings
-from sqlalchemy import desc, or_, func, select, text
+from sqlalchemy import desc, or_, func, select, text, case
 from services.chatgpt import ChatGPTService # Fixed import
 from cache_utils import invalidate_dashboard_caches, get_cache, set_cache  # Import cache utilities
 
@@ -788,32 +788,97 @@ async def get_interaction_summaries(
         if cached_result:
             logger.info(f"Returning cached interaction summary for category: {category}")
             return cached_result
+        
+        # For 'article' category, implement the new query grouping instead of ChatGPT summary
+        if category == 'article':
+            # Use SQLAlchemy to group by query and get counts
+            query_stats = db.query(
+                models.UserInteraction.query, 
+                func.count(models.UserInteraction.id).label('query_count'),
+                func.sum(case(
+                    (models.UserInteraction.feedback == True, 1), 
+                    else_=0
+                )).label('positive_feedback'),
+                func.sum(case(
+                    (models.UserInteraction.feedback == False, 1), 
+                    else_=0
+                )).label('negative_feedback')
+            ).filter(
+                models.UserInteraction.category == 'article'
+            ).group_by(
+                models.UserInteraction.query
+            ).order_by(
+                func.count(models.UserInteraction.id).desc()
+            ).all()
             
-        # If not in cache, proceed with generating the summary
-        # Get queries for the specified category
-        queries = db.query(models.UserInteraction.query)\
-            .filter(models.UserInteraction.category == category)\
-            .all()
-
-        # Extract query texts
-        query_texts = [q[0] for q in queries]
-
-        if not query_texts:
-            result = {"summary": "No queries found for this category"}
-            # Cache the empty result as well
-            await set_cache(cache_key, result, request, expire_seconds=180)  # 3 minutes TTL
+            if not query_stats:
+                result = {"summary": "No queries found for this category"}
+                await set_cache(cache_key, result, request, expire_seconds=180)
+                return result
+            
+            # Create an HTML table with the query statistics
+            table_rows = ""
+            for query, count, positive, negative in query_stats:
+                # Truncate query if it's too long for display
+                display_query = query[:100] + "..." if len(query) > 100 else query
+                table_rows += f"""
+                <tr>
+                    <td>{display_query}</td>
+                    <td class="text-center">{count}</td>
+                    <td class="text-center">{positive}</td>
+                    <td class="text-center">{negative}</td>
+                </tr>
+                """
+            
+            summary_html = f"""
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Query/Article URL</th>
+                            <th class="text-center">Total Queries</th>
+                            <th class="text-center">Positive Feedback</th>
+                            <th class="text-center">Negative Feedback</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {table_rows}
+                    </tbody>
+                </table>
+            </div>
+            """
+            
+            result = {"summary": summary_html}
+            await set_cache(cache_key, result, request, expire_seconds=180)
             return result
+            
+        else:
+            # For other categories, continue with the original ChatGPT summary
+            # Get queries for the specified category
+            queries = db.query(models.UserInteraction.query)\
+                .filter(models.UserInteraction.category == category)\
+                .all()
 
-        # Generate summary using ChatGPT
-        summary = await chatgpt_service.summarize_queries(query_texts, category)
+            # Extract query texts
+            query_texts = [q[0] for q in queries]
 
-        # Prepare result
-        result = {"summary": summary}
-        
-        # Store in cache with 3-minute TTL (180 seconds)
-        await set_cache(cache_key, result, request, expire_seconds=180)
-        
-        return result
+            if not query_texts:
+                result = {"summary": "No queries found for this category"}
+                # Cache the empty result as well
+                await set_cache(cache_key, result, request, expire_seconds=180)  # 3 minutes TTL
+                return result
+
+            # Generate summary using ChatGPT
+            summary = await chatgpt_service.summarize_queries(query_texts, category)
+
+            # Prepare result
+            result = {"summary": summary}
+            
+            # Store in cache with 3-minute TTL (180 seconds)
+            await set_cache(cache_key, result, request, expire_seconds=180)
+            
+            return result
+            
     except Exception as e:
         logger.error(f"Error generating interaction summaries: {str(e)}")
         raise HTTPException(
