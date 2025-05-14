@@ -3,12 +3,12 @@ from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime, timedelta
 import logging
 from sqlalchemy.orm import Session
+from sqlalchemy import desc, and_
 import models
 from database import SessionLocal
 from pytz import timezone
 import asyncio
 from services.whatsapp import send_message
-import httpx
 from typing import List, Dict
 from config import get_redis, settings
 
@@ -47,15 +47,38 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
             models.User.schedule == schedule_type
         ).all()
 
-        # Get news based on API endpoint
+        # Get news via direct database query for recently ingested articles
         if use_ingestion_api:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                response = await client.post(
-                    f'{settings.SEARCH_BASE_URL}/api/v1/ingestion/download-articles',
-                    headers={'accept': 'application/json'}
+            from sqlalchemy import desc, and_
+            
+            # For immediate messages, get only the most recent articles (last 24 hours)
+            recent_time = datetime.now() - timedelta(hours=24)
+            
+            logger.info(f"Fetching recently ingested articles since {recent_time.strftime('%Y-%m-%d %H:%M')}")
+            
+            # Use direct database query for recently ingested articles
+            articles_query = db.query(models.Article).filter(
+                and_(
+                    models.Article.created_at >= recent_time,
+                    models.Article.is_published == True,
+                    models.Article.summary_content.isnot(None)
                 )
-                news_data = response.json()
-                articles = news_data.get('articles', []) if news_data.get('success') else []
+            ).order_by(desc(models.Article.created_at)).limit(10)
+            
+            # Fetch all matching articles
+            db_articles = articles_query.all()
+            
+            # Transform database articles to the expected format
+            articles = []
+            for article in db_articles:
+                articles.append({
+                    'id': str(article.id),
+                    'title': article.title,
+                    'news_source': article.news_source or 'Unknown',
+                    'url': article.url,
+                    'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
+                    'summary_content': article.summary_content
+                })
 
         if not active_users:
             logger.info(f"No active users with {schedule_type} schedule found")
@@ -66,22 +89,40 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
             return
         
         if not use_ingestion_api:
-            # Get news for the specified period
-            date_to = datetime.now().strftime('%Y-%m-%d')
-            date_from = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
-
-            headers = {
-                'accept': 'application/json'
-            }
-
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    settings.ARTICLES_API_URL,
-                    params={'date_from': date_from, 'date_to': date_to},
-                    headers=headers
+            # Use direct database query for articles
+            from sqlalchemy import desc, and_
+            import unicodedata
+            
+            # Calculate the date range
+            date_to = datetime.now()
+            date_from = (datetime.now() - timedelta(days=days_back))
+            
+            logger.info(f"Fetching articles from {date_from.strftime('%Y-%m-%d')} to {date_to.strftime('%Y-%m-%d')}")
+            
+            # Direct database query instead of HTTP request
+            articles_query = db.query(models.Article).filter(
+                and_(
+                    models.Article.published_date >= date_from,
+                    models.Article.published_date <= date_to,
+                    models.Article.is_published == True,
+                    models.Article.summary_content.isnot(None)
                 )
-                news_data = response.json()
-                articles = news_data.get('articles', [])
+            ).order_by(desc(models.Article.published_date))
+            
+            # Fetch all matching articles
+            db_articles = articles_query.all()
+            
+            # Transform database articles to the expected format
+            articles = []
+            for article in db_articles:
+                articles.append({
+                    'id': str(article.id),
+                    'title': article.title,
+                    'news_source': article.news_source or 'Unknown',
+                    'url': article.url,
+                    'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
+                    'summary_content': article.summary_content
+                })
 
         if not articles:
             logger.info(f"No articles found in the response")
