@@ -797,7 +797,7 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
                 user_id=user_id,
                 phone_number=phone_number,
                 category='article',
-                query=message,
+                query=article_url,
                 response=summary_content
             )
             db.add(interaction)
