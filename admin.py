@@ -320,7 +320,7 @@ async def delete_news_source(
             detail=f"Failed to delete news source: {str(e)}"
         )
 
-@router.post("/news-sources/{source_id}/download-articles", response_class=RedirectResponse)
+@router.post("/news-sources/{source_id}/download-articles")
 async def download_articles_for_source(
     request: Request,
     source_id: int,
@@ -328,10 +328,19 @@ async def download_articles_for_source(
     current_admin: models.Admin = Depends(get_current_admin)
 ):
     """Download articles for a specific news source using web scraping"""
+    # Check if this is an AJAX request
+    accept_header = request.headers.get("accept", "")
+    is_ajax = "application/json" in accept_header
+    
     try:
         # Verify source exists
         source = db.query(models.NewsSource).filter(models.NewsSource.id == source_id).first()
         if not source:
+            if is_ajax:
+                return JSONResponse(
+                    status_code=404,
+                    content={"success": False, "message": "News source not found"}
+                )
             raise HTTPException(status_code=404, detail="News source not found")
 
         # Import required classes to perform download
@@ -339,6 +348,7 @@ async def download_articles_for_source(
         from models import Article
         import sys
         import types
+        from fastapi.responses import JSONResponse
 
         # Create a wrapper for Flask db session to work with SQLAlchemy
         class DbWrapper:
@@ -374,7 +384,15 @@ async def download_articles_for_source(
                 # Clean up temporary module
                 if 'app' in sys.modules:
                     del sys.modules['app']
-                # Return to the source detail page with error
+                
+                # Return appropriate response based on request type
+                if is_ajax:
+                    return JSONResponse(
+                        status_code=400,
+                        content={"success": False, "message": "Failed to fetch articles from sources"}
+                    )
+                
+                # Return to the source detail page with error for regular requests
                 return RedirectResponse(
                     url=f"/admin/news-sources/{source_id}",
                     status_code=status.HTTP_302_FOUND
@@ -389,22 +407,41 @@ async def download_articles_for_source(
             # Clean up temporary module
             if 'app' in sys.modules:
                 del sys.modules['app']
+                
+            if is_ajax:
+                return JSONResponse(
+                    status_code=500,
+                    content={"success": False, "message": f"Failed to process articles: {str(e)}"}
+                )
+                
             raise Exception(f"Failed to process articles: {str(e)}")
         
         # Clean up temporary module
         if 'app' in sys.modules:
             del sys.modules['app']
 
-        # Log the result
+        # Create success message based on result
         if articles_added_count > 0:
-            logger.info(f"Successfully downloaded and processed {articles_added_count} new articles via {method_used}")
+            success_message = f"Successfully downloaded and processed {articles_added_count} new articles"
+            logger.info(f"{success_message} via {method_used}")
         else:
-            logger.info(f"No new articles were found or all articles already exist in the database ({method_used})")
+            success_message = "No new articles were found or all articles already exist in the database"
+            logger.info(f"{success_message} ({method_used})")
         
         # Invalidate dashboard caches after adding articles
         await invalidate_dashboard_caches(request)
         
-        # Return to the source detail page
+        # Return appropriate response based on request type
+        if is_ajax:
+            return JSONResponse(
+                content={
+                    "success": True,
+                    "message": success_message,
+                    "count": articles_added_count
+                }
+            )
+            
+        # Return to the source detail page for regular requests
         return RedirectResponse(
             url=f"/admin/news-sources/{source_id}",
             status_code=status.HTTP_302_FOUND
@@ -412,6 +449,13 @@ async def download_articles_for_source(
         
     except Exception as e:
         logger.error(f"Error downloading articles: {str(e)}")
+        
+        if is_ajax:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "message": f"Failed to download articles: {str(e)}"}
+            )
+            
         raise HTTPException(
             status_code=500,
             detail=f"Failed to download articles: {str(e)}"
