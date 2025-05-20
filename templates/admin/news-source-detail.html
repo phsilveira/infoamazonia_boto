@@ -50,11 +50,14 @@
                         class="btn btn-primary flex-grow-1">
                     Edit Source
                 </button>
-                <form method="POST" action="/admin/news-sources/{{ source.id }}/download-articles" class="flex-grow-1">
-                    <button type="submit" class="btn btn-success w-100">
+                <form id="downloadArticlesForm" method="POST" action="/admin/news-sources/{{ source.id }}/download-articles" class="flex-grow-1">
+                    <button type="submit" id="downloadArticlesBtn" class="btn btn-success w-100">
                         Download Articles
                     </button>
                 </form>
+                
+                <!-- Result Alert -->
+                <div id="articleDownloadAlert" class="mt-3 alert" style="display: none;" role="alert"></div>
             </div>
         </div>
     </div>
@@ -142,6 +145,57 @@ document.addEventListener('DOMContentLoaded', function() {
             if (backdrop) {
                 backdrop.remove();
             }
+        });
+    }
+    
+    // Handle article download form submission
+    const downloadForm = document.getElementById('downloadArticlesForm');
+    const downloadBtn = document.getElementById('downloadArticlesBtn');
+    const alertDiv = document.getElementById('articleDownloadAlert');
+    
+    if (downloadForm) {
+        downloadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Downloading...';
+            
+            // Clear previous alerts
+            alertDiv.style.display = 'none';
+            
+            // Submit the form as AJAX to handle the response
+            fetch(downloadForm.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.detail || 'An error occurred while downloading articles');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Show success message
+                alertDiv.className = 'mt-3 alert alert-success';
+                alertDiv.textContent = data.message;
+                alertDiv.style.display = 'block';
+            })
+            .catch(error => {
+                // Show error message
+                alertDiv.className = 'mt-3 alert alert-danger';
+                alertDiv.textContent = error.message;
+                alertDiv.style.display = 'block';
+            })
+            .finally(() => {
+                // Reset button state
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = 'Download Articles';
+            });
         });
     }
 });
