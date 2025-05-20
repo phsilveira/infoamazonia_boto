@@ -16,6 +16,7 @@ import io
 from config import settings
 from sqlalchemy import desc, or_, func, select, text, case
 from services.chatgpt import ChatGPTService # Fixed import
+from utils.prompt_loader import prompt_loader  # Import prompt loader
 from cache_utils import invalidate_dashboard_caches, get_cache, set_cache  # Import cache utilities
 
 logger = logging.getLogger(__name__)
@@ -902,9 +903,11 @@ async def get_interaction_summaries(
             
         else:
             # For other categories, continue with the original ChatGPT summary
-            # Get queries for the specified category
+            # Get last 50 queries for the specified category
             queries = db.query(models.UserInteraction.query)\
                 .filter(models.UserInteraction.category == category)\
+                .order_by(models.UserInteraction.created_at.desc())\
+                .limit(50)\
                 .all()
 
             # Extract query texts
@@ -916,11 +919,21 @@ async def get_interaction_summaries(
                 await set_cache(cache_key, result, request, expire_seconds=180)  # 3 minutes TTL
                 return result
 
+            # Get the system prompt that will be used
+            prompt = prompt_loader.get_prompt('gpt-4.summarize_queries', 
+                                           interaction_type=category, 
+                                           queries=query_texts)
+            system_prompt = prompt.get('system', 'No system prompt found')
+            
             # Generate summary using ChatGPT
             summary = await chatgpt_service.summarize_queries(query_texts, category)
-
-            # Prepare result
-            result = {"summary": summary}
+            
+            # Add system prompt to the summary result
+            result = {
+                "summary": summary,
+                "system_prompt": system_prompt,
+                "query_count": len(query_texts)
+            }
             
             # Store in cache with 3-minute TTL (180 seconds)
             await set_cache(cache_key, result, request, expire_seconds=180)

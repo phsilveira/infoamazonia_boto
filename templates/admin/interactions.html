@@ -12,6 +12,62 @@
             </a>
         </div>
 
+        <!-- Search and Filter Controls -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Filter Interactions</h5>
+            </div>
+            <div class="card-body">
+                <form action="/admin/interactions" method="get" class="row g-3">
+                    <!-- Search -->
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Search Query/Response</label>
+                        <input type="text" class="form-control" id="search" name="search" value="{{ search or '' }}" 
+                               placeholder="Search in queries and responses">
+                    </div>
+                    
+                    <!-- Feedback Filter -->
+                    <div class="col-md-4">
+                        <label for="feedback" class="form-label">Feedback</label>
+                        <select class="form-select" id="feedback" name="feedback">
+                            <option value="">All Feedback</option>
+                            {% for feedback_option in feedback_options %}
+                            <option value="{{ feedback_option }}" {% if feedback == feedback_option %}selected{% endif %}>
+                                {% if feedback_option == 'positive' %}👍 Positive
+                                {% elif feedback_option == 'negative' %}👎 Negative
+                                {% else %}❓ No Feedback
+                                {% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Phone Number Filter -->
+                    <div class="col-md-4">
+                        <label for="phone_number" class="form-label">Phone Number</label>
+                        <select class="form-select" id="phone_number" name="phone_number">
+                            <option value="">All Phone Numbers</option>
+                            {% for number in phone_numbers %}
+                            <option value="{{ number }}" {% if phone_number == number %}selected{% endif %}>
+                                {{ number }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Filter Button -->
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-funnel"></i> Apply Filters
+                        </button>
+                        <a href="/admin/interactions" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Clear Filters
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Nav tabs -->
         <ul class="nav nav-tabs mb-4" id="interactionTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -48,15 +104,19 @@
                     <div id="{{ category }}-summary" class="text-gray-700">
                         Loading summary...
                     </div>
+                    <div id="{{ category }}-system-prompt" class="mt-3 border-top pt-3 text-gray-600" style="display: none;">
+                        <h5 class="text-sm font-semibold mb-2">System Prompt Used:</h5>
+                        <pre class="bg-light p-3 rounded" style="font-size: 0.85rem;"></pre>
+                        <div class="text-muted mt-2 text-sm">Based on the last <span class="query-count"></span> queries</div>
+                    </div>
                 </div>
 
                 <!-- Interactions Table -->
-                <div class="overflow-x-auto">
+                <div class="table-responsive">
                     <table class="table table-striped">
                         <thead>
                             <tr>
                                 <th>User</th>
-                                <th>Phone Number</th>
                                 <th>Query</th>
                                 <th>Response</th>
                                 <th>Feedback</th>
@@ -73,11 +133,14 @@
                                             {{ interaction.user.name or interaction.user.phone_number }}
                                         </a>
                                         {% else %}
-                                        Anonymous
+                                        {{ interaction.phone_number }}
                                         {% endif %}
                                     </td>
-                                    <td>{{ interaction.phone_number }}</td>
-                                    <td>{{ interaction.query }}</td>
+                                    <td>
+                                        <span class="text-truncate d-inline-block" style="max-width: 200px;">
+                                            {{ interaction.query }}
+                                        </span>
+                                    </td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-primary" 
                                                 data-bs-toggle="modal" 
@@ -119,6 +182,42 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Pagination -->
+                {% if total_pages > 1 %}
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div>
+                        Showing {{ interactions|length }} of {{ total_interactions }} interactions
+                    </div>
+                    <ul class="pagination">
+                        {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ request.url.remove_query_params(['page']) }}?{{ request.query_params|string }}&page={{ page - 1 }}">
+                                <i class="bi bi-chevron-left"></i> Previous
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for p in range(1, total_pages + 1) %}
+                        {% if p >= page - 2 and p <= page + 2 %}
+                        <li class="page-item {{ 'active' if p == page else '' }}">
+                            <a class="page-link" href="{{ request.url.remove_query_params(['page']) }}?{{ request.query_params|string }}&page={{ p }}">
+                                {{ p }}
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ request.url.remove_query_params(['page']) }}?{{ request.query_params|string }}&page={{ page + 1 }}">
+                                Next <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
@@ -151,14 +250,32 @@
 
     async function loadSummary(category) {
         const summaryElement = document.getElementById(`${category}-summary`)
+        const systemPromptElement = document.getElementById(`${category}-system-prompt`)
+        
         try {
             const response = await fetch(`/admin/interactions/summaries/${category}`)
             if (!response.ok) throw new Error('Network response was not ok')
             const data = await response.json()
-            summaryElement.innerHTML = `<p class="whitespace-pre-wrap">${data.summary}</p>`
+            
+            // Update the summary content
+            summaryElement.innerHTML = `<div class="whitespace-pre-wrap">${data.summary}</div>`
+            
+            // For term and news_suggestion categories, show system prompt
+            if (category === 'term' || category === 'news_suggestion') {
+                if (data.system_prompt) {
+                    systemPromptElement.style.display = 'block'
+                    systemPromptElement.querySelector('pre').textContent = data.system_prompt
+                    systemPromptElement.querySelector('.query-count').textContent = data.query_count || '50'
+                } else {
+                    systemPromptElement.style.display = 'none'
+                }
+            } else {
+                systemPromptElement.style.display = 'none'
+            }
         } catch (error) {
             console.error('Error loading summary:', error)
             summaryElement.innerHTML = 'Failed to load summary. Please try again later.'
+            systemPromptElement.style.display = 'none'
         }
     }
 </script>
