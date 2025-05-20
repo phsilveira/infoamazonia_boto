@@ -840,7 +840,22 @@ async def get_interaction_summaries(
         
         # For 'article' category, implement the new query grouping instead of ChatGPT summary
         if category == 'article':
-            # Use SQLAlchemy to group by query and get counts
+            # Get the last 50 interactions for article category
+            recent_interactions = db.query(models.UserInteraction)\
+                .filter(models.UserInteraction.category == 'article')\
+                .order_by(models.UserInteraction.created_at.desc())\
+                .limit(50)\
+                .all()
+            
+            # Extract query texts from recent interactions
+            recent_query_texts = [interaction.query for interaction in recent_interactions]
+            
+            if not recent_query_texts:
+                result = {"summary": "No queries found for this category"}
+                await set_cache(cache_key, result, request, expire_seconds=180)
+                return result
+                
+            # Aggregate the queries to get statistics
             query_stats = db.query(
                 models.UserInteraction.query, 
                 func.count(models.UserInteraction.id).label('query_count'),
@@ -853,7 +868,7 @@ async def get_interaction_summaries(
                     else_=0
                 )).label('negative_feedback')
             ).filter(
-                models.UserInteraction.category == 'article'
+                models.UserInteraction.query.in_(recent_query_texts)
             ).group_by(
                 models.UserInteraction.query
             ).order_by(
@@ -861,25 +876,28 @@ async def get_interaction_summaries(
             ).all()
             
             if not query_stats:
-                result = {"summary": "No queries found for this category"}
+                result = {"summary": "No query statistics available for this category"}
                 await set_cache(cache_key, result, request, expire_seconds=180)
                 return result
             
-            # Create an HTML table with the query statistics
+            # Create an HTML table with the top 10 query statistics
             table_rows = ""
-            for query, count, positive, negative in query_stats:
+            for query, count, positive, negative in query_stats[:10]:  # Only show top 10
                 # Truncate query if it's too long for display
                 display_query = query[:100] + "..." if len(query) > 100 else query
                 table_rows += f"""
                 <tr>
                     <td>{display_query}</td>
                     <td class="text-center">{count}</td>
-                    <td class="text-center">{positive}</td>
-                    <td class="text-center">{negative}</td>
+                    <td class="text-center">{positive or 0}</td>
+                    <td class="text-center">{negative or 0}</td>
                 </tr>
                 """
             
             summary_html = f"""
+            <div class="mb-3">
+                <p class="text-muted">Showing top 10 queries from the last 50 interactions</p>
+            </div>
             <div class="table-responsive">
                 <table class="table table-striped table-bordered">
                     <thead>
