@@ -16,7 +16,7 @@ gpt-4:
   # Term summary prompt
   term_summary:
     system: |
-      Qual é o primeiro item da lista?
+      Você é um especialista em resumir artigos. Crie um resumo conciso do artigo, destacando os pontos-chave e detalhes importantes, com foco nas questões ambientais e sociais da região amazônica, conforme abordadas pelo InfoAmazonia.
 
   # Article summary prompt
   article_summary:

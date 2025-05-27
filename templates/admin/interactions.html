@@ -269,7 +269,7 @@
             const data = await response.json()
             
             // Update the summary content
-            summaryElement.innerHTML = `<div style="white-space: pre-wrap;">${data.summary}</div>`
+            summaryElement.innerHTML = `<div class="whitespace-pre-wrap">${data.summary}</div>`
             
             // For term and news_suggestion categories, show system prompt
             if (category === 'term' || category === 'news_suggestion') {
@@ -328,10 +328,8 @@
             if (!response.ok) throw new Error('Network response was not ok')
             const data = await response.json()
             
-            console.log('Custom prompt response:', data)
-            
             // Update the summary with the new result
-            summaryElement.innerHTML = `<div style="white-space: pre-wrap;">${data.summary}</div>`
+            summaryElement.innerHTML = `<div class="whitespace-pre-wrap">${data.summary}</div>`
             
             // Update the displayed system prompt
             const systemPromptElement = document.getElementById(`${category}-system-prompt`)
