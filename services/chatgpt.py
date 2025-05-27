@@ -166,6 +166,36 @@ class ChatGPTService:
             logger.error(f"Error summarizing queries: {str(e)}")
             return "Could not generate summary due to an error"
 
+    async def summarize_queries_with_custom_prompt(self, queries: List[str], interaction_type: str, custom_system_prompt: str) -> str:
+        """Summarize a list of user queries using a custom system prompt"""
+        try:
+            # Get the base prompt structure for the user prompt
+            base_prompt = prompt_loader.get_prompt('gpt-4.summarize_queries', 
+                                                 interaction_type=interaction_type, 
+                                                 queries=queries)
+            
+            # Use custom system prompt with existing user prompt
+            params = {
+                "messages": [
+                    {"role": "system", "content": custom_system_prompt},
+                    {"role": "user", "content": base_prompt.get('user', f"Please analyze these {interaction_type} queries: {queries}")}
+                ],
+                "temperature": base_prompt.get('temperature', 0.3),
+                "max_tokens": base_prompt.get('max_tokens', 250)
+            }
+            
+            # Set the model based on whether we're using Azure or standard OpenAI
+            if self.use_azure:
+                params["model"] = self.azure_deployment
+            else:
+                params["model"] = "gpt-4"
+                
+            completion = self.client.chat.completions.create(**params)
+            return completion.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error summarizing queries with custom prompt: {str(e)}")
+            return "Could not generate summary with custom prompt due to an error"
+
     async def get_selected_article_title(self, user_input: str, template_message: str) -> Optional[str]:
         """Parse user's numeric selection and get corresponding article title from template message via ChatGPT"""
         try:

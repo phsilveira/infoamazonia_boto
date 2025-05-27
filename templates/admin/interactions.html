@@ -105,7 +105,18 @@
                         Loading summary...
                     </div>
                     <div id="{{ category }}-system-prompt" class="mt-3 border-top pt-3 text-gray-600" style="display: none;">
-                        <h5 class="text-sm font-semibold mb-2">System Prompt Used:</h5>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="text-sm font-semibold mb-0">System Prompt:</h5>
+                            {% if category == 'term' %}
+                            <button type="button" class="btn btn-sm btn-success" onclick="runCustomPrompt('{{ category }}')">
+                                <i class="bi bi-play-fill"></i> Run Custom Prompt
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% if category == 'term' %}
+                        <textarea id="{{ category }}-prompt-editor" class="form-control mb-3" rows="6" style="font-size: 0.85rem; font-family: monospace;" 
+                                  placeholder="Edit the system prompt here..."></textarea>
+                        {% endif %}
                         <pre class="bg-light p-3 rounded" style="font-size: 0.85rem;"></pre>
                         <div class="text-muted mt-2 text-sm">Based on the last <span class="query-count"></span> queries</div>
                     </div>
@@ -266,6 +277,14 @@
                     systemPromptElement.style.display = 'block'
                     systemPromptElement.querySelector('pre').textContent = data.system_prompt
                     systemPromptElement.querySelector('.query-count').textContent = data.query_count || '50'
+                    
+                    // For term category, populate the editable textarea
+                    if (category === 'term') {
+                        const promptEditor = document.getElementById(`${category}-prompt-editor`)
+                        if (promptEditor && !promptEditor.value) {
+                            promptEditor.value = data.system_prompt
+                        }
+                    }
                 } else {
                     systemPromptElement.style.display = 'none'
                 }
@@ -276,6 +295,55 @@
             console.error('Error loading summary:', error)
             summaryElement.innerHTML = 'Failed to load summary. Please try again later.'
             systemPromptElement.style.display = 'none'
+        }
+    }
+
+    async function runCustomPrompt(category) {
+        const promptEditor = document.getElementById(`${category}-prompt-editor`)
+        const summaryElement = document.getElementById(`${category}-summary`)
+        const button = event.target
+        
+        if (!promptEditor || !promptEditor.value.trim()) {
+            alert('Please enter a custom prompt to run.')
+            return
+        }
+        
+        // Show loading state
+        const originalText = button.innerHTML
+        button.innerHTML = '<i class="bi bi-hourglass-split"></i> Running...'
+        button.disabled = true
+        summaryElement.innerHTML = '<div class="text-muted">Generating summary with custom prompt...</div>'
+        
+        try {
+            const response = await fetch(`/admin/interactions/summaries/${category}/custom`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    custom_prompt: promptEditor.value.trim()
+                })
+            })
+            
+            if (!response.ok) throw new Error('Network response was not ok')
+            const data = await response.json()
+            
+            // Update the summary with the new result
+            summaryElement.innerHTML = `<div class="whitespace-pre-wrap">${data.summary}</div>`
+            
+            // Update the displayed system prompt
+            const systemPromptElement = document.getElementById(`${category}-system-prompt`)
+            if (systemPromptElement) {
+                systemPromptElement.querySelector('pre').textContent = data.system_prompt || promptEditor.value
+            }
+            
+        } catch (error) {
+            console.error('Error running custom prompt:', error)
+            summaryElement.innerHTML = '<div class="text-danger">Failed to generate summary with custom prompt. Please try again.</div>'
+        } finally {
+            // Restore button state
+            button.innerHTML = originalText
+            button.disabled = false
         }
     }
 </script>

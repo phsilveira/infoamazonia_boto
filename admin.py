@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, Body
 from sqlalchemy.orm import Session
 from typing import List
 import models
@@ -1011,6 +1011,64 @@ async def get_interaction_summaries(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate summaries: {str(e)}"
+        )
+
+@router.post("/interactions/summaries/{category}/custom")
+async def get_interaction_summaries_custom_prompt(
+    request: Request,
+    category: str,
+    custom_prompt_data: dict = Body(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Generate interaction summaries using a custom system prompt"""
+    try:
+        custom_prompt = custom_prompt_data.get('custom_prompt', '').strip()
+        
+        if not custom_prompt:
+            raise HTTPException(status_code=400, detail="Custom prompt is required")
+        
+        # Get last 50 queries for the specified category
+        queries = db.query(models.UserInteraction.query)\
+            .filter(models.UserInteraction.category == category)\
+            .order_by(models.UserInteraction.created_at.desc())\
+            .limit(50)\
+            .all()
+
+        # Extract query texts
+        query_texts = [q[0] for q in queries]
+
+        if not query_texts:
+            return {"summary": "No queries found for this category", "system_prompt": custom_prompt}
+
+        # Use the custom system prompt with the existing user prompt structure
+        base_prompt = prompt_loader.get_prompt('gpt-4.summarize_queries', 
+                                             interaction_type=category, 
+                                             queries=query_texts)
+        
+        # Replace the system prompt with the custom one
+        custom_prompt_config = base_prompt.copy()
+        custom_prompt_config['system'] = custom_prompt
+        
+        # Generate summary using ChatGPT with custom prompt
+        summary = await chatgpt_service.summarize_queries_with_custom_prompt(
+            query_texts, category, custom_prompt
+        )
+        
+        # Return the result
+        result = {
+            "summary": summary,
+            "system_prompt": custom_prompt,
+            "query_count": len(query_texts)
+        }
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error generating custom prompt summaries: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate summaries with custom prompt: {str(e)}"
         )
 
 @router.post("/messages/send-template", response_class=HTMLResponse)
