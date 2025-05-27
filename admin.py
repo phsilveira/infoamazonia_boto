@@ -981,11 +981,15 @@ async def get_interaction_summaries(
                 await set_cache(cache_key, result, request, expire_seconds=180)  # 3 minutes TTL
                 return result
 
-            # Get the system prompt that will be used
-            prompt = prompt_loader.get_prompt('gpt-4.summarize_queries', 
-                                           interaction_type=category, 
-                                           queries=query_texts)
-            system_prompt = prompt.get('system', 'No system prompt found')
+            # Get the system prompt that will be used based on category
+            if category == 'term':
+                prompt = prompt_loader.get_prompt('gpt-4.term_summary')
+                system_prompt = prompt.get('system', 'No system prompt found')
+            else:
+                prompt = prompt_loader.get_prompt('gpt-4.summarize_queries', 
+                                               interaction_type=category, 
+                                               queries=query_texts)
+                system_prompt = prompt.get('system', 'No system prompt found')
             
             # Generate summary using ChatGPT
             summary = await chatgpt_service.summarize_queries(query_texts, category)
