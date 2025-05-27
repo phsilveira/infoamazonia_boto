@@ -5,7 +5,15 @@
     <!-- Cabeçalho -->
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-lg font-medium text-gray-900">Detalhes do Usuário</h1>
-        <a href="/admin/users" class="text-sm text-gray-600 hover:text-gray-900">← Voltar</a>
+        <div class="flex items-center space-x-3">
+            <button type="button" 
+                    class="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded transition-colors"
+                    data-bs-toggle="modal" 
+                    data-bs-target="#deleteUserModal">
+                Excluir Usuário
+            </button>
+            <a href="/admin/users" class="text-sm text-gray-600 hover:text-gray-900">← Voltar</a>
+        </div>
     </div>
 
     <!-- Informações do Usuário -->
@@ -234,6 +242,31 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <form id="deleteLocationForm" method="POST" class="d-inline">
                         <button type="submit" class="btn btn-danger">Excluir</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação de Exclusão de Usuário -->
+    <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Excluir Usuário</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <strong>Atenção!</strong> Esta ação é irreversível.
+                    </div>
+                    <p>Tem certeza que deseja excluir permanentemente o usuário <strong>{{ user.phone_number }}</strong>?</p>
+                    <p class="text-sm text-gray-600">Todos os dados relacionados (localizações, assuntos, mensagens e interações) serão removidos definitivamente.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form method="POST" action="/admin/users/{{ user.id }}/delete" class="d-inline">
+                        <button type="submit" class="btn btn-danger">Excluir Permanentemente</button>
                     </form>
                 </div>
             </div>

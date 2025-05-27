@@ -1488,6 +1488,49 @@ async def update_user_schedule(
             status_code=500,
             detail=f"Failed to update user schedule: {str(e)}"
         )
+
+@router.post("/users/{user_id}/delete")
+async def delete_user(
+    request: Request,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Admin = Depends(get_current_admin)
+):
+    """Delete a user and all related data from the database"""
+    try:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        phone_number = user.phone_number
+        
+        # Delete related data first (due to foreign key constraints)
+        db.query(models.Location).filter(models.Location.user_id == user_id).delete()
+        db.query(models.Subject).filter(models.Subject.user_id == user_id).delete()
+        db.query(models.UserInteraction).filter(models.UserInteraction.user_id == user_id).delete()
+        db.query(models.Message).filter(models.Message.phone_number == phone_number).delete()
+        
+        # Finally delete the user
+        db.delete(user)
+        db.commit()
+        
+        # Invalidate dashboard caches
+        await invalidate_dashboard_caches(request)
+        logger.info(f"User {phone_number} (ID: {user_id}) successfully deleted from database by admin {current_admin.username}")
+
+        return RedirectResponse(
+            url="/admin/users",
+            status_code=status.HTTP_302_FOUND
+        )
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting user {user_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete user: {str(e)}"
+        )
+
 @router.get("/admin-users", response_class=HTMLResponse)
 async def list_admin_users(
     request: Request,

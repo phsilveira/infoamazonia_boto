@@ -788,10 +788,25 @@ async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message:
         confirmation_response = message
         if confirmation_response in ['1', '2', 'sim', 'não']:
             if confirmation_response in ['1', 'sim']:
-                # Deactivate the user
-                user.is_active = False
-                db.commit()
-                await send_message(phone_number, message_loader.get_message('unsubscribe.success'), db)
+                # Delete the user and all related data from database
+                try:
+                    # Delete related data first (due to foreign key constraints)
+                    db.query(Location).filter(Location.user_id == user.id).delete()
+                    db.query(Subject).filter(Subject.user_id == user.id).delete()
+                    db.query(UserInteraction).filter(UserInteraction.user_id == user.id).delete()
+                    db.query(Message).filter(Message.phone_number == phone_number).delete()
+                    
+                    # Finally delete the user
+                    db.delete(user)
+                    db.commit()
+                    
+                    await send_message(phone_number, message_loader.get_message('unsubscribe.success'), db)
+                    logger.info(f"User {phone_number} successfully deleted from database")
+                except Exception as delete_error:
+                    db.rollback()
+                    logger.error(f"Error deleting user {phone_number}: {str(delete_error)}")
+                    await send_message(phone_number, message_loader.get_message('error.process_message', error="Erro ao processar descadastro"), db)
+                    return chatbot.state
             else:
                 await send_message(phone_number, message_loader.get_message('unsubscribe.cancelled'), db)
 
