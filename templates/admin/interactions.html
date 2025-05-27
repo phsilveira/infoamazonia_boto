@@ -271,7 +271,9 @@
             
             // Update the summary content
             if (data.summary) {
-                summaryElement.innerHTML = `<div style="white-space: pre-wrap;">${data.summary}</div>`
+                // Clean up extra whitespace and format properly
+                const cleanSummary = data.summary.replace(/\n\s*\n/g, '\n\n').trim()
+                summaryElement.innerHTML = `<div style="white-space: pre-line; line-height: 1.6;">${cleanSummary}</div>`
             } else {
                 summaryElement.innerHTML = '<div class="text-muted">No summary available for this category.</div>'
             }
