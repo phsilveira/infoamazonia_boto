@@ -1,41 +1,41 @@
 {% extends "admin/base.html" %}
 
-{% block title %}User Interactions - InfoAmazonia Admin{% endblock %}
+{% block title %}Interações de Usuários - InfoAmazonia Admin{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <div class="bg-white shadow rounded-lg p-6">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="text-2xl font-bold m-0">User Interactions</h2>
+            <h2 class="text-2xl font-bold m-0">Interações de Usuários</h2>
             <a href="/admin/interactions/export-csv?category=all" class="btn btn-primary">
-                <i class="bi bi-file-earmark-spreadsheet"></i> Export All Interactions
+                <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Todas as Interações
             </a>
         </div>
 
         <!-- Search and Filter Controls -->
         <div class="card mb-4">
             <div class="card-header bg-light">
-                <h5 class="mb-0">Filter Interactions</h5>
+                <h5 class="mb-0">Filtrar Interações</h5>
             </div>
             <div class="card-body">
                 <form id="filterForm" class="row g-3">
                     <!-- Search -->
                     <div class="col-md-6">
-                        <label for="search" class="form-label">Search Query/Response</label>
+                        <label for="search" class="form-label">Buscar Consulta/Resposta</label>
                         <input type="text" class="form-control" id="search" name="search" value="{{ search or '' }}" 
-                               placeholder="Search in queries and responses">
+                               placeholder="Buscar em consultas e respostas">
                     </div>
                     
                     <!-- Feedback Filter -->
                     <div class="col-md-6">
-                        <label for="feedback" class="form-label">Feedback</label>
+                        <label for="feedback" class="form-label">Avaliação</label>
                         <select class="form-select" id="feedback" name="feedback">
-                            <option value="">All Feedback</option>
+                            <option value="">Todas as Avaliações</option>
                             {% for feedback_option in feedback_options %}
                             <option value="{{ feedback_option }}" {% if feedback == feedback_option %}selected{% endif %}>
-                                {% if feedback_option == 'positive' %}👍 Positive
-                                {% elif feedback_option == 'negative' %}👎 Negative
-                                {% else %}❓ No Feedback
+                                {% if feedback_option == 'positive' %}👍 Positivo
+                                {% elif feedback_option == 'negative' %}👎 Negativo
+                                {% else %}❓ Sem Avaliação
                                 {% endif %}
                             </option>
                             {% endfor %}
@@ -45,10 +45,10 @@
                     <!-- Filter Button -->
                     <div class="col-12">
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-funnel"></i> Apply Filters
+                            <i class="bi bi-funnel"></i> Aplicar Filtros
                         </button>
                         <button type="button" class="btn btn-outline-secondary ms-2" onclick="clearFilters()">
-                            <i class="bi bi-x-circle"></i> Clear Filters
+                            <i class="bi bi-x-circle"></i> Limpar Filtros
                         </button>
                     </div>
                 </form>
@@ -59,17 +59,17 @@
         <ul class="nav nav-tabs mb-4" id="interactionTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="term-tab" data-bs-toggle="tab" data-bs-target="#term" type="button" role="tab">
-                    Term Explanations
+                    Explicações de Termos
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="article-tab" data-bs-toggle="tab" data-bs-target="#article" type="button" role="tab">
-                    Article Summaries
+                    Resumos de Artigos
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="news-tab" data-bs-toggle="tab" data-bs-target="#news" type="button" role="tab">
-                    News Suggestions
+                    Sugestões de Notícias
                 </button>
             </li>
         </ul>
@@ -83,13 +83,13 @@
                 <!-- Export Button and Summary Section -->
                 <div class="mb-4 p-4 bg-gray-50 rounded">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h3 class="text-lg font-semibold m-0">Query Summary</h3>
+                        <h3 class="text-lg font-semibold m-0">Resumo das Consultas</h3>
                         <a href="/admin/interactions/export-csv?category={{ category }}" class="btn btn-sm btn-primary">
-                            <i class="bi bi-file-earmark-spreadsheet"></i> Export {{ category | replace('_', ' ') | title }} to CSV
+                            <i class="bi bi-file-earmark-spreadsheet"></i> Exportar {{ category | replace('_', ' ') | title }} para CSV
                         </a>
                     </div>
                     <div id="{{ category }}-summary" class="text-gray-700">
-                        Loading summary...
+                        Carregando resumo...
                     </div>
                 </div>
 
@@ -98,11 +98,11 @@
                     <table class="table table-striped">
                         <thead>
                             <tr>
-                                <th>User</th>
-                                <th>Query</th>
-                                <th>Response</th>
-                                <th>Feedback</th>
-                                <th>Created At</th>
+                                <th>Usuário</th>
+                                <th>Consulta</th>
+                                <th>Resposta</th>
+                                <th>Avaliação</th>
+                                <th>Criado em</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -131,11 +131,11 @@
                                     </td>
                                     <td>
                                         {% if interaction.feedback == True %}
-                                        <span class="badge bg-success">👍 Helpful</span>
+                                        <span class="badge bg-success">👍 Útil</span>
                                         {% elif interaction.feedback == False %}
-                                        <span class="badge bg-danger">👎 Not Helpful</span>
+                                        <span class="badge bg-danger">👎 Não Útil</span>
                                         {% else %}
-                                        <span class="badge bg-secondary">No Feedback</span>
+                                        <span class="badge bg-secondary">Sem Avaliação</span>
                                         {% endif %}
                                     </td>
                                     <td>{{ interaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
@@ -146,13 +146,13 @@
                                     <div class="modal-dialog modal-lg">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title">Response Details</h5>
+                                                <h5 class="modal-title">Detalhes da Resposta</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                             </div>
                                             <div class="modal-body">
-                                                <p class="text-muted mb-2">Query:</p>
+                                                <p class="text-muted mb-2">Consulta:</p>
                                                 <p class="mb-4">{{ interaction.query }}</p>
-                                                <p class="text-muted mb-2">Response:</p>
+                                                <p class="text-muted mb-2">Resposta:</p>
                                                 <p style="white-space: pre-wrap;">{{ interaction.response }}</p>
                                             </div>
                                         </div>
@@ -168,13 +168,13 @@
                 {% if category_data['total_pages'] > 1 and category == current_category %}
                 <div class="d-flex justify-content-between align-items-center mt-4">
                     <div>
-                        Showing {{ category_data['interactions']|length }} of {{ category_data['total_count'] }} interactions
+                        Mostrando {{ category_data['interactions']|length }} de {{ category_data['total_count'] }} interações
                     </div>
                     <ul class="pagination">
                         {% if page > 1 %}
                         <li class="page-item">
                             <a class="page-link" href="javascript:void(0)" onclick="changePage({{ page - 1 }})">
-                                <i class="bi bi-chevron-left"></i> Previous
+                                <i class="bi bi-chevron-left"></i> Anterior
                             </a>
                         </li>
                         {% endif %}
@@ -192,7 +192,7 @@
                         {% if page < category_data['total_pages'] %}
                         <li class="page-item">
                             <a class="page-link" href="javascript:void(0)" onclick="changePage({{ page + 1 }})">
-                                Next <i class="bi bi-chevron-right"></i>
+                                Próxima <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
                         {% endif %}
