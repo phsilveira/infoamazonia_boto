@@ -804,64 +804,71 @@ async def export_interactions_csv(
 @router.get("/interactions", response_class=HTMLResponse)
 async def list_interactions(
     request: Request,
+    category: str = "term",
     page: int = 1,
     page_size: int = 20,
     search: str = None,
     feedback: str = None,
-    phone_number: str = None,
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
-    # Build base query
-    query = db.query(models.UserInteraction)
+    # Get data for each category separately
+    categories_data = {}
     
-    # Apply filters if provided
-    if search:
-        query = query.filter(
-            or_(
-                models.UserInteraction.query.ilike(f"%{search}%"),
-                models.UserInteraction.response.ilike(f"%{search}%")
-            )
-        )
+    for cat in ['term', 'article', 'news_suggestion']:
+        # Build base query for this category
+        query = db.query(models.UserInteraction).filter(models.UserInteraction.category == cat)
+        
+        # Apply filters if provided and we're viewing this category
+        if cat == category:
+            if search:
+                query = query.filter(
+                    or_(
+                        models.UserInteraction.query.ilike(f"%{search}%"),
+                        models.UserInteraction.response.ilike(f"%{search}%")
+                    )
+                )
+            
+            if feedback:
+                if feedback == "positive":
+                    query = query.filter(models.UserInteraction.feedback == True)
+                elif feedback == "negative":
+                    query = query.filter(models.UserInteraction.feedback == False)
+                elif feedback == "none":
+                    query = query.filter(models.UserInteraction.feedback == None)
+        
+        # Get total count for this category
+        total_count = query.count()
+        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+        
+        # Get interactions for current page if this is the active category
+        if cat == category:
+            interactions = query.order_by(
+                models.UserInteraction.created_at.desc()
+            ).offset((page - 1) * page_size).limit(page_size).all()
+        else:
+            interactions = []
+        
+        categories_data[cat] = {
+            'interactions': interactions,
+            'total_count': total_count,
+            'total_pages': total_pages
+        }
     
-    if feedback:
-        if feedback == "positive":
-            query = query.filter(models.UserInteraction.feedback == True)
-        elif feedback == "negative":
-            query = query.filter(models.UserInteraction.feedback == False)
-        elif feedback == "none":
-            query = query.filter(models.UserInteraction.feedback == None)
-    
-    if phone_number:
-        query = query.filter(models.UserInteraction.phone_number.ilike(f"%{phone_number}%"))
-    
-    # Get total interactions count for pagination
-    total_interactions = query.count()
-    total_pages = (total_interactions + page_size - 1) // page_size
-    
-    # Apply pagination and ordering
-    interactions = query.order_by(
-        models.UserInteraction.created_at.desc()
-    ).offset((page - 1) * page_size).limit(page_size).all()
-    
-    # Get unique feedback values and phone numbers for filter dropdowns
+    # Get unique feedback values for filter dropdown
     feedback_options = ["positive", "negative", "none"]
-    phone_numbers = db.query(models.UserInteraction.phone_number).distinct().all()
     
     return templates.TemplateResponse(
         "admin/interactions.html",
         {
             "request": request, 
-            "interactions": interactions,
+            "categories_data": categories_data,
+            "current_category": category,
             "page": page,
             "page_size": page_size,
-            "total_pages": total_pages,
-            "total_interactions": total_interactions,
             "search": search,
             "feedback": feedback,
-            "phone_number": phone_number,
-            "feedback_options": feedback_options,
-            "phone_numbers": [p[0] for p in phone_numbers if p[0]]
+            "feedback_options": feedback_options
         }
     )
 
