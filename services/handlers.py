@@ -42,73 +42,8 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
     # If the message is "menu" or similar, show the interactive menu
     if message in ['menu', 'início', 'inicio', 'start', 'começar', 'opcoes', 'opções']:
         # Create interactive buttons for the main menu options
-        interactive_content = {
-            "type": "button",
-            "body": {
-                "text": "🌱🐬 Olá! Eu sou o *BOTO*. O que você gostaria de fazer?"
-            },
-            "action": {
-                "buttons": [
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "1",
-                            "title": "Inscreva-se 🔧"
-                        }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "2",
-                            "title": "Dúvidas sobre termos 🔍"
-                        }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "3",
-                            "title": "Resumo de artigo 📄"
-                        }
-                    }
-                ]
-            }
-        }
-        await send_message(phone_number, interactive_content, db, message_type="interactive")
-        
-        # WhatsApp only allows 3 buttons per message, so we need to send a second message with the remaining options
-        interactive_content_2 = {
-            "type": "button",
-            "body": {
-                "text": "Mais opções:"
-            },
-            "action": {
-                "buttons": [
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "4",
-                            "title": "Sugestão de pauta 📨"
-                        }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "5",
-                            "title": "Descadastre-se 📤"
-                        }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "6",
-                            "title": "Sobre o BOTO ℹ️"
-                        }
-                    }
-                ]
-            }
-        }
-        await send_message(phone_number, interactive_content_2, db, message_type="interactive")
-        return chatbot.state
+        menu_message = message_loader.get_message('menu.main')
+        await send_message(phone_number, menu_message, next(get_db()))
 
     # Process the user's selection
     if message in ['1', 'subscribe', 'inscrever', 'notícias']:
@@ -164,76 +99,8 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
         }
         await send_message(phone_number, interactive_content, db, message_type="interactive")
     else:
-        # For invalid options, show the menu with interactive buttons
-        await send_message(phone_number, message_loader.get_message('menu.invalid_option'), db)
-        
-        # Send interactive buttons for menu options
-        interactive_content = {
-            "type": "button",
-            "body": {
-                "text": "Por favor, selecione uma das opções abaixo:"
-            },
-            "action": {
-                "buttons": [
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "1",
-                            "title": "Inscreva-se 🔧"
-                        }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "2",
-                            "title": "Dúvidas sobre termos 🔍"
-                        }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "3",
-                            "title": "Resumo de artigo 📄"
-                        }
-                    }
-                ]
-            }
-        }
-        await send_message(phone_number, interactive_content, db, message_type="interactive")
-        
-        # Send second message with remaining options
-        interactive_content_2 = {
-            "type": "button",
-            "body": {
-                "text": "Mais opções:"
-            },
-            "action": {
-                "buttons": [
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "4",
-                            "title": "Sugestão de pauta 📨"
-                        }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "5",
-                            "title": "Descadastre-se 📤"
-                        }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "6",
-                            "title": "Sobre o BOTO ℹ️"
-                        }
-                    }
-                ]
-            }
-        }
-        await send_message(phone_number, interactive_content_2, db, message_type="interactive")
+        menu_message = message_loader.get_message('menu.main')
+        await send_message(phone_number, menu_message, next(get_db()))
 
     return chatbot.state
 
