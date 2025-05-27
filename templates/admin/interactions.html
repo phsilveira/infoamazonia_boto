@@ -232,6 +232,27 @@
 <script>
     // Initialize Bootstrap tabs
     document.addEventListener('DOMContentLoaded', function() {
+        // Get current category from URL or default to 'term'
+        const urlParams = new URLSearchParams(window.location.search)
+        const currentCategory = urlParams.get('category') || 'term'
+        
+        // Set the correct active tab based on current category
+        const tabTarget = currentCategory === 'news_suggestion' ? 'news' : currentCategory
+        const activeTab = document.querySelector(`#interactionTabs button[data-bs-target="#${tabTarget}"]`)
+        const activePane = document.querySelector(`#${tabTarget}`)
+        
+        // Remove all active classes first
+        document.querySelectorAll('#interactionTabs .nav-link').forEach(tab => tab.classList.remove('active'))
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.classList.remove('show', 'active')
+        })
+        
+        // Set the correct tab and pane as active
+        if (activeTab && activePane) {
+            activeTab.classList.add('active')
+            activePane.classList.add('show', 'active')
+        }
+
         var triggerTabList = [].slice.call(document.querySelectorAll('#interactionTabs button'))
         triggerTabList.forEach(function(triggerEl) {
             var tabTrigger = new bootstrap.Tab(triggerEl)
@@ -247,8 +268,8 @@
             })
         })
 
-        // Load initial summary for the active tab
-        loadSummary('term')
+        // Load initial summary for the current category
+        loadSummary(currentCategory)
     });
 
     async function loadSummary(category) {
