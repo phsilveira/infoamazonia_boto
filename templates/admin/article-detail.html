@@ -1,12 +1,12 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Article Details - {{ article.title }}{% endblock %}
+{% block title %}Detalhes do Artigo - {{ article.title }}{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="row mb-3">
         <div class="col-12">
-            <a href="/admin/articles" class="btn btn-secondary">&laquo; Back to Articles</a>
+            <a href="/admin/articles" class="btn btn-secondary">&laquo; Voltar para Artigos</a>
         </div>
     </div>
 
@@ -14,7 +14,7 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5>Article Details</h5>
+                    <h5>Detalhes do Artigo</h5>
                     <div>
                         <span class="badge bg-info">{{ article.language }}</span>
                         <span class="badge bg-secondary">{{ article.news_source }}</span>
@@ -26,7 +26,7 @@
                     <!-- Article metadata -->
                     <div class="d-flex mb-3 text-muted">
                         <div class="me-3">
-                            <strong>Published:</strong> {{ article.published_date }}
+                            <strong>Publicado:</strong> {{ article.published_date }}
                         </div>
                         <div class="me-3">
                             <strong>ID:</strong> {{ article.id }}
@@ -41,7 +41,7 @@
                     <!-- Description -->
                     {% if article.description %}
                     <div class="mb-4">
-                        <h5>Description</h5>
+                        <h5>Descrição</h5>
                         <div class="p-3 bg-light rounded">
                             {{ article.description }}
                         </div>
@@ -50,7 +50,7 @@
                     
                     <!-- Content -->
                     <div class="mb-4">
-                        <h5>Content</h5>
+                        <h5>Conteúdo</h5>
                         <div class="p-3 bg-light rounded article-content">
                             {{ article.content|safe }}
                         </div>
@@ -60,19 +60,19 @@
                     <div class="row mt-4">
                         <div class="col-md-6">
                             <div class="card">
-                                <div class="card-header">Embedding Details</div>
+                                <div class="card-header">Detalhes de Embedding</div>
                                 <div class="card-body">
-                                    <p><strong>Has Embedding:</strong> {{ "Yes" if article.embedding is not none else "No" }}</p>
-                                    <p><strong>Vector Dimension:</strong> {% if article.embedding is not none %}{{ article.embedding|length }}{% else %}N/A{% endif %}</p>
+                                    <p><strong>Tem Embedding:</strong> {{ "Sim" if article.embedding is not none else "Não" }}</p>
+                                    <p><strong>Dimensão do Vetor:</strong> {% if article.embedding is not none %}{{ article.embedding|length }}{% else %}N/A{% endif %}</p>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="card">
-                                <div class="card-header">System Details</div>
+                                <div class="card-header">Detalhes do Sistema</div>
                                 <div class="card-body">
-                                    <p><strong>Created at:</strong> {{ article.created_at }}</p>
-                                    <p><strong>Updated at:</strong> {{ article.updated_at }}</p>
+                                    <p><strong>Criado em:</strong> {{ article.created_at }}</p>
+                                    <p><strong>Atualizado em:</strong> {{ article.updated_at }}</p>
                                 </div>
                             </div>
                         </div>
