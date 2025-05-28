@@ -1,17 +1,17 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Semantic Search{% endblock %}
+{% block title %}Busca Semântica{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1>Semantic Search</h1>
+    <h1>Busca Semântica</h1>
     <div class="row">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5>Advanced Semantic Search</h5>
+                    <h5>Busca Semântica Avançada</h5>
                     <a href="/admin/articles" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Back to Articles
+                        <i class="bi bi-arrow-left"></i> Voltar para Artigos
                     </a>
                 </div>
                 <div class="card-body">
@@ -19,19 +19,19 @@
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <div class="card">
-                                <div class="card-header">Article Statistics</div>
+                                <div class="card-header">Estatísticas de Artigos</div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-4 text-center">
-                                            <h5>Total Articles</h5>
+                                            <h5>Total de Artigos</h5>
                                             <h3 id="total-articles-count">{{ total_articles }}</h3>
                                         </div>
                                         <div class="col-md-4 text-center">
-                                            <h5>Oldest Article</h5>
+                                            <h5>Artigo Mais Antigo</h5>
                                             <h3 id="oldest-article-date">{{ oldest_date or 'N/A' }}</h3>
                                         </div>
                                         <div class="col-md-4 text-center">
-                                            <h5>Newest Article</h5>
+                                            <h5>Artigo Mais Recente</h5>
                                             <h3 id="newest-article-date">{{ newest_date or 'N/A' }}</h3>
                                         </div>
                                     </div>
@@ -42,27 +42,27 @@
                     
                     <!-- Search Introduction -->
                     <div class="alert alert-info mb-4">
-                        <h5><i class="bi bi-info-circle"></i> About Semantic Search</h5>
-                        <p>This search engine uses advanced techniques to find articles based on meaning and concepts, not just simple keyword matching. Try searching for topics like "climate change effects" or "amazon river pollution" to see related articles.</p>
+                        <h5><i class="bi bi-info-circle"></i> Sobre a Busca Semântica</h5>
+                        <p>Este mecanismo de busca usa técnicas avançadas para encontrar artigos baseados em significado e conceitos, não apenas correspondências de palavras-chave simples. Tente pesquisar tópicos como "efeitos das mudanças climáticas" ou "poluição do rio amazônico" para ver artigos relacionados.</p>
                     </div>
 
                     <!-- Search Form -->
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <div class="card">
-                                <div class="card-header">Search by Term</div>
+                                <div class="card-header">Buscar por Termo</div>
                                 <div class="card-body">
                                     <form id="search-term-form">
                                         <div class="mb-3">
-                                            <label for="query" class="form-label">Search Term</label>
-                                            <input type="text" class="form-control" id="query" name="query" placeholder="Enter search term or concept...">
+                                            <label for="query" class="form-label">Termo de Busca</label>
+                                            <input type="text" class="form-control" id="query" name="query" placeholder="Digite o termo de busca ou conceito...">
                                         </div>
                                         <div class="mb-3 form-check">
                                             <input type="checkbox" class="form-check-input" id="generate_summary" name="generate_summary">
-                                            <label class="form-check-label" for="generate_summary">Generate AI Summary of Results</label>
+                                            <label class="form-check-label" for="generate_summary">Gerar Resumo AI dos Resultados</label>
                                         </div>
                                         <button type="submit" class="btn btn-primary">
-                                            <i class="bi bi-search"></i> Search
+                                            <i class="bi bi-search"></i> Buscar
                                         </button>
                                     </form>
                                 </div>
@@ -74,7 +74,7 @@
                     <div id="search-results" class="row" style="display: none;">
                         <div class="col-md-12">
                             <div class="card">
-                                <div class="card-header">Search Results</div>
+                                <div class="card-header">Resultados da Busca</div>
                                 <div class="card-body">
                                     <div id="results-container">
                                     </div>
@@ -103,12 +103,12 @@
                 const generateSummary = document.getElementById('generate_summary').checked;
                 
                 if (!query) {
-                    alert('Please enter a search term');
+                    alert('Por favor, digite um termo de busca');
                     return;
                 }
                 
                 // Show loading indicator
-                document.getElementById('results-container').innerHTML = '<div class="d-flex justify-content-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+                document.getElementById('results-container').innerHTML = '<div class="d-flex justify-content-center"><div class="spinner-border" role="status"><span class="visually-hidden">Carregando...</span></div></div>';
                 document.getElementById('search-results').style.display = 'block';
                 
                 // Make API request
@@ -127,12 +127,12 @@
                     if (data.success) {
                         displayResults(data);
                     } else {
-                        document.getElementById('results-container').innerHTML = `<div class="alert alert-danger">${data.error || 'No results found'}</div>`;
+                        document.getElementById('results-container').innerHTML = `<div class="alert alert-danger">${data.error || 'Nenhum resultado encontrado'}</div>`;
                     }
                 })
                 .catch(error => {
                     console.error('Error performing search:', error);
-                    document.getElementById('results-container').innerHTML = `<div class="alert alert-danger">Error performing search: ${error}</div>`;
+                    document.getElementById('results-container').innerHTML = `<div class="alert alert-danger">Erro ao realizar a busca: ${error}</div>`;
                 });
             });
         }
@@ -142,19 +142,19 @@
             let html = '';
             
             // Show result count
-            html += `<div class="alert alert-success mb-4">Found ${data.count} article(s) matching your query.</div>`;
+            html += `<div class="alert alert-success mb-4">Encontrados ${data.count} artigo(s) correspondente(s) à sua consulta.</div>`;
             
             // Show AI summary if available
             if (data.summary) {
                 html += `<div class="card mb-4">
-                    <div class="card-header">AI Summary of Results</div>
+                    <div class="card-header">Resumo AI dos Resultados</div>
                     <div class="card-body">${data.summary.replace(/\n/g, '<br>')}</div>
                 </div>`;
             }
             
             // Show results
             if (data.results && data.results.length > 0) {
-                html += '<h4>Articles</h4>';
+                html += '<h4>Artigos</h4>';
                 html += '<div class="list-group">';
                 data.results.forEach(article => {
                     // Format keywords if available
@@ -171,15 +171,15 @@
                         <div class="list-group-item">
                             <div class="d-flex w-100 justify-content-between">
                                 <h5 class="mb-1">${article.title}</h5>
-                                <span class="badge bg-success">Relevance: ${(article.similarity * 100).toFixed(1)}%</span>
+                                <span class="badge bg-success">Relevância: ${(article.similarity * 100).toFixed(1)}%</span>
                             </div>
-                            <p class="mb-1">${article.description || 'No description available.'}</p>
+                            <p class="mb-1">${article.description || 'Nenhuma descrição disponível.'}</p>
                             ${keywordsHtml}
                             <div class="d-flex justify-content-between align-items-center mt-2">
-                                <small class="text-muted">${article.published_date || 'No date'} ${article.author && article.author !== 'Unknown' ? 'by ' + article.author : ''}</small>
+                                <small class="text-muted">${article.published_date || 'Sem data'} ${article.author && article.author !== 'Unknown' ? 'por ' + article.author : ''}</small>
                                 <div>
-                                    <a href="${article.short_url}" class="btn btn-sm btn-outline-primary me-2">View Details</a>
-                                    <a href="${article.url}" target="_blank" class="btn btn-sm btn-primary">Read Article</a>
+                                    <a href="${article.short_url}" class="btn btn-sm btn-outline-primary me-2">Ver Detalhes</a>
+                                    <a href="${article.url}" target="_blank" class="btn btn-sm btn-primary">Ler Artigo</a>
                                 </div>
                             </div>
                         </div>
@@ -187,7 +187,7 @@
                 });
                 html += '</div>';
             } else {
-                html += '<div class="alert alert-info">No articles found matching your search term.</div>';
+                html += '<div class="alert alert-info">Nenhum artigo encontrado correspondente ao seu termo de busca.</div>';
             }
             
             resultsContainer.innerHTML = html;
