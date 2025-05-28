@@ -1,0 +1,123 @@
+~/workspace$ ipython
+Python 3.11.9 (main, Apr  2 2024, 08:25:04) [GCC 13.2.0]
+Type 'copyright', 'credits' or 'license' for more information
+IPython 8.24.0 -- An enhanced Interactive Python. Type '?' for help.
+
+In [1]: from scheduler import *
+---------------------------------------------------------------------------
+ImportError                               Traceback (most recent call last)
+File ~/workspace/.pythonlibs/lib/python3.11/site-packages/numpy/_core/__init__.py:23
+     22 try:
+---> 23     from . import multiarray
+     24 except ImportError as exc:
+
+File ~/workspace/.pythonlibs/lib/python3.11/site-packages/numpy/_core/multiarray.py:10
+      9 import functools
+---> 10 from . import overrides
+     11 from . import _multiarray_umath
+
+File ~/workspace/.pythonlibs/lib/python3.11/site-packages/numpy/_core/overrides.py:7
+      6 from .._utils._inspect import getargspec
+----> 7 from numpy._core._multiarray_umath import (
+      8     add_docstring,  _get_implementing_args, _ArrayFunctionDispatcher)
+     11 ARRAY_FUNCTIONS = set()
+
+ImportError: libstdc++.so.6: cannot open shared object file: No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+ImportError                               Traceback (most recent call last)
+File ~/workspace/.pythonlibs/lib/python3.11/site-packages/numpy/__init__.py:114
+    113 try:
+--> 114     from numpy.__config__ import show_config
+    115 except ImportError as e:
+
+File ~/workspace/.pythonlibs/lib/python3.11/site-packages/numpy/__config__.py:4
+      3 from enum import Enum
+----> 4 from numpy._core._multiarray_umath import (
+      5     __cpu_features__,
+      6     __cpu_baseline__,
+      7     __cpu_dispatch__,
+      8 )
+     10 __all__ = ["show_config"]
+
+File ~/workspace/.pythonlibs/lib/python3.11/site-packages/numpy/_core/__init__.py:49
+     26     msg = """
+     27 
+     28 IMPORTANT: PLEASE READ THIS FOR ADVICE ON HOW TO SOLVE THIS ISSUE!
+   (...)
+     47 """ % (sys.version_info[0], sys.version_info[1], sys.executable,
+     48         __version__, exc)
+---> 49     raise ImportError(msg)
+     50 finally:
+
+ImportError: 
+
+IMPORTANT: PLEASE READ THIS FOR ADVICE ON HOW TO SOLVE THIS ISSUE!
+
+Importing the numpy C-extensions failed. This error can happen for
+many reasons, often due to issues with your setup or how NumPy was
+installed.
+
+We have compiled some common reasons and troubleshooting tips at:
+
+    https://numpy.org/devdocs/user/troubleshooting-importerror.html
+
+Please note and check the following:
+
+  * The Python version is: Python3.11 from "/nix/store/7hnr99nxrd2aw6lghybqdmkckq60j6l9-python3-3.11.9/bin/python3.11"
+  * The NumPy version is: "2.2.4"
+
+and make sure that they are the versions you expect.
+Please carefully study the documentation linked above for further help.
+
+Original error was: libstdc++.so.6: cannot open shared object file: No such file or directory
+
+
+The above exception was the direct cause of the following exception:
+
+ImportError                               Traceback (most recent call last)
+Cell In[1], line 1
+----> 1 from scheduler import *
+
+File ~/workspace/scheduler.py:6
+      4 import logging
+      5 from sqlalchemy.orm import Session
+----> 6 import models
+      7 from database import SessionLocal
+      8 from pytz import timezone
+
+File ~/workspace/models.py:7
+      5 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID
+      6 from sqlalchemy import event, text
+----> 7 from pgvector.sqlalchemy import Vector
+      8 import uuid
+     11 class User(Base):
+
+File ~/workspace/.pythonlibs/lib/python3.11/site-packages/pgvector/__init__.py:1
+----> 1 from .bit import Bit
+      2 from .halfvec import HalfVector
+      3 from .sparsevec import SparseVector
+
+File ~/workspace/.pythonlibs/lib/python3.11/site-packages/pgvector/bit.py:1
+----> 1 import numpy as np
+      2 from struct import pack, unpack_from
+      3 from warnings import warn
+
+File ~/workspace/.pythonlibs/lib/python3.11/site-packages/numpy/__init__.py:119
+    115 except ImportError as e:
+    116     msg = """Error importing numpy: you should not try to import numpy from
+    117     its source directory; please exit the numpy source tree, and relaunch
+    118     your python interpreter from there."""
+--> 119     raise ImportError(msg) from e
+    121 from . import _core
+    122 from ._core import (
+    123     False_, ScalarType, True_,
+    124     abs, absolute, acos, acosh, add, all, allclose,
+   (...)
+    169     vecmat, void, vstack, where, zeros, zeros_like
+    170 )
+
+ImportError: Error importing numpy: you should not try to import numpy from
+        its source directory; please exit the numpy source tree, and relaunch
+        your python interpreter from there.
