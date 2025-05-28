@@ -1,32 +1,32 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Articles Admin{% endblock %}
+{% block title %}Admin de Artigos{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1>Articles</h1>
+    <h1>Artigos</h1>
     <div class="row">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5>Articles List</h5>
+                    <h5>Lista de Artigos</h5>
                     <div class="d-flex">
                         <a href="/admin/news-sources" class="btn btn-sm btn-success me-3">
-                            <i class="bi bi-download"></i> Download More Articles
+                            <i class="bi bi-download"></i> Baixar Mais Artigos
                         </a>
                         <a href="/admin/articles/export-csv?search={{ search or '' }}&news_source={{ news_source or '' }}&language={{ language or '' }}&sort={{ sort or '' }}" class="btn btn-sm btn-primary me-3">
-                            <i class="bi bi-file-earmark-spreadsheet"></i> Export to CSV
+                            <i class="bi bi-file-earmark-spreadsheet"></i> Exportar para CSV
                         </a>
                         <form method="GET" action="/admin/articles" class="d-flex">
                             <!-- Search input -->
                             <div class="input-group me-2">
-                                <input type="text" name="search" class="form-control" placeholder="Search articles..." value="{{ search or '' }}">
+                                <input type="text" name="search" class="form-control" placeholder="Buscar artigos..." value="{{ search or '' }}">
                             </div>
 
                             <!-- News source filter -->
                             <div class="input-group me-2">
                                 <select name="news_source" class="form-select">
-                                    <option value="">All Sources</option>
+                                    <option value="">Todas as Fontes</option>
                                     {% for source in sources %}
                                     <option value="{{ source[0] }}" {% if news_source == source[0] %}selected{% endif %}>{{ source[0] }}</option>
                                     {% endfor %}
@@ -36,7 +36,7 @@
                             <!-- Language filter -->
                             <div class="input-group me-2">
                                 <select name="language" class="form-select">
-                                    <option value="">All Languages</option>
+                                    <option value="">Todos os Idiomas</option>
                                     {% for lang in languages %}
                                     <option value="{{ lang[0] }}" {% if language == lang[0] %}selected{% endif %}>{{ lang[0] }}</option>
                                     {% endfor %}
@@ -46,14 +46,14 @@
                             <!-- Sort order -->
                             <div class="input-group me-2">
                                 <select name="sort" class="form-select">
-                                    <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Newest First</option>
-                                    <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Oldest First</option>
-                                    <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Title (A-Z)</option>
-                                    <option value="title_desc" {% if sort == 'title_desc' %}selected{% endif %}>Title (Z-A)</option>
+                                    <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Mais Recentes Primeiro</option>
+                                    <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Mais Antigos Primeiro</option>
+                                    <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Título (A-Z)</option>
+                                    <option value="title_desc" {% if sort == 'title_desc' %}selected{% endif %}>Título (Z-A)</option>
                                 </select>
                             </div>
 
-                            <button type="submit" class="btn btn-primary">Filter</button>
+                            <button type="submit" class="btn btn-primary">Filtrar</button>
                         </form>
                     </div>
                 </div>
@@ -68,20 +68,20 @@
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <div class="card">
-                                <div class="card-header">Article Statistics</div>
+                                <div class="card-header">Estatísticas de Artigos</div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-4 text-center">
-                                            <h5>Total Articles</h5>
+                                            <h5>Total de Artigos</h5>
                                             <h3 id="total-articles-count">{{ total_articles }}</h3>
                                         </div>
                                         <div class="col-md-4 text-center">
-                                            <h5>Oldest Article</h5>
-                                            <h3 id="oldest-article-date">Loading...</h3>
+                                            <h5>Artigo Mais Antigo</h5>
+                                            <h3 id="oldest-article-date">Carregando...</h3>
                                         </div>
                                         <div class="col-md-4 text-center">
-                                            <h5>Newest Article</h5>
-                                            <h3 id="newest-article-date">Loading...</h3>
+                                            <h5>Artigo Mais Recente</h5>
+                                            <h3 id="newest-article-date">Carregando...</h3>
                                         </div>
                                     </div>
                                 </div>
@@ -92,10 +92,10 @@
                     <!-- Search Types Tabs -->
                     <ul class="nav nav-tabs mb-3" id="searchTypeTabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="search-articles-tab" data-bs-toggle="tab" data-bs-target="#search-articles" type="button" role="tab" aria-controls="search-articles" aria-selected="true">Search Articles</button>
+                            <button class="nav-link active" id="search-articles-tab" data-bs-toggle="tab" data-bs-target="#search-articles" type="button" role="tab" aria-controls="search-articles" aria-selected="true">Buscar Artigos</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="search-term-tab" data-bs-toggle="tab" data-bs-target="#search-term" type="button" role="tab" aria-controls="search-term" aria-selected="false">Search Term</button>
+                            <button class="nav-link" id="search-term-tab" data-bs-toggle="tab" data-bs-target="#search-term" type="button" role="tab" aria-controls="search-term" aria-selected="false">Buscar Termo</button>
                         </li>
                     </ul>
 
@@ -107,40 +107,40 @@
                                 <div class="card-body">
                                     <form method="GET" action="/admin/articles" class="row g-3">
                                         <div class="col-md-6">
-                                            <label for="search" class="form-label">Search Text</label>
-                                            <input type="text" name="search" id="search" class="form-control" placeholder="Search by title, content..." value="{{ search or '' }}">
+                                            <label for="search" class="form-label">Texto de Busca</label>
+                                            <input type="text" name="search" id="search" class="form-control" placeholder="Buscar por título, conteúdo..." value="{{ search or '' }}">
                                         </div>
                                         <div class="col-md-3">
-                                            <label for="news_source" class="form-label">News Source</label>
+                                            <label for="news_source" class="form-label">Fonte de Notícias</label>
                                             <select name="news_source" id="news_source" class="form-select">
-                                                <option value="">All Sources</option>
+                                                <option value="">Todas as Fontes</option>
                                                 {% for source in sources %}
                                                 <option value="{{ source[0] }}" {% if news_source == source[0] %}selected{% endif %}>{{ source[0] }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
                                         <div class="col-md-3">
-                                            <label for="language" class="form-label">Language</label>
+                                            <label for="language" class="form-label">Idioma</label>
                                             <select name="language" id="language" class="form-select">
-                                                <option value="">All Languages</option>
+                                                <option value="">Todos os Idiomas</option>
                                                 {% for lang in languages %}
                                                 <option value="{{ lang[0] }}" {% if language == lang[0] %}selected{% endif %}>{{ lang[0] }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
                                         <div class="col-md-4">
-                                            <label for="sort" class="form-label">Sort Order</label>
+                                            <label for="sort" class="form-label">Ordem de Classificação</label>
                                             <select name="sort" id="sort" class="form-select">
-                                                <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Newest First</option>
-                                                <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Oldest First</option>
-                                                <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Title (A-Z)</option>
-                                                <option value="title_desc" {% if sort == 'title_desc' %}selected{% endif %}>Title (Z-A)</option>
+                                                <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Mais Recentes Primeiro</option>
+                                                <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Mais Antigos Primeiro</option>
+                                                <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Título (A-Z)</option>
+                                                <option value="title_desc" {% if sort == 'title_desc' %}selected{% endif %}>Título (Z-A)</option>
                                             </select>
                                         </div>
                                         <div class="col-md-4 d-flex align-items-end">
-                                            <button type="submit" class="btn btn-primary me-2">Search Articles</button>
+                                            <button type="submit" class="btn btn-primary me-2">Buscar Artigos</button>
                                             <a href="/admin/articles/export-csv?search={{ search or '' }}&news_source={{ news_source or '' }}&language={{ language or '' }}&sort={{ sort or '' }}" class="btn btn-outline-primary">
-                                                <i class="bi bi-file-earmark-spreadsheet"></i> Export to CSV
+                                                <i class="bi bi-file-earmark-spreadsheet"></i> Exportar para CSV
                                             </a>
                                         </div>
                                     </form>
@@ -152,8 +152,8 @@
                         <div class="tab-pane fade" id="search-term" role="tabpanel" aria-labelledby="search-term-tab">
                             <div class="card">
                                 <div class="card-body">
-                                    <p>Search by specific terms using our semantic search engine. This allows you to find articles by concepts and meaning, not just keywords.</p>
-                                    <a href="/search-articles" class="btn btn-primary">Go to Semantic Search</a>
+                                    <p>Pesquise por termos específicos usando nosso mecanismo de busca semântica. Isso permite encontrar artigos por conceitos e significado, não apenas palavras-chave.</p>
+                                    <a href="/search-articles" class="btn btn-primary">Ir para Busca Semântica</a>
                                 </div>
                             </div>
                         </div>
@@ -162,8 +162,8 @@
                     <div class="table-responsive">
                         {% if used_advanced_search %}
                         <div class="alert alert-info mb-3">
-                            <h5><i class="bi bi-info-circle"></i> Advanced Search Results</h5>
-                            <p>Used advanced search technology to find the best matches for your query. Results are sorted by relevance.</p>
+                            <h5><i class="bi bi-info-circle"></i> Resultados de Busca Avançada</h5>
+                            <p>Usou tecnologia de busca avançada para encontrar as melhores correspondências para sua consulta. Resultados são ordenados por relevância.</p>
                         </div>
                         {% endif %}
                         
@@ -171,14 +171,14 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Title</th>
-                                    <th>Source</th>
-                                    <th>Published Date</th>
-                                    <th>Language</th>
+                                    <th>Título</th>
+                                    <th>Fonte</th>
+                                    <th>Data de Publicação</th>
+                                    <th>Idioma</th>
                                     {% if used_advanced_search %}
-                                    <th>Relevance</th>
+                                    <th>Relevância</th>
                                     {% endif %}
-                                    <th>Actions</th>
+                                    <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
