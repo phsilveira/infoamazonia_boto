@@ -3,7 +3,7 @@ from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime, timedelta
 import logging
 from sqlalchemy.orm import Session
-import models
+from models import User, Message, SchedulerRun
 from database import SessionLocal
 from pytz import timezone
 import asyncio
@@ -34,7 +34,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
 
         # Start scheduler run record
         db = SessionLocal()
-        scheduler_run = models.SchedulerRun(
+        scheduler_run = SchedulerRun(
             task_name=f'send_{schedule_type}_news_template',
             status='running'
         )
@@ -42,9 +42,9 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
         db.commit()
 
         # Get active users with specified schedule
-        active_users = db.query(models.User).filter(
-            models.User.is_active == True,
-            models.User.schedule == schedule_type
+        active_users = db.query(User).filter(
+            User.is_active == True,
+            User.schedule == schedule_type
         ).all()
 
         # Get news based on API endpoint
@@ -204,7 +204,7 @@ async def update_user_status():
         
         # Start scheduler run record
         db = SessionLocal()
-        scheduler_run = models.SchedulerRun(
+        scheduler_run = SchedulerRun(
             task_name='update_user_status',
             status='running'
         )
@@ -213,16 +213,16 @@ async def update_user_status():
 
         # Get inactive users
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-        active_users = db.query(models.User).filter(models.User.is_active == True).all()
+        active_users = db.query(User).filter(User.is_active == True).all()
 
         updated_count = 0
 
         for user in active_users:
             # Check if user has any incoming messages in the last 30 days
-            latest_message = db.query(models.Message).filter(
-                models.Message.phone_number == user.phone_number,
-                models.Message.message_type == 'incoming',
-                models.Message.created_at >= thirty_days_ago
+            latest_message = db.query(Message).filter(
+                Message.phone_number == user.phone_number,
+                Message.message_type == 'incoming',
+                Message.created_at >= thirty_days_ago
             ).first()
 
             # If no recent messages, mark user as inactive and send template
@@ -294,7 +294,7 @@ async def clean_old_messages():
 
     try:
         db = SessionLocal()
-        scheduler_run = models.SchedulerRun(
+        scheduler_run = SchedulerRun(
             task_name='clean_old_messages',
             status='running'
         )
@@ -305,8 +305,8 @@ async def clean_old_messages():
         cutoff_date = datetime.utcnow() - timedelta(days=30)
 
         # Delete old messages
-        deleted_count = db.query(models.Message).filter(
-            models.Message.created_at < cutoff_date
+        deleted_count = db.query(Message).filter(
+            Message.created_at < cutoff_date
         ).delete()
 
         db.commit()
