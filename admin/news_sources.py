@@ -259,8 +259,8 @@ async def download_articles_for_source(
             logger.info(f"Attempting to get articles from source: {source.name} ({source.url})")
             from services.news import News
             
-            # Initialize the News class with our database session
-            news = News()
+            # Initialize the News class with our database session and specific source
+            news = News(news_source=source)
             news.db = app_db
             
             # Fetch news from configured sources

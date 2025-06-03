@@ -12,14 +12,25 @@ pp = pprint.PrettyPrinter(indent=4)
 logging.basicConfig(level=logging.INFO)
 
 class News:
-    def __init__(self):
-        self.api_sources = [
-            {
-                "api_source": "infoamazonia_pt",
-                "lang": "pt",
-                "api_url": "https://infoamazonia.org/wp-json/wp/v2/posts",
-            }
-        ]
+    def __init__(self, news_source=None):
+        if news_source:
+            # Use the provided news source URL
+            self.api_sources = [
+                {
+                    "api_source": f"{news_source.name.lower().replace(' ', '_')}",
+                    "lang": "pt",  # Default to Portuguese, could be made configurable
+                    "api_url": f"{news_source.url.rstrip('/')}/wp-json/wp/v2/posts",
+                }
+            ]
+        else:
+            # Fallback to default sources if no specific source provided
+            self.api_sources = [
+                {
+                    "api_source": "infoamazonia_pt",
+                    "lang": "pt",
+                    "api_url": "https://infoamazonia.org/wp-json/wp/v2/posts",
+                }
+            ]
 
     def get_news(self, page_limit=1, offset=0):
         """Fetch the latest news from the APIs and process them."""
