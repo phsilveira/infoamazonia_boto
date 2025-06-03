@@ -158,7 +158,8 @@ async def list_interactions(
             "current_feedback": feedback,
             "category": category,
             "search": search,
-            "feedback": feedback
+            "feedback": feedback,
+            "page": page
         }
     )
 
