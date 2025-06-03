@@ -113,9 +113,24 @@ async def list_interactions(
     
     # Get category counts for tabs
     category_counts = {}
-    for cat in ["term", "location", "news", "general"]:
+    categories_data = {}
+    
+    for cat in ["term", "article", "news_suggestion"]:
         count = db.query(models.UserInteraction).filter(models.UserInteraction.category == cat).count()
         category_counts[cat] = count
+        
+        # Get interactions for this category
+        cat_interactions = db.query(models.UserInteraction).filter(
+            models.UserInteraction.category == cat
+        ).order_by(desc(models.UserInteraction.created_at)).limit(10).all()
+        
+        categories_data[cat] = {
+            "interactions": cat_interactions,
+            "count": count
+        }
+    
+    # Feedback options for filter
+    feedback_options = ["positive", "negative", "none"]
     
     return templates.TemplateResponse(
         "admin/interactions.html",
@@ -132,8 +147,13 @@ async def list_interactions(
             "total_interactions": total_interactions,
             "current_category": category,
             "category_counts": category_counts,
+            "categories_data": categories_data,
+            "feedback_options": feedback_options,
             "current_search": search,
-            "current_feedback": feedback
+            "current_feedback": feedback,
+            "category": category,
+            "search": search,
+            "feedback": feedback
         }
     )
 
