@@ -172,55 +172,144 @@ async def get_interaction_summaries(
 ):
     """Generate AI summaries of user interactions for a specific category."""
     try:
-        # Get interactions for the category
-        interactions = db.query(models.UserInteraction).filter(
-            models.UserInteraction.category == category
-        ).order_by(desc(models.UserInteraction.created_at)).limit(100).all()
-        
-        if not interactions:
-            return JSONResponse(
-                content={"success": False, "message": f"No interactions found for category: {category}"}
-            )
-        
-        # Prepare interaction data for analysis
-        interaction_data = []
-        for interaction in interactions:
-            interaction_data.append({
-                "query": interaction.query,
-                "response": interaction.response,
-                "feedback": interaction.feedback,
-                "created_at": interaction.created_at.isoformat()
-            })
-        
-        # Load the appropriate prompt for the category
-        prompt_data = prompt_loader.get_prompt(f"interaction_summary_{category}")
-        if not prompt_data:
-            prompt_data = prompt_loader.get_prompt("interaction_summary_default")
-        
-        system_prompt = prompt_data.get('system', 'You are a helpful assistant that analyzes user interactions.') if prompt_data else 'You are a helpful assistant that analyzes user interactions.'
-        
-        # Generate summary using ChatGPT
-        user_prompt = f"Analyze the following {len(interaction_data)} user interactions and provide insights:\n\n"
-        user_prompt += json.dumps(interaction_data, indent=2)
-        
-        summary = chatgpt_service.generate_completion(
-            query=user_prompt,
-            context="",
-            system_prompt=system_prompt
-        )
-        
-        return JSONResponse(content={
-            "success": True,
-            "summary": summary,
-            "interaction_count": len(interaction_data),
-            "category": category
-        })
-        
+        # Define cache key for this category
+        cache_key = f"interaction_summary:{category}"
+
+        # Try to get from cache first
+        cached_result = await get_cache(cache_key, request)
+        if cached_result:
+            logger.info(f"Returning cached interaction summary for category: {category}")
+            return cached_result
+
+        # For 'article' category, implement the new query grouping instead of ChatGPT summary
+        if category == 'article':
+            # Get the last 50 interactions for article category
+            recent_interactions = db.query(models.UserInteraction)\
+                .filter(models.UserInteraction.category == 'article')\
+                .order_by(models.UserInteraction.created_at.desc())\
+                .limit(50)\
+                .all()
+
+            # Extract query texts from recent interactions
+            recent_query_texts = [interaction.query for interaction in recent_interactions]
+
+            if not recent_query_texts:
+                result = {"summary": "No queries found for this category"}
+                await set_cache(cache_key, result, request, expire_seconds=180)
+                return result
+
+            # Aggregate the queries to get statistics
+            query_stats = db.query(
+                models.UserInteraction.query, 
+                func.count(models.UserInteraction.id).label('query_count'),
+                func.sum(case(
+                    (models.UserInteraction.feedback == True, 1), 
+                    else_=0
+                )).label('positive_feedback'),
+                func.sum(case(
+                    (models.UserInteraction.feedback == False, 1), 
+                    else_=0
+                )).label('negative_feedback')
+            ).filter(
+                models.UserInteraction.query.in_(recent_query_texts)
+            ).group_by(
+                models.UserInteraction.query
+            ).order_by(
+                func.count(models.UserInteraction.id).desc()
+            ).all()
+
+            if not query_stats:
+                result = {"summary": "No query statistics available for this category"}
+                await set_cache(cache_key, result, request, expire_seconds=180)
+                return result
+
+            # Create an HTML table with the top 10 query statistics
+            table_rows = ""
+            for query, count, positive, negative in query_stats[:10]:  # Only show top 10
+                # Truncate query if it's too long for display
+                display_query = query[:100] + "..." if len(query) > 100 else query
+                table_rows += f"""
+                <tr>
+                    <td>{display_query}</td>
+                    <td class="text-center">{count}</td>
+                    <td class="text-center">{positive or 0}</td>
+                    <td class="text-center">{negative or 0}</td>
+                </tr>
+                """
+
+            summary_html = f"""
+            <div class="mb-3">
+                <p class="text-muted">Showing top 10 queries from the last 50 interactions</p>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Query/Article URL</th>
+                            <th class="text-center">Total Queries</th>
+                            <th class="text-center">Positive Feedback</th>
+                            <th class="text-center">Negative Feedback</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {table_rows}
+                    </tbody>
+                </table>
+            </div>
+            """
+
+            result = {"summary": summary_html}
+            await set_cache(cache_key, result, request, expire_seconds=180)
+            return result
+
+        else:
+            # For other categories, continue with the original ChatGPT summary
+            # Get last 50 queries for the specified category
+            queries = db.query(models.UserInteraction.query)\
+                .filter(models.UserInteraction.category == category)\
+                .order_by(models.UserInteraction.created_at.desc())\
+                .limit(50)\
+                .all()
+
+            # Extract query texts
+            query_texts = [q[0] for q in queries]
+
+            if not query_texts:
+                result = {"summary": "No queries found for this category"}
+                # Cache the empty result as well
+                await set_cache(cache_key, result, request, expire_seconds=180)  # 3 minutes TTL
+                return result
+
+            # Get the system prompt that will be used based on category
+            if category == 'term':
+                prompt = prompt_loader.get_prompt('gpt-4.term_summary')
+                system_prompt = prompt.get('system', 'No system prompt found')
+            else:
+                prompt = prompt_loader.get_prompt('gpt-4.summarize_queries', 
+                                               interaction_type=category, 
+                                               queries=query_texts)
+                system_prompt = prompt.get('system', 'No system prompt found')
+
+            # Generate summary using ChatGPT
+            summary = await chatgpt_service.summarize_queries(query_texts, category)
+
+            # Add system prompt to the summary result
+            result = {
+                "summary": summary,
+                "system_prompt": system_prompt,
+                "query_count": len(query_texts)
+            }
+
+            # Store in cache with 3-minute TTL (180 seconds)
+            await set_cache(cache_key, result, request, expire_seconds=180)
+
+            return result
+
     except Exception as e:
-        logger.error(f"Error generating interaction summary: {str(e)}")
-        return JSONResponse(
+        logger.error(f"Error generating interaction summaries: {str(e)}")
+        raise HTTPException(
             status_code=500,
-            content={"success": False, "message": f"Failed to generate summary: {str(e)}"}
+            detail=f"Failed to generate summaries: {str(e)}"
         )
 
 @router.post("/summaries/{category}/custom")
