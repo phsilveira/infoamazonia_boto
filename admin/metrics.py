@@ -32,8 +32,8 @@ async def get_metrics(
     total_interactions = 0
     recent_interactions = 0
     try:
-        total_interactions = db.query(models.Interaction).count()
-        recent_interactions = db.query(models.Interaction).filter(models.Interaction.created_at >= last_week).count()
+        total_interactions = db.query(models.UserInteraction).count()
+        recent_interactions = db.query(models.UserInteraction).filter(models.UserInteraction.created_at >= last_week).count()
     except:
         # Handle case where Interaction model might not exist
         pass
@@ -42,8 +42,8 @@ async def get_metrics(
     total_messages = 0
     recent_messages = 0
     try:
-        total_messages = db.query(models.UserMessage).count()
-        recent_messages = db.query(models.UserMessage).filter(models.UserMessage.created_at >= last_week).count()
+        total_messages = db.query(models.Message).count()
+        recent_messages = db.query(models.Message).filter(models.Message.created_at >= last_week).count()
     except:
         # Handle case where UserMessage model might not exist
         pass
