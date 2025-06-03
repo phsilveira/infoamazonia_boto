@@ -29,7 +29,7 @@ gpt-4:
 
       🌎 *Contexto essencial*: Forneça informações mínimas para entender o cenário sem sobrecarregar o leitor.
 
-      🔗 Leia a reportagem completa em [infoamazonia.org]: Se houver, inclua um link ou sugestão para mais informações. ex: http://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/r/e6d6ba29, NÃO inclua a formatação markdown para link []()
+      🔗 Leia a reportagem completa em [infoamazonia.org]: Se houver, inclua um link ou sugestão para mais informações.
   # Summarize a list of user queries for a specific interaction type
   summarize_queries:
     system: "Você é um assistente útil que resume interações do usuário e identifica padrões comuns."
