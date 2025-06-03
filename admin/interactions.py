@@ -17,11 +17,14 @@ import models
 from auth import get_current_admin
 from database import get_db
 from cache_utils import get_cache, set_cache
-from services.chatgpt import chatgpt_service
+from services.chatgpt import ChatGPTService
 from utils.prompt_loader import prompt_loader
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Initialize ChatGPT service instance
+chatgpt_service = ChatGPTService()
 
 router = APIRouter()
 
