@@ -272,12 +272,20 @@ async def get_article_stats(db: Session) -> Dict[str, Any]:
             func.max(models.Article.published_date).label('newest')
         ).first()
 
+        oldest_date = None
+        newest_date = None
+        if dates:
+            if dates.oldest:
+                oldest_date = dates.oldest.strftime('%Y-%m-%d')
+            if dates.newest:
+                newest_date = dates.newest.strftime('%Y-%m-%d')
+
         return {
             'success': True,
             'stats': {
                 'total_count': total_count,
-                'oldest_date': dates.oldest.strftime('%Y-%m-%d') if dates.oldest else None,
-                'newest_date': dates.newest.strftime('%Y-%m-%d') if dates.newest else None
+                'oldest_date': oldest_date,
+                'newest_date': newest_date
             }
         }
     except Exception as e:
