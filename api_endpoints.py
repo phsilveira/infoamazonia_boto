@@ -53,10 +53,10 @@ async def get_article_stats(request: Request, db: Session = Depends(get_db)):
         newest_date = None
         
         if dates_query and dates_query.oldest:
-            oldest_date = dates_query.oldest.strftime('%Y-%m-%d')
+            oldest_date = dates_query.oldest.strftime('%d/%m/%Y')
         
         if dates_query and dates_query.newest:
-            newest_date = dates_query.newest.strftime('%Y-%m-%d')
+            newest_date = dates_query.newest.strftime('%d/%m/%Y')
         
         logger.info(f"Article stats: {total_count} articles, oldest: {oldest_date}, newest: {newest_date}")
         
@@ -231,10 +231,10 @@ async def search_articles_page(request: Request, db: Session = Depends(get_db)):
         newest_date = None
         
         if dates_query and dates_query.oldest:
-            oldest_date = dates_query.oldest.strftime('%Y-%m-%d')
+            oldest_date = dates_query.oldest.strftime('%d/%m/%Y')
         
         if dates_query and dates_query.newest:
-            newest_date = dates_query.newest.strftime('%Y-%m-%d')
+            newest_date = dates_query.newest.strftime('%d/%m/%Y')
             
         logger.info(f"Initial article stats for search page: {total_count} articles")
     except Exception as e:
