@@ -70,7 +70,7 @@
                     <span class="badge bg-danger">Inativo</span>
                     {% endif %}
                 </td>
-                <td>{{ source.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ source.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</td>
                 <td>
                     <a href="/admin/news-sources/{{ source.id }}" class="btn btn-sm btn-primary">Visualizar/Editar</a>
                 </td>

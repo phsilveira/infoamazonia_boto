@@ -83,8 +83,8 @@
                                             <div class="text-danger small">Erro: {{ message.error_title }}</div>
                                             {% endif %}
                                         </td>
-                                        <td>{{ message.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                        <td>{{ message.status_timestamp.strftime('%Y-%m-%d %H:%M') if message.status_timestamp else 'N/D' }}</td>
+                                        <td>{{ message.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                        <td>{{ message.status_timestamp.strftime('%d/%m/%Y %H:%M') if message.status_timestamp else 'N/D' }}</td>
                                     </tr>
                                     {% endfor %}
                                     

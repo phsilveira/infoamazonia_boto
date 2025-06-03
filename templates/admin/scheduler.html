@@ -30,8 +30,8 @@
                                         {{ run.status }}
                                     </span>
                                 </td>
-                                <td>{{ run.start_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                <td>{{ run.end_time.strftime('%Y-%m-%d %H:%M:%S') if run.end_time else 'Running...' }}</td>
+                                <td>{{ run.start_time.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                                <td>{{ run.end_time.strftime('%d/%m/%Y %H:%M:%S') if run.end_time else 'Running...' }}</td>
                                 <td>{{ run.affected_users }}</td>
                                 <td>
                                     {% if run.error_message %}
