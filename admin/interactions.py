@@ -193,17 +193,20 @@ async def get_interaction_summaries(
             })
         
         # Load the appropriate prompt for the category
-        system_prompt = prompt_loader.get_prompt(f"interaction_summary_{category}")
-        if not system_prompt:
-            system_prompt = prompt_loader.get_prompt("interaction_summary_default")
+        prompt_data = prompt_loader.get_prompt(f"interaction_summary_{category}")
+        if not prompt_data:
+            prompt_data = prompt_loader.get_prompt("interaction_summary_default")
+        
+        system_prompt = prompt_data.get('system', 'You are a helpful assistant that analyzes user interactions.') if prompt_data else 'You are a helpful assistant that analyzes user interactions.'
         
         # Generate summary using ChatGPT
         user_prompt = f"Analyze the following {len(interaction_data)} user interactions and provide insights:\n\n"
         user_prompt += json.dumps(interaction_data, indent=2)
         
-        summary = await chatgpt_service.get_completion(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt
+        summary = chatgpt_service.generate_completion(
+            query=user_prompt,
+            context="",
+            system_prompt=system_prompt
         )
         
         return JSONResponse(content={
@@ -261,9 +264,10 @@ async def get_interaction_summaries_custom_prompt(
         user_prompt = f"Analyze the following {len(interaction_data)} user interactions:\n\n"
         user_prompt += json.dumps(interaction_data, indent=2)
         
-        summary = await chatgpt_service.get_completion(
-            system_prompt=custom_prompt,
-            user_prompt=user_prompt
+        summary = chatgpt_service.generate_completion(
+            query=user_prompt,
+            context="",
+            system_prompt=custom_prompt
         )
         
         return JSONResponse(content={
