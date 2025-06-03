@@ -353,7 +353,7 @@ async def get_recent_users(request: Request, db: Session = Depends(get_db)):
 
         return [{
             "phone_number": user.phone_number,
-            "joined": user.created_at.strftime("%Y-%m-%d %H:%M"),
+            "joined": user.created_at.strftime("%d/%m/%Y %H:%M"),
             "status": "Active" if user.is_active else "Inactive"
         } for user in recent_users]
     except Exception as e:
@@ -375,7 +375,7 @@ async def get_news_sources(request: Request, db: Session = Depends(get_db)):
         return [{
             "name": source.name,
             "status": "Active" if source.is_active else "Inactive",
-            "last_update": source.created_at.strftime("%Y-%m-%d %H:%M")
+            "last_update": source.created_at.strftime("%d/%m/%Y %H:%M")
         } for source in sources]
     except Exception as e:
         logger.error(f"Error fetching news sources: {e}")
@@ -634,8 +634,8 @@ async def get_scheduler_runs(
             "id": run.id,
             "task_name": run.task_name,
             "status": run.status,
-            "start_time": run.start_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "end_time": run.end_time.strftime("%Y-%m-%d %H:%M:%S") if run.end_time else None,
+            "start_time": run.start_time.strftime("%d/%m/%Y %H:%M:%S"),
+            "end_time": run.end_time.strftime("%d/%m/%Y %H:%M:%S") if run.end_time else None,
             "affected_users": run.affected_users,
             "error_message": run.error_message
         } for run in runs]

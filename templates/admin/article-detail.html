@@ -26,7 +26,7 @@
                     <!-- Article metadata -->
                     <div class="d-flex mb-3 text-muted">
                         <div class="me-3">
-                            <strong>Publicado:</strong> {{ article.published_date }}
+                            <strong>Publicado:</strong> {{ article.published_date.strftime('%d/%m/%Y') if article.published_date else 'N/D' }}
                         </div>
                         <div class="me-3">
                             <strong>ID:</strong> {{ article.id }}
@@ -71,8 +71,8 @@
                             <div class="card">
                                 <div class="card-header">Detalhes do Sistema</div>
                                 <div class="card-body">
-                                    <p><strong>Criado em:</strong> {{ article.created_at }}</p>
-                                    <p><strong>Atualizado em:</strong> {{ article.updated_at }}</p>
+                                    <p><strong>Criado em:</strong> {{ article.created_at.strftime('%d/%m/%Y %H:%M:%S') if article.created_at else 'N/D' }}</p>
+                                    <p><strong>Atualizado em:</strong> {{ article.updated_at.strftime('%d/%m/%Y %H:%M:%S') if article.updated_at else 'N/D' }}</p>
                                 </div>
                             </div>
                         </div>
