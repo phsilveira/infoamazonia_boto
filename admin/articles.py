@@ -170,7 +170,8 @@ async def list_articles(
             "current_language": language,
             "current_sort": sort,
             "news_sources": news_sources,
-            "languages": languages
+            "languages": languages,
+            "page": page
         }
     )
 

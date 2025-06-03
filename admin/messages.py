@@ -59,7 +59,11 @@ async def messages_page(
             "prev_page": prev_page,
             "next_page": next_page,
             "page_size": page_size,
-            "total_messages": total_messages
+            "total_messages": total_messages,
+            "page": page,
+            "message_type": message_type,
+            "status": status,
+            "phone_number": phone_number
         }
     )
 
