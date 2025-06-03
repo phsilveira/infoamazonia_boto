@@ -193,6 +193,112 @@ async def send_monthly_news_template():
     """Send monthly news template to active users with monthly schedule"""
     await send_news_template('monthly', days_back=30)
 
+async def download_news_from_sources():
+    """Download news from all active news sources"""
+    db = None
+    scheduler_run = None
+
+    try:
+        # Start scheduler run record
+        db = SessionLocal()
+        scheduler_run = SchedulerRun(
+            task_name='download_news_from_sources',
+            status='running'
+        )
+        db.add(scheduler_run)
+        db.commit()
+
+        # Get all active news sources
+        from models import NewsSource
+        active_sources = db.query(NewsSource).filter(NewsSource.is_active == True).all()
+
+        if not active_sources:
+            logger.info("No active news sources found")
+            scheduler_run.status = 'success'
+            scheduler_run.end_time = datetime.utcnow()
+            scheduler_run.affected_users = 0
+            db.commit()
+            return
+
+        total_articles_added = 0
+        successful_sources = 0
+
+        # Import required classes for article processing
+        from services.article_ingestion import ingest_articles
+        from services.news import News
+        from models import Article
+        import types
+        import sys
+
+        # Create a wrapper for database session compatibility
+        class DbWrapper:
+            def __init__(self, db_session):
+                self.session = db_session
+
+        app_db = DbWrapper(db)
+        
+        # Patch the Article model for compatibility
+        Article.query = db.query(Article)
+        
+        # Temporarily add the wrapper to the sys modules
+        app_module = types.ModuleType("app")
+        app_module.db = app_db
+        sys.modules['app'] = app_module
+
+        try:
+            # Process each active news source
+            for source in active_sources:
+                try:
+                    logger.info(f"Downloading articles from source: {source.name} ({source.url})")
+                    
+                    # Initialize the News class with the specific source
+                    news = News(news_source=source)
+                    news.db = app_db
+                    
+                    # Fetch news from the source
+                    result = news.get_news()
+                    
+                    if result.get('success', False):
+                        # Process and store articles
+                        articles_added = ingest_articles(result.get('news', []))
+                        total_articles_added += articles_added
+                        successful_sources += 1
+                        
+                        logger.info(f"Successfully processed {articles_added} articles from {source.name}")
+                    else:
+                        logger.error(f"Failed to fetch articles from {source.name}")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing source {source.name}: {str(e)}")
+                    continue
+
+        finally:
+            # Clean up temporary module
+            if 'app' in sys.modules:
+                del sys.modules['app']
+
+        # Update scheduler run record
+        scheduler_run.status = 'success'
+        scheduler_run.end_time = datetime.utcnow()
+        scheduler_run.affected_users = total_articles_added
+        db.commit()
+
+        logger.info(f"News download completed: {total_articles_added} articles added from {successful_sources}/{len(active_sources)} sources")
+
+    except Exception as e:
+        error_msg = f"Error in news download: {str(e)}"
+        logger.error(error_msg)
+
+        # Update scheduler run record with error
+        if scheduler_run and db:
+            scheduler_run.status = 'failed'
+            scheduler_run.end_time = datetime.utcnow()
+            scheduler_run.error_message = error_msg
+            db.commit()
+    finally:
+        if db:
+            db.close()
+
 async def update_user_status():
     """Check for users who haven't sent any messages in the last 30 days and mark them as inactive"""
     db = None
@@ -385,6 +491,15 @@ async def start_scheduler():
             clean_old_messages,
             trigger=CronTrigger(hour=3, minute=0, timezone=SP_TIMEZONE),
             id='clean_old_messages',
+            replace_existing=True,
+            misfire_grace_time=300
+        )
+
+        # Add daily news download job to run at 6 AM SP time
+        scheduler.add_job(
+            download_news_from_sources,
+            trigger=CronTrigger(hour=6, minute=0, timezone=SP_TIMEZONE),
+            id='download_news_from_sources',
             replace_existing=True,
             misfire_grace_time=300
         )
