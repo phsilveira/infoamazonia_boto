@@ -136,6 +136,7 @@ async def search_term(
             
         # Generate a summary if requested
         summary = None
+        
         if search_data.generate_summary:
             # Define header template message in Portuguese
             header = "📖 Aqui está o que descobrimos sobre o termo solicitado:\n\n"

@@ -121,7 +121,7 @@ class ChatGPTService:
             params = {
                 "messages": messages,
                 "temperature": 0.5,
-                "max_tokens": 800
+                # "max_tokens": 800
             }
             
             # Set the model based on whether we're using Azure or standard OpenAI
