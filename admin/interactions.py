@@ -124,9 +124,14 @@ async def list_interactions(
             models.UserInteraction.category == cat
         ).order_by(desc(models.UserInteraction.created_at)).limit(10).all()
         
+        # Calculate pagination for this category
+        cat_total_pages = (count + page_size - 1) // page_size if count > 0 else 1
+        
         categories_data[cat] = {
             "interactions": cat_interactions,
-            "count": count
+            "count": count,
+            "total_count": count,
+            "total_pages": cat_total_pages
         }
     
     # Feedback options for filter
