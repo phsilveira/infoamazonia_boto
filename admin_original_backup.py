@@ -1,3 +1,16 @@
+# DEPRECATED: This file has been refactored into smaller modules in the admin/ directory
+# This file is kept for reference but should not be used in production
+# 
+# See admin/ directory for the new modular structure:
+# - admin/users.py - User management
+# - admin/news_sources.py - News source management  
+# - admin/messages.py - Message management
+# - admin/interactions.py - Interaction analytics
+# - admin/articles.py - Article management
+# - admin/admin_users.py - Admin user management
+# - admin/metrics.py - System metrics
+# - admin/scheduler.py - Scheduler management
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, Body
 from sqlalchemy.orm import Session
 from typing import List
