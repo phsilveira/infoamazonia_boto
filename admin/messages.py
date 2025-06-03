@@ -20,20 +20,20 @@ async def messages_page(
     current_admin: models.Admin = get_current_admin_dependency()
 ):
     # Start with base query
-    query = db.query(models.UserMessage)
+    query = db.query(models.Message)
     
     # Apply filters
     if message_type and message_type != "all":
-        query = query.filter(models.UserMessage.message_type == message_type)
+        query = query.filter(models.Message.message_type == message_type)
     
     if status and status != "all":
-        query = query.filter(models.UserMessage.status == status)
+        query = query.filter(models.Message.status == status)
     
     if phone_number:
         query = query.join(models.User).filter(models.User.phone_number.ilike(f"%{phone_number}%"))
     
     # Order by creation date (newest first)
-    query = query.order_by(desc(models.UserMessage.created_at))
+    query = query.order_by(desc(models.Message.created_at))
     
     # Calculate pagination
     total_messages = query.count()
@@ -153,7 +153,7 @@ async def send_template_message(
         
         if result.get('success'):
             # Log the message
-            user_message = models.UserMessage(
+            user_message = models.Message(
                 user_id=user.id,
                 content=f"Template: {template_name}",
                 message_type="template",

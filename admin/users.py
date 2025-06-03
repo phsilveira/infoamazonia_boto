@@ -280,8 +280,8 @@ async def delete_user(
         # Delete related data first
         db.query(models.Location).filter(models.Location.user_id == user_id).delete()
         db.query(models.Subject).filter(models.Subject.user_id == user_id).delete()
-        db.query(models.Interaction).filter(models.Interaction.user_id == user_id).delete()
-        db.query(models.UserMessage).filter(models.UserMessage.user_id == user_id).delete()
+        db.query(models.UserInteraction).filter(models.UserInteraction.user_id == user_id).delete()
+        db.query(models.Message).filter(models.Message.user_id == user_id).delete()
         
         # Finally delete the user
         db.delete(user)

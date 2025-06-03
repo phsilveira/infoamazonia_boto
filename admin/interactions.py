@@ -18,13 +18,13 @@ async def export_interactions_csv(
     """Export interactions to CSV with optional category filter."""
     try:
         # Build query
-        query = db.query(models.Interaction)
+        query = db.query(models.UserInteraction)
         
         if category and category != "all":
-            query = query.filter(models.Interaction.category == category)
+            query = query.filter(models.UserInteraction.category == category)
         
         # Order by creation date
-        interactions = query.order_by(desc(models.Interaction.created_at)).all()
+        interactions = query.order_by(desc(models.UserInteraction.created_at)).all()
         
         # Create CSV content
         output = io.StringIO()
@@ -77,27 +77,27 @@ async def list_interactions(
     current_admin: models.Admin = get_current_admin_dependency()
 ):
     # Build query
-    query = db.query(models.Interaction)
+    query = db.query(models.UserInteraction)
     
     # Apply category filter
     if category and category != "all":
-        query = query.filter(models.Interaction.category == category)
+        query = query.filter(models.UserInteraction.category == category)
     
     # Apply search filter
     if search:
         query = query.filter(
             or_(
-                models.Interaction.query.ilike(f"%{search}%"),
-                models.Interaction.response.ilike(f"%{search}%")
+                models.UserInteraction.query.ilike(f"%{search}%"),
+                models.UserInteraction.response.ilike(f"%{search}%")
             )
         )
     
     # Apply feedback filter
     if feedback and feedback != "all":
-        query = query.filter(models.Interaction.feedback == feedback)
+        query = query.filter(models.UserInteraction.feedback == feedback)
     
     # Order by creation date (newest first)
-    query = query.order_by(desc(models.Interaction.created_at))
+    query = query.order_by(desc(models.UserInteraction.created_at))
     
     # Calculate pagination
     total_interactions = query.count()
@@ -114,7 +114,7 @@ async def list_interactions(
     # Get category counts for tabs
     category_counts = {}
     for cat in ["term", "location", "news", "general"]:
-        count = db.query(models.Interaction).filter(models.Interaction.category == cat).count()
+        count = db.query(models.UserInteraction).filter(models.UserInteraction.category == cat).count()
         category_counts[cat] = count
     
     return templates.TemplateResponse(
@@ -147,9 +147,9 @@ async def get_interaction_summaries(
     """Generate AI summaries of user interactions for a specific category."""
     try:
         # Get interactions for the category
-        interactions = db.query(models.Interaction).filter(
-            models.Interaction.category == category
-        ).order_by(desc(models.Interaction.created_at)).limit(100).all()
+        interactions = db.query(models.UserInteraction).filter(
+            models.UserInteraction.category == category
+        ).order_by(desc(models.UserInteraction.created_at)).limit(100).all()
         
         if not interactions:
             return JSONResponse(
@@ -212,9 +212,9 @@ async def get_interaction_summaries_custom_prompt(
             )
         
         # Get interactions for the category
-        interactions = db.query(models.Interaction).filter(
-            models.Interaction.category == category
-        ).order_by(desc(models.Interaction.created_at)).limit(100).all()
+        interactions = db.query(models.UserInteraction).filter(
+            models.UserInteraction.category == category
+        ).order_by(desc(models.UserInteraction.created_at)).limit(100).all()
         
         if not interactions:
             return JSONResponse(
