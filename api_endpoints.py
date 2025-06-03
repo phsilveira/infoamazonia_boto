@@ -1,14 +1,19 @@
 from fastapi import APIRouter, Depends, Request, Body, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_, text
 from database import get_db
 import models
 from datetime import datetime
 import logging
 from typing import Optional, List, Dict, Any
-import unicodedata
 from pydantic import BaseModel
+from services.search_fastapi import (
+    search_term_vector, 
+    search_articles_similarity, 
+    get_article_stats as search_get_article_stats,
+    get_ctr_stats as search_get_ctr_stats,
+    redirect_to_article
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
