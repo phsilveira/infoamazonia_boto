@@ -991,6 +991,151 @@ async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message:
 
     return chatbot.state
 
+# async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
+#     """Handle user response to monthly news template"""
+#     db = next(get_db())
+#     try:
+#         # Get the last outgoing template message for this user
+#         last_template = db.query(Message).filter(
+#             Message.phone_number == phone_number,
+#             Message.message_type == 'outgoing',
+#             Message.status == 'sent',
+#             Message.message_content.isnot(None),
+#             ~Message.message_content.ilike('Por favor%'),
+#             ~Message.message_content.ilike('Desculpe%')
+#         ).order_by(Message.created_at.desc()).first()
+
+#         if not last_template:
+#             await send_message(phone_number, message_loader.get_message('error.news_message_not_found'), db)
+#             chatbot.end_conversation()
+#             return chatbot.state
+
+#         # Get the selected article title based on user's numeric choice
+#         selected_title = await chatgpt_service.get_selected_article_title(message, last_template.message_content)
+
+#         if not selected_title:
+#             await send_message(
+#                 phone_number, 
+#                 message_loader.get_message('error.select_article'), 
+#                 db
+#             )
+#             return chatbot.state
+
+#         if selected_title.lower() == 'menu':
+#             chatbot.end_conversation()  # Use end_conversation instead of show_menu
+#             message = message_loader.get_message('menu.main')
+#             await send_message(phone_number, message, next(get_db()))
+#             return chatbot.state
+
+#         # Use direct database search with advanced similarity queries
+#         # Import necessary modules for advanced search
+#         import models
+#         import unicodedata
+#         from sqlalchemy import text, func, select, or_
+        
+#         logger.info(f"Using advanced article search for monthly news response: {selected_title}")
+        
+#         # Make sure pg_trgm extension is enabled
+#         db.execute(text('CREATE EXTENSION IF NOT EXISTS pg_trgm;'))
+        
+#         # Set similarity threshold - lower than admin to get better results
+#         similarity_threshold = 0.1
+        
+#         # Normalize the query - consistent with search in admin.py
+#         query_normalized = ''.join(e for e in selected_title if e.isalnum() or e.isspace()).lower()
+#         query_normalized = unicodedata.normalize("NFKD", query_normalized).encode("ASCII", "ignore").decode("utf-8")
+        
+#         # Build the advanced search query
+#         similarity_query = select(
+#             models.Article,
+#             func.similarity(models.Article.title, selected_title).label('similarity_score')
+#         ).filter(
+#             or_(
+#                 func.similarity(models.Article.title, selected_title) > similarity_threshold,
+#                 models.Article.title.ilike(f"%{selected_title}%"),
+#                 models.Article.content.ilike(f"%{selected_title}%"), 
+#                 models.Article.description.ilike(f"%{selected_title}%"),
+#                 models.Article.url.ilike(f"%{selected_title}%")
+#             )
+#         ).order_by(
+#             func.similarity(models.Article.title, selected_title).desc()
+#         ).limit(5)  # Limit to top 5 results
+        
+#         # Execute the query and get all matching articles
+#         result = db.execute(similarity_query).all()
+        
+#         # If we have results
+#         if result and len(result) > 0:
+#             # Get the most similar article (first result)
+#             article, similarity_score = result[0]
+            
+#             # Create a simplified URL for the frontend (similar to admin)
+#             short_url = f"/admin/articles/{article.id}"
+#             article_url = article.url if article.url else short_url
+            
+#             # Use content from the article
+#             article_content = article.summary_content or article.content
+            
+#             # Get user if exists
+#             user = chatbot.get_user(phone_number)
+#             user_id = user.id if user else None
+
+#             # Create user interaction record
+#             interaction = UserInteraction(
+#                 user_id=user_id,
+#                 phone_number=phone_number,
+#                 category='news_response',
+#                 query=selected_title,
+#                 response=article_content
+#             )
+#             db.add(interaction)
+#             db.commit()
+
+#             # Store interaction ID in chatbot state for feedback
+#             await chatbot.set_current_interaction_id(interaction.id, phone_number)
+
+#             # Send the article summary to the user
+#             await send_message(phone_number, article_content, db)
+#             chatbot.get_feedback()
+            
+#             # Send an interactive button message for feedback
+#             interactive_content = {
+#                 "type": "button",
+#                 "body": {
+#                     "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
+#                 },
+#                 "action": {
+#                     "buttons": [
+#                         {
+#                             "type": "reply",
+#                             "reply": {
+#                                 "id": "sim",
+#                                 "title": "Sim"
+#                             }
+#                         },
+#                         {
+#                             "type": "reply",
+#                             "reply": {
+#                                 "id": "não",
+#                                 "title": "Não"
+#                             }
+#                         }
+#                     ]
+#                 }
+#             }
+#             await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
+#         else:
+#             # No results found
+#             await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
+#             await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
+#             chatbot.end_conversation()
+
+#     except Exception as e:
+#         logger.error(f"Error in monthly news response handler: {str(e)}")
+#         await send_message(phone_number, message_loader.get_message('error.general_error'), db)
+
+#     return chatbot.state
+
 async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
     """Handle user response to monthly news template"""
     db = next(get_db())
@@ -1022,113 +1167,73 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
             return chatbot.state
 
         if selected_title.lower() == 'menu':
-            chatbot.end_conversation()  # Use end_conversation instead of show_menu
+            chatbot.show_menu()
             message = message_loader.get_message('menu.main')
             await send_message(phone_number, message, next(get_db()))
             return chatbot.state
 
-        # Use direct database search with advanced similarity queries
-        # Import necessary modules for advanced search
-        import models
-        import unicodedata
-        from sqlalchemy import text, func, select, or_
-        
-        logger.info(f"Using advanced article search for monthly news response: {selected_title}")
-        
-        # Make sure pg_trgm extension is enabled
-        db.execute(text('CREATE EXTENSION IF NOT EXISTS pg_trgm;'))
-        
-        # Set similarity threshold - lower than admin to get better results
-        similarity_threshold = 0.1
-        
-        # Normalize the query - consistent with search in admin.py
-        query_normalized = ''.join(e for e in selected_title if e.isalnum() or e.isspace()).lower()
-        query_normalized = unicodedata.normalize("NFKD", query_normalized).encode("ASCII", "ignore").decode("utf-8")
-        
-        # Build the advanced search query
-        similarity_query = select(
-            models.Article,
-            func.similarity(models.Article.title, selected_title).label('similarity_score')
-        ).filter(
-            or_(
-                func.similarity(models.Article.title, selected_title) > similarity_threshold,
-                models.Article.title.ilike(f"%{selected_title}%"),
-                models.Article.content.ilike(f"%{selected_title}%"), 
-                models.Article.description.ilike(f"%{selected_title}%"),
-                models.Article.url.ilike(f"%{selected_title}%")
-            )
-        ).order_by(
-            func.similarity(models.Article.title, selected_title).desc()
-        ).limit(5)  # Limit to top 5 results
-        
-        # Execute the query and get all matching articles
-        result = db.execute(similarity_query).all()
-        
-        # If we have results
-        if result and len(result) > 0:
-            # Get the most similar article (first result)
-            article, similarity_score = result[0]
-            
-            # Create a simplified URL for the frontend (similar to admin)
-            short_url = f"/admin/articles/{article.id}"
-            article_url = article.url if article.url else short_url
-            
-            # Use content from the article
-            article_content = article.summary_content or article.content
-            
-            # Get user if exists
-            user = chatbot.get_user(phone_number)
-            user_id = user.id if user else None
+        # Reuse the article summary functionality with the selected title
+        api_url = f"{settings.SEARCH_BASE_URL}/api/v1/search/articles"
+        payload = {"query": selected_title}
 
-            # Create user interaction record
-            interaction = UserInteraction(
-                user_id=user_id,
-                phone_number=phone_number,
-                category='news_response',
-                query=selected_title,
-                response=article_content
-            )
-            db.add(interaction)
-            db.commit()
+        import httpx
 
-            # Store interaction ID in chatbot state for feedback
-            await chatbot.set_current_interaction_id(interaction.id, phone_number)
+        async with httpx.AsyncClient(timeout=50.0) as client:
+            response = await client.post(api_url, json=payload)
+            data = response.json()
 
-            # Send the article summary to the user
-            await send_message(phone_number, article_content, db)
-            chatbot.get_feedback()
-            
-            # Send an interactive button message for feedback
-            interactive_content = {
-                "type": "button",
-                "body": {
-                    "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
-                },
-                "action": {
-                    "buttons": [
-                        {
-                            "type": "reply",
-                            "reply": {
-                                "id": "sim",
-                                "title": "Sim"
+            if data.get("success") and data.get('count') > 0:
+                # Get user if exists
+                user = chatbot.get_user(phone_number)
+                user_id = user.id if user else None
+
+                # Create user interaction record
+                interaction = UserInteraction(
+                    user_id=user_id,
+                    phone_number=phone_number,
+                    category='news_response',
+                    query=selected_title,
+                    response=data["results"][0]["summary_content"]
+                )
+                db.add(interaction)
+                db.commit()
+
+                # Store interaction ID in chatbot state for feedback
+                await chatbot.set_current_interaction_id(interaction.id, phone_number)
+
+                await send_message(phone_number, data["results"][0]["summary_content"], db)
+                chatbot.get_feedback()
+
+                # Send an interactive button message for feedback
+                interactive_content = {
+                    "type": "button",
+                    "body": {
+                        "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
+                    },
+                    "action": {
+                        "buttons": [
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": "sim",
+                                    "title": "Sim"
+                                }
+                            },
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": "não",
+                                    "title": "Não"
+                                }
                             }
-                        },
-                        {
-                            "type": "reply",
-                            "reply": {
-                                "id": "não",
-                                "title": "Não"
-                            }
-                        }
-                    ]
+                        ]
+                    }
                 }
-            }
-            await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
-        else:
-            # No results found
-            await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
-            await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
-            chatbot.end_conversation()
+                await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
+            else:
+                await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
+                await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
+                chatbot.end_conversation()
 
     except Exception as e:
         logger.error(f"Error in monthly news response handler: {str(e)}")
