@@ -148,24 +148,44 @@ async def get_article_stats(
         logger.error(f"Error fetching article stats: {e}")
         return ArticleStatsResponse(
             success=False,
+            stats=None,
             error=str(e)
         )
 
-@router.post("/api/search")
+@router.post("/search",
+           response_model=SearchResponse,
+           summary="Search Articles",
+           description="Search articles using full-text search with AI-powered summary generation",
+           responses={
+               200: {"description": "Successful search operation"},
+               400: {"description": "Invalid search query"},
+               500: {"description": "Internal server error"}
+           })
 async def search_term(
     request: Request, 
     search_data: SearchQuery = Body(...),
     db: Session = Depends(get_db)
-):
-    """Search articles using vector similarity and full-text search"""
+) -> SearchResponse:
+    """
+    Search articles using vector similarity and full-text search.
+    
+    Args:
+        search_data: Search query containing term and optional parameters
+        
+    Returns:
+        SearchResponse: Search results with optional AI-generated summary
+    """
     try:
         query = search_data.query
         
         if not query:
-            return {
-                "success": False,
-                "error": "Query is required"
-            }
+            return SearchResponse(
+                success=False,
+                results=[],
+                count=0,
+                summary=None,
+                error="Query is required"
+            )
             
         # Normalize the query
         query = ''.join(e for e in query if e.isalnum() or e.isspace()).lower()
@@ -252,19 +272,23 @@ async def search_term(
 ↩️ Voltando ao menu inicial...
 """
             
-        return {
-            "success": True,
-            "results": results,
-            "count": len(results),
-            "summary": summary
-        }
+        return SearchResponse(
+            success=True,
+            results=[SearchResult(**result) for result in results],
+            count=len(results),
+            summary=summary,
+            error=None
+        )
         
     except Exception as e:
         logger.error(f"Search error: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return SearchResponse(
+            success=False,
+            results=[],
+            count=0,
+            summary=None,
+            error=str(e)
+        )
 
 # Endpoint to render the search_articles.html template
 @router.get("/search-articles")
