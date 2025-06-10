@@ -8,112 +8,37 @@ from datetime import datetime
 import logging
 from typing import Optional, List, Dict, Any
 import unicodedata
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-router = APIRouter(
-    prefix="/api",
-    tags=["API Endpoints"],
-    responses={404: {"description": "Not found"}},
-)
+router = APIRouter()
 logger = logging.getLogger(__name__)
 
 class SearchQuery(BaseModel):
-    """Search query model for article search requests"""
-    query: str = Field(..., description="Search term or phrase to find articles")
-    generate_summary: bool = Field(False, description="Whether to generate an AI-powered summary of search results")
-    system_prompt: Optional[str] = Field(None, description="Custom system prompt for summary generation")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "query": "mudanças climáticas",
-                "generate_summary": True,
-                "system_prompt": "Provide a detailed analysis"
-            }
-        }
+    query: str
+    generate_summary: bool = False
+    system_prompt: Optional[str] = None
 
 class SearchResult(BaseModel):
-    """Individual search result model"""
-    id: str = Field(..., description="Unique article identifier")
-    title: str = Field(..., description="Article title")
-    similarity: float = Field(..., description="Similarity score (0.0 to 1.0)")
-    url: str = Field(..., description="Original article URL")
-    short_url: str = Field(..., description="Internal admin URL for the article")
-    published_date: Optional[str] = Field(None, description="Publication date in YYYY-MM-DD format")
-    author: Optional[str] = Field(None, description="Article author")
-    description: Optional[str] = Field(None, description="Article description or excerpt")
-    key_words: Optional[List[str]] = Field(None, description="Article keywords/tags")
+    id: str
+    title: str
+    similarity: float
+    url: str
+    short_url: str
+    published_date: Optional[str] = None
+    author: Optional[str] = None
+    description: Optional[str] = None
+    key_words: Optional[List[str]] = None
 
 class SearchResponse(BaseModel):
-    """Search response model containing results and metadata"""
-    success: bool = Field(..., description="Whether the search was successful")
-    results: List[SearchResult] = Field(default_factory=list, description="List of matching articles")
-    count: int = Field(0, description="Number of results found")
-    summary: Optional[str] = Field(None, description="AI-generated summary of results (if requested)")
-    error: Optional[str] = Field(None, description="Error message if search failed")
+    success: bool
+    results: List[SearchResult] = []
+    count: int = 0
+    summary: Optional[str] = None
+    error: Optional[str] = None
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "success": True,
-                "results": [
-                    {
-                        "id": "123e4567-e89b-12d3-a456-426614174000",
-                        "title": "Impactos das Mudanças Climáticas na Amazônia",
-                        "similarity": 0.85,
-                        "url": "https://example.com/article",
-                        "short_url": "/admin/articles/123e4567-e89b-12d3-a456-426614174000",
-                        "published_date": "2024-06-15",
-                        "author": "João Silva",
-                        "description": "Análise detalhada dos efeitos...",
-                        "key_words": ["clima", "amazônia", "meio ambiente"]
-                    }
-                ],
-                "count": 1,
-                "summary": "Encontrado 1 artigo sobre mudanças climáticas...",
-                "error": None
-            }
-        }
-
-class ArticleStats(BaseModel):
-    """Article statistics model"""
-    total_count: int = Field(..., description="Total number of articles in database")
-    oldest_date: Optional[str] = Field(None, description="Date of oldest article (DD/MM/YYYY format)")
-    newest_date: Optional[str] = Field(None, description="Date of newest article (DD/MM/YYYY format)")
-
-class ArticleStatsResponse(BaseModel):
-    """Article statistics response model"""
-    success: bool = Field(..., description="Whether the request was successful")
-    stats: Optional[ArticleStats] = Field(None, description="Article statistics")
-    error: Optional[str] = Field(None, description="Error message if request failed")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "success": True,
-                "stats": {
-                    "total_count": 1250,
-                    "oldest_date": "15/01/2024",
-                    "newest_date": "10/06/2025"
-                },
-                "error": None
-            }
-        }
-
-@router.get("/article-stats", 
-           response_model=ArticleStatsResponse,
-           summary="Get Article Statistics",
-           description="Retrieve comprehensive statistics about articles in the database including total count, oldest and newest publication dates")
-async def get_article_stats(
-    request: Request, 
-    db: Session = Depends(get_db)
-) -> ArticleStatsResponse:
-    """
-    Get article statistics for display in admin panel.
-    
-    Returns:
-        ArticleStatsResponse: Statistics including total count and date range
-    """
+@router.get("/api/article-stats")
+async def get_article_stats(request: Request, db: Session = Depends(get_db)):
+    """Get article statistics for display in admin panel"""
     try:
         # Get total count
         total_count = db.query(models.Article).count()
@@ -135,57 +60,36 @@ async def get_article_stats(
         
         logger.info(f"Article stats: {total_count} articles, oldest: {oldest_date}, newest: {newest_date}")
         
-        return ArticleStatsResponse(
-            success=True,
-            stats=ArticleStats(
-                total_count=total_count,
-                oldest_date=oldest_date,
-                newest_date=newest_date
-            ),
-            error=None
-        )
+        return {
+            "success": True,
+            "stats": {
+                "total_count": total_count,
+                "oldest_date": oldest_date,
+                "newest_date": newest_date
+            }
+        }
     except Exception as e:
         logger.error(f"Error fetching article stats: {e}")
-        return ArticleStatsResponse(
-            success=False,
-            stats=None,
-            error=str(e)
-        )
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
-@router.post("/search",
-           response_model=SearchResponse,
-           summary="Search Articles",
-           description="Search articles using full-text search with AI-powered summary generation",
-           responses={
-               200: {"description": "Successful search operation"},
-               400: {"description": "Invalid search query"},
-               500: {"description": "Internal server error"}
-           })
+@router.post("/api/search")
 async def search_term(
     request: Request, 
     search_data: SearchQuery = Body(...),
     db: Session = Depends(get_db)
-) -> SearchResponse:
-    """
-    Search articles using vector similarity and full-text search.
-    
-    Args:
-        search_data: Search query containing term and optional parameters
-        
-    Returns:
-        SearchResponse: Search results with optional AI-generated summary
-    """
+):
+    """Search articles using vector similarity and full-text search"""
     try:
         query = search_data.query
         
         if not query:
-            return SearchResponse(
-                success=False,
-                results=[],
-                count=0,
-                summary=None,
-                error="Query is required"
-            )
+            return {
+                "success": False,
+                "error": "Query is required"
+            }
             
         # Normalize the query
         query = ''.join(e for e in query if e.isalnum() or e.isspace()).lower()
@@ -272,23 +176,19 @@ async def search_term(
 ↩️ Voltando ao menu inicial...
 """
             
-        return SearchResponse(
-            success=True,
-            results=[SearchResult(**result) for result in results],
-            count=len(results),
-            summary=summary,
-            error=None
-        )
+        return {
+            "success": True,
+            "results": results,
+            "count": len(results),
+            "summary": summary
+        }
         
     except Exception as e:
         logger.error(f"Search error: {e}")
-        return SearchResponse(
-            success=False,
-            results=[],
-            count=0,
-            summary=None,
-            error=str(e)
-        )
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 # Endpoint to render the search_articles.html template
 @router.get("/search-articles")

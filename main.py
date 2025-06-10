@@ -110,21 +110,9 @@ async def lifespan(app: FastAPI):
         logger.info("Redis connection closed")
 
 app = FastAPI(
-    title="InfoAmazonia Admin Dashboard API",
-    description="Advanced administrative dashboard for managing complex messaging and content workflows with AI-powered search capabilities",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    title="InfoAmazonia Admin Dashboard",
     debug=settings.DEBUG,
-    lifespan=lifespan,
-    contact={
-        "name": "InfoAmazonia Admin API",
-        "url": "https://infoamazonia.org",
-    },
-    license_info={
-        "name": "MIT",
-    },
+    lifespan=lifespan
 )
 
 # Health check endpoint with enhanced logging
@@ -165,14 +153,6 @@ app.include_router(admin_router)
 app.include_router(webhook_router)
 app.include_router(location_router)
 app.include_router(api_router)
-
-@app.get("/api-docs", response_class=HTMLResponse)
-async def api_documentation(request: Request):
-    """Custom API documentation page"""
-    return templates.TemplateResponse(
-        "api_docs.html",
-        {"request": request}
-    )
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: Optional[str] = None):
