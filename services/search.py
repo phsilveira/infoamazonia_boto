@@ -524,17 +524,69 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
             "error": str(e)
         }
 
-async def search_articles_service(request: Request, db: Session) -> Dict[str, Any]:
-    """FastAPI-compatible version of search_articles_page"""
-    from fastapi.templating import Jinja2Templates
-    from fastapi.responses import RedirectResponse
-    from auth import get_current_admin
+async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
+    """FastAPI-compatible version of search_articles function"""
+    try:
+        if not query:
+            return {'error': 'Query is required'}
+
+        # Slugify the query
+        query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('utf-8').lower()
+
+        # Set similarity threshold
+        similarity_threshold = 0.3  # Adjust this value for more or less strict matching
+
+        # Basic search using SQL LIKE for FastAPI compatibility
+        similar_articles = db.query(models.Article).filter(
+            or_(
+                models.Article.title.ilike(f"%{query}%"),
+                models.Article.url.ilike(f"%{query}%"),
+                models.Article.content.ilike(f"%{query}%")
+            )
+        ).limit(10).all()
+
+        results = []
+        for article in similar_articles:
+            # Create shortened URL (simplified for FastAPI)
+            short_url = f"/admin/articles/{article.id}"
+
+            # Calculate similarity score
+            similarity_score = 0.7
+            if query.lower() in article.title.lower():
+                similarity_score = 0.9
+
+            results.append({
+                'id': str(article.id),
+                'title': article.title,
+                'url': article.url if article.url is not None else short_url,
+                'short_url': short_url,
+                'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date is not None else None,
+                'author': article.author if article.author is not None else "Unknown",
+                'description': article.description if article.description is not None else "No description",
+                'summary_content': article.summary_content if article.summary_content is not None else "No summary available",
+                'key_words': article.keywords if hasattr(article, 'keywords') and article.keywords is not None else [],
+                'similarity': float(similarity_score)
+            })
+
+        return {
+            'success': True,
+            'results': results,
+            'count': len(results)
+        }
+
+    except Exception as e:
+        logging.error(f"Article search error: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+async def search_articles_page_service(request: Request, db: Session) -> Dict[str, Any]:
+    """FastAPI-compatible version of search_articles_page for template rendering"""
+    from auth import get_token_from_cookie, verify_token
     
     # Check if the user is authenticated
     try:
-        # Import the auth-related functions
-        from auth import get_token_from_cookie, verify_token
-        
         # Get the token from cookie
         token = get_token_from_cookie(request)
         if not token:

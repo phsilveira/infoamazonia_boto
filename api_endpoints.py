@@ -6,7 +6,7 @@ from database import get_db
 import logging
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
-from services.search import get_article_stats_service, search_term_service, search_articles_service
+from services.search import get_article_stats_service, search_term_service, search_articles_service, search_articles_page_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -59,8 +59,8 @@ async def search_articles_page(request: Request, db: Session = Depends(get_db)):
     """Render the search articles page"""
     templates = Jinja2Templates(directory="templates")
     
-    # Use the service function to get data
-    result = await search_articles_service(request, db)
+    # Use the page service function to get data
+    result = await search_articles_page_service(request, db)
     
     # Handle redirect case
     if "redirect" in result:
@@ -77,3 +77,14 @@ async def search_articles_page(request: Request, db: Session = Depends(get_db)):
             "current_admin": result["current_admin"]
         }
     )
+
+# Endpoint to search articles with query parameter
+@router.post("/api/search-articles")
+async def search_articles_api(
+    request: Request,
+    search_data: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    """Search articles with query parameter"""
+    query = search_data.get('query', '')
+    return await search_articles_service(query, db)
