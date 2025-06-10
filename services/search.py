@@ -1,16 +1,28 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for
-from models import Article
-from embeddings import generate_embedding, generate_completion, generate_article_summary
-from app import db
+from fastapi import Request, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text, func, select, or_
+import models
+from database import get_db
 import logging
-from sqlalchemy import text, func, select
-from sqlalchemy.sql.expression import cast
-from sqlalchemy.types import Float
 import unicodedata
 from cachetools import TTLCache, keys
 from functools import wraps
 import uuid
 import urllib.parse
+from typing import Dict, Any, List, Optional
+from datetime import datetime
+
+# Import for compatibility with existing Flask routes
+try:
+    from embeddings import generate_embedding, generate_completion, generate_article_summary
+    from app import db
+except ImportError:
+    # These will be None if not available - for FastAPI compatibility
+    generate_embedding = None
+    generate_completion = None 
+    generate_article_summary = None
+    db = None
 
 # Cache for search results (100 items, expire after 5 minutes)
 search_cache = TTLCache(maxsize=100, ttl=300)
@@ -358,6 +370,211 @@ def get_ctr_stats():
 
 def remove_special_chars(text):
     return unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("utf-8")
+
+# FastAPI-compatible functions
+async def get_article_stats_service(db: Session) -> Dict[str, Any]:
+    """FastAPI-compatible version of get_article_stats"""
+    try:
+        # Get total count
+        total_count = db.query(models.Article).count()
+
+        # Get oldest and newest dates
+        dates_query = db.query(
+            func.min(models.Article.published_date).label('oldest'),
+            func.max(models.Article.published_date).label('newest')
+        ).first()
+
+        oldest_date = None
+        newest_date = None
+        
+        if dates_query and dates_query.oldest:
+            oldest_date = dates_query.oldest.strftime('%d/%m/%Y')
+        
+        if dates_query and dates_query.newest:
+            newest_date = dates_query.newest.strftime('%d/%m/%Y')
+        
+        logging.info(f"Article stats: {total_count} articles, oldest: {oldest_date}, newest: {newest_date}")
+        
+        return {
+            "success": True,
+            "stats": {
+                "total_count": total_count,
+                "oldest_date": oldest_date,
+                "newest_date": newest_date
+            }
+        }
+    except Exception as e:
+        logging.error(f"Error fetching article stats: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def search_term_service(query: str, generate_summary: bool = False, system_prompt: Optional[str] = None, db: Session = None) -> Dict[str, Any]:
+    """FastAPI-compatible version of search_term"""
+    try:
+        if not query:
+            return {
+                "success": False,
+                "error": "Query is required"
+            }
+            
+        # Normalize the query
+        query = ''.join(e for e in query if e.isalnum() or e.isspace()).lower()
+        query = unicodedata.normalize("NFKD", query).encode("ASCII", "ignore").decode("utf-8")
+        
+        logging.info(f"Searching for term: '{query}'")
+        
+        # Basic search using SQL LIKE
+        similar_articles = db.query(models.Article).filter(
+            or_(
+                models.Article.title.ilike(f"%{query}%"),
+                models.Article.content.ilike(f"%{query}%"),
+                models.Article.summary_content.ilike(f"%{query}%")
+            )
+        ).limit(10).all()
+        
+        logging.info(f"Found {len(similar_articles)} articles matching the query")
+        
+        results = []
+        for article in similar_articles:
+            # Create a simplified URL for the frontend
+            short_url = f"/admin/articles/{article.id}"
+            
+            # Make sure we have a URL
+            article_url = article.url if article.url else short_url
+            
+            # Calculate a simple similarity score based on title match
+            title_similarity = 0.7  # Base similarity
+            if query.lower() in article.title.lower():
+                title_similarity = 0.9
+            
+            # Add the article to results
+            results.append({
+                "id": str(article.id),
+                "title": article.title,
+                "similarity": title_similarity,
+                "url": article_url,
+                "short_url": short_url,
+                "published_date": article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
+                "author": article.author or "Unknown",
+                "description": article.description or "No description available",
+                "key_words": article.keywords if hasattr(article, 'keywords') and article.keywords else []
+            })
+            
+        # Generate a summary if requested
+        summary = None
+        if generate_summary:
+            # Define header template message in Portuguese
+            header = "📖 Aqui está o que descobrimos sobre o termo solicitado:\n\n"
+            
+            if results and len(results) > 0:
+                # Create a summary message for found results
+                summary_text = f"Encontramos {len(results)} artigos relacionados a '{query}'."
+                
+                # Add details about the top result
+                top_article = results[0]
+                summary_text += f"\n\nO artigo mais relevante é '{top_article['title']}'"
+                if top_article['author'] and top_article['author'] != "Unknown":
+                    summary_text += f" por {top_article['author']}"
+                if top_article['published_date']:
+                    summary_text += f", publicado em {top_article['published_date']}"
+                summary_text += "."
+                
+                # Format with header
+                summary = header + summary_text
+                
+                # Add sources information
+                if len(results) > 0:
+                    sources_text = "\n\n🔗 Fonte(s):"
+                    for article in results[:min(3, len(results))]:
+                        sources_text += f"\n{article['title']}\n🔗 {article['short_url']}\n"
+                    summary += sources_text
+            else:
+                # Default message when no results are found
+                summary = """⚠️ Ops, não encontramos uma explicação completa para esse termo.
+
+😕 Isso pode acontecer porque:
+1️⃣ O termo é muito recente ou específico.
+2️⃣ Não há consenso científico sobre o tema.
+3️⃣ Não há informações detalhadas sobre o termo nas nossas fontes.
+
+🔎 Nossa equipe irá investigar esse tema com mais profundidade. Obrigado por nos ajudar a entender o que nossa audiência tem interesse em consumir.
+📌 Enquanto isso, você pode tentar reformular o termo ou buscar algo semelhante.
+↩️ Voltando ao menu inicial...
+"""
+            
+        return {
+            "success": True,
+            "results": results,
+            "count": len(results),
+            "summary": summary
+        }
+        
+    except Exception as e:
+        logging.error(f"Search error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def search_articles_service(request: Request, db: Session) -> Dict[str, Any]:
+    """FastAPI-compatible version of search_articles_page"""
+    from fastapi.templating import Jinja2Templates
+    from fastapi.responses import RedirectResponse
+    from auth import get_current_admin
+    
+    # Check if the user is authenticated
+    try:
+        # Import the auth-related functions
+        from auth import get_token_from_cookie, verify_token
+        
+        # Get the token from cookie
+        token = get_token_from_cookie(request)
+        if not token:
+            return {"redirect": "/login"}
+        
+        # Verify the token
+        admin = verify_token(token, db)
+        if not admin:
+            return {"redirect": "/login"}
+    except Exception as e:
+        logging.error(f"Authentication error in search page: {e}")
+        return {"redirect": "/login"}
+    
+    # Get article statistics for initial render
+    try:
+        total_count = db.query(models.Article).count()
+        
+        dates_query = db.query(
+            func.min(models.Article.published_date).label('oldest'),
+            func.max(models.Article.published_date).label('newest')
+        ).first()
+        
+        oldest_date = None
+        newest_date = None
+        
+        if dates_query and dates_query.oldest:
+            oldest_date = dates_query.oldest.strftime('%d/%m/%Y')
+        
+        if dates_query and dates_query.newest:
+            newest_date = dates_query.newest.strftime('%d/%m/%Y')
+            
+        logging.info(f"Initial article stats for search page: {total_count} articles")
+    except Exception as e:
+        logging.error(f"Error fetching initial article stats: {e}")
+        total_count = 0
+        oldest_date = None
+        newest_date = None
+    
+    # Return data for template rendering
+    return {
+        "success": True,
+        "total_articles": total_count,
+        "oldest_date": oldest_date,
+        "newest_date": newest_date,
+        "current_admin": admin
+    }
 
 @search_bp.route('/r/<short_id>')
 def redirect_to_article(short_id):
