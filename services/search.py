@@ -16,13 +16,13 @@ from datetime import datetime
 # Import for compatibility with existing Flask routes
 try:
     from embeddings import generate_embedding, generate_completion, generate_article_summary
-    from app import db
+    from app import db as flask_db
 except ImportError:
     # These will be None if not available - for FastAPI compatibility
     generate_embedding = None
     generate_completion = None 
     generate_article_summary = None
-    db = None
+    flask_db = None
 
 # Cache for search results (100 items, expire after 5 minutes)
 search_cache = TTLCache(maxsize=100, ttl=300)
@@ -112,20 +112,23 @@ def search_articles():
         similarity_threshold = 0.3  # Adjust this value for more or less strict matching
 
         # Use trigram similarity for title fuzzy matching and ILIKE for URL
-        similar_articles = db.session.execute(
-            select(Article, func.similarity(Article.title, query).label('similarity_score'))
-            .filter(
-                (func.similarity(Article.title, query) > similarity_threshold) |
-                (Article.url.ilike(f'%{query}%'))  # Simple ILIKE for URL matching
-            )
-            .order_by(
-                func.greatest(
-                    func.similarity(Article.title, query),
-                    func.similarity(Article.url, query)
-                ).desc()
-            )
-            .limit(1)  # Limit the results to 2 articles
-        ).all()
+        if flask_db:  # Flask compatibility
+            similar_articles = flask_db.session.execute(
+                select(models.Article, func.similarity(models.Article.title, query).label('similarity_score'))
+                .filter(
+                    (func.similarity(models.Article.title, query) > similarity_threshold) |
+                    (models.Article.url.ilike(f'%{query}%'))  # Simple ILIKE for URL matching
+                )
+                .order_by(
+                    func.greatest(
+                        func.similarity(models.Article.title, query),
+                        func.similarity(models.Article.url, query)
+                    ).desc()
+                )
+                .limit(1)  # Limit the results to 2 articles
+            ).all()
+        else:
+            similar_articles = []
 
         results = []
         for article, similarity_score in similar_articles:
@@ -180,35 +183,38 @@ def search_term():
 
         query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
 
-        # Perform vector similarity search using proper pgvector syntax
-        semantic_sql_query = f"""
-            SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
-                   (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
-            FROM articles
-            WHERE (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.84
-            ORDER BY similarity desc
-        """
+        # Only use vector search if generate_embedding is available
+        similar_articles = []
+        if generate_embedding and flask_db:
+            # Perform vector similarity search using proper pgvector syntax
+            semantic_sql_query = f"""
+                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                       (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
+                FROM articles
+                WHERE (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.84
+                ORDER BY similarity desc
+            """
 
-        # Perform full text search
-        fulltext_sql_query = f"""
-            SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
-                   ts_rank_cd(to_tsvector(title || ' ' || summary_content), plainto_tsquery('{query}')) AS similarity
-            FROM articles
-            WHERE to_tsvector(title || ' ' || summary_content) @@ plainto_tsquery('{query}')
-            ORDER BY similarity desc
-        """
+            # Perform full text search
+            fulltext_sql_query = f"""
+                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                       ts_rank_cd(to_tsvector(title || ' ' || summary_content), plainto_tsquery('{query}')) AS similarity
+                FROM articles
+                WHERE to_tsvector(title || ' ' || summary_content) @@ plainto_tsquery('{query}')
+                ORDER BY similarity desc
+            """
 
-        # Combine results from semantic and full text search into a single query
-        combined_sql_query = f"""
-            ({semantic_sql_query})
-            UNION
-            ({fulltext_sql_query})
-            ORDER BY similarity DESC
-        """
+            # Combine results from semantic and full text search into a single query
+            combined_sql_query = f"""
+                ({semantic_sql_query})
+                UNION
+                ({fulltext_sql_query})
+                ORDER BY similarity DESC
+            """
 
-        # Execute the combined query and remove duplicates
-        similar_articles = db.session.execute(text(combined_sql_query)).fetchall()
-        similar_articles = list({v.id: v for v in similar_articles}.values())
+            # Execute the combined query and remove duplicates
+            similar_articles = flask_db.session.execute(text(combined_sql_query)).fetchall()
+            similar_articles = list({v.id: v for v in similar_articles}.values())
 
         # Check if generation of summary is requested
         summary = None
@@ -410,7 +416,7 @@ async def get_article_stats_service(db: Session) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def search_term_service(query: str, generate_summary: bool = False, system_prompt: Optional[str] = None, db: Session = None) -> Dict[str, Any]:
+async def search_term_service(query: str, db: Session, generate_summary: bool = False, system_prompt: Optional[str] = None) -> Dict[str, Any]:
     """FastAPI-compatible version of search_term"""
     try:
         if not query:
@@ -442,7 +448,7 @@ async def search_term_service(query: str, generate_summary: bool = False, system
             short_url = f"/admin/articles/{article.id}"
             
             # Make sure we have a URL
-            article_url = article.url if article.url else short_url
+            article_url = article.url if article.url is not None else short_url
             
             # Calculate a simple similarity score based on title match
             title_similarity = 0.7  # Base similarity
@@ -456,10 +462,10 @@ async def search_term_service(query: str, generate_summary: bool = False, system
                 "similarity": title_similarity,
                 "url": article_url,
                 "short_url": short_url,
-                "published_date": article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
-                "author": article.author or "Unknown",
-                "description": article.description or "No description available",
-                "key_words": article.keywords if hasattr(article, 'keywords') and article.keywords else []
+                "published_date": article.published_date.strftime('%Y-%m-%d') if article.published_date is not None else None,
+                "author": article.author if article.author is not None else "Unknown",
+                "description": article.description if article.description is not None else "No description available",
+                "key_words": article.keywords if hasattr(article, 'keywords') and article.keywords is not None else []
             })
             
         # Generate a summary if requested

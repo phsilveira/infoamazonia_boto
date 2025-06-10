@@ -48,9 +48,9 @@ async def search_term(
     """Search articles using vector similarity and full-text search"""
     return await search_term_service(
         query=search_data.query,
+        db=db,
         generate_summary=search_data.generate_summary,
-        system_prompt=search_data.system_prompt,
-        db=db
+        system_prompt=search_data.system_prompt
     )
 
 # Endpoint to render the search_articles.html template
