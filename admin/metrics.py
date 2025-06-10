@@ -5,6 +5,7 @@ Handles system metrics, statistics, and performance monitoring.
 
 from fastapi import APIRouter
 from .base import *
+import httpx
 
 router = APIRouter()
 
@@ -76,3 +77,42 @@ async def get_metrics(
         "admin/metrics.html",
         {"request": request, "metrics": metrics}
     )
+
+@router.get("/ctr-stats", response_class=HTMLResponse)
+async def ctr_stats_page(
+    request: Request,
+    current_admin: models.Admin = get_current_admin_dependency()
+):
+    """Display detailed click-through rate statistics"""
+    try:
+        # Fetch CTR stats from the API endpoint
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{settings.SEARCH_BASE_URL}/api/v1/analytics/ctr-stats")
+            response.raise_for_status()
+            ctr_data = response.json()
+            
+        return templates.TemplateResponse(
+            "admin/ctr-stats.html",
+            {"request": request, "ctr_data": ctr_data}
+        )
+    except Exception as e:
+        logger.error(f"Error fetching CTR stats for page: {str(e)}")
+        # Instead of using a separate error template, we'll use the main template
+        # with error data that can display a message
+        dummy_data = {
+            "totals": {
+                "total_urls": 0,
+                "total_impressions": 0,
+                "total_clicks": 0,
+                "overall_ctr": 0
+            },
+            "stats": []
+        }
+        return templates.TemplateResponse(
+            "admin/ctr-stats.html",
+            {
+                "request": request, 
+                "ctr_data": dummy_data,
+                "error": f"Failed to fetch CTR statistics: {str(e)}"
+            }
+        )
