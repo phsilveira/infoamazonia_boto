@@ -417,88 +417,102 @@ async def get_article_stats_service(db: Session) -> Dict[str, Any]:
         }
 
 async def search_term_service(query: str, db: Session, generate_summary: bool = False, system_prompt: Optional[str] = None) -> Dict[str, Any]:
-    """FastAPI-compatible version of search_term"""
+    """FastAPI-compatible version of search_term function - EXACTLY equal to original"""
     try:
+        if query:
+            # Normalize the string to lowercase and remove special characters
+            query = ''.join(e for e in query if e.isalnum() or e.isspace()).lower()
+            query = remove_special_chars(query)
         if not query:
-            return {
-                "success": False,
-                "error": "Query is required"
-            }
-            
-        # Normalize the query
-        query = ''.join(e for e in query if e.isalnum() or e.isspace()).lower()
-        query = unicodedata.normalize("NFKD", query).encode("ASCII", "ignore").decode("utf-8")
-        
-        logging.info(f"Searching for term: '{query}'")
-        
-        # Basic search using SQL LIKE
-        similar_articles = db.query(models.Article).filter(
-            or_(
-                models.Article.title.ilike(f"%{query}%"),
-                models.Article.content.ilike(f"%{query}%"),
-                models.Article.summary_content.ilike(f"%{query}%")
-            )
-        ).limit(10).all()
-        
-        logging.info(f"Found {len(similar_articles)} articles matching the query")
-        
+            return {'success': False, 'error': 'Query is required'}
+
+        # Generate embedding for query
+        query_embedding = None
+        if generate_embedding:
+            query_embedding = generate_embedding(query)
+
+        query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']' if query_embedding else None
+
+        # Only use vector search if generate_embedding is available
+        similar_articles = []
+        if generate_embedding and query_embedding:
+            # Perform vector similarity search using proper pgvector syntax
+            semantic_sql_query = f"""
+                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                       (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
+                FROM articles
+                WHERE (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.84
+                ORDER BY similarity desc
+            """
+
+            # Perform full text search
+            fulltext_sql_query = f"""
+                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                       ts_rank_cd(to_tsvector(title || ' ' || summary_content), plainto_tsquery('{query}')) AS similarity
+                FROM articles
+                WHERE to_tsvector(title || ' ' || summary_content) @@ plainto_tsquery('{query}')
+                ORDER BY similarity desc
+            """
+
+            # Combine results from semantic and full text search into a single query
+            combined_sql_query = f"""
+                ({semantic_sql_query})
+                UNION
+                ({fulltext_sql_query})
+                ORDER BY similarity DESC
+            """
+
+            # Execute the combined query and remove duplicates
+            similar_articles = db.execute(text(combined_sql_query)).fetchall()
+            similar_articles = list({v.id: v for v in similar_articles}.values())
+
+        # Check if generation of summary is requested
+        summary = None
+        valid = None
+        header = "📖 Aqui está o que descobrimos sobre o termo solicitado:\n\n"
+
+        if generate_summary:
+            article_summaries = [
+                f"Title: {article.title}\nContent: {article.summary_content}..." 
+                for article in similar_articles[:10]
+            ]
+            if generate_completion:
+                summary = generate_completion(
+                    query,
+                    '\n\n'.join(article_summaries),
+                    system_prompt=system_prompt
+                )
+
+        # Process the generated summary if available
+        if summary:
+            valid, summary = summary.split('|', 1)
+
         results = []
         for article in similar_articles:
-            # Create a simplified URL for the frontend
+            # Create shortened URL - simplified for FastAPI
             short_url = f"/admin/articles/{article.id}"
-            
-            # Make sure we have a URL
-            article_url = article.url if article.url is not None else short_url
-            
-            # Calculate a simple similarity score based on title match
-            title_similarity = 0.7  # Base similarity
-            if query.lower() in article.title.lower():
-                title_similarity = 0.9
-            
-            # Add the article to results
+
             results.append({
-                "id": str(article.id),
-                "title": article.title,
-                "similarity": title_similarity,
-                "url": article_url,
-                "short_url": short_url,
-                "published_date": article.published_date.strftime('%Y-%m-%d') if article.published_date is not None else None,
-                "author": article.author if article.author is not None else "Unknown",
-                "description": article.description if article.description is not None else "No description available",
-                "key_words": article.keywords if hasattr(article, 'keywords') and article.keywords is not None else []
+                'id': str(article.id),
+                'title': article.title,
+                'similarity': float(article.similarity),
+                'url': short_url,
+                'short_url': short_url,  # Add the shortened URL
+                'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
+                'author': article.author,
+                'description': article.description,
+                'key_words': article.keywords
             })
-            
-        # Generate a summary if requested
-        summary = None
-        if generate_summary:
-            # Define header template message in Portuguese
-            header = "📖 Aqui está o que descobrimos sobre o termo solicitado:\n\n"
-            
-            if results and len(results) > 0:
-                # Create a summary message for found results
-                summary_text = f"Encontramos {len(results)} artigos relacionados a '{query}'."
-                
-                # Add details about the top result
-                top_article = results[0]
-                summary_text += f"\n\nO artigo mais relevante é '{top_article['title']}'"
-                if top_article['author'] and top_article['author'] != "Unknown":
-                    summary_text += f" por {top_article['author']}"
-                if top_article['published_date']:
-                    summary_text += f", publicado em {top_article['published_date']}"
-                summary_text += "."
-                
-                # Format with header
-                summary = header + summary_text
-                
-                # Add sources information
-                if len(results) > 0:
-                    sources_text = "\n\n🔗 Fonte(s):"
-                    for article in results[:min(3, len(results))]:
-                        sources_text += f"\n{article['title']}\n🔗 {article['short_url']}\n"
-                    summary += sources_text
-            else:
-                # Default message when no results are found
-                summary = """⚠️ Ops, não encontramos uma explicação completa para esse termo.
+
+        # Prepare WhatsApp summary response
+        if valid == 'T':
+            whatsapp_articles = "\n\n🔗 Fonte(s):" + ''.join(
+                f"\n{article['title']}\n🔗 {article['short_url']}\n"
+                for article in results[:3]
+            )
+            whatsapp_summary = header + summary + whatsapp_articles
+        else:
+            static_answer = """⚠️ Ops, não encontramos uma explicação completa para esse termo.
 
 😕 Isso pode acontecer porque:
 1️⃣ O termo é muito recente ou específico.
@@ -509,19 +523,26 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
 📌 Enquanto isso, você pode tentar reformular o termo ou buscar algo semelhante.
 ↩️ Voltando ao menu inicial...
 """
-            
+            whatsapp_summary = static_answer
+            return {
+                'success': False,
+                'results': [],
+                'count': len([]),
+                'summary': whatsapp_summary
+            }
+
         return {
-            "success": True,
-            "results": results,
-            "count": len(results),
-            "summary": summary
+            'success': True,
+            'results': results,
+            'count': len(results),
+            'summary': whatsapp_summary
         }
-        
+
     except Exception as e:
         logging.error(f"Search error: {e}")
         return {
-            "success": False,
-            "error": str(e)
+            'success': False,
+            'error': str(e)
         }
 
 async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
