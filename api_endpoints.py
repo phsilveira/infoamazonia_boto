@@ -86,6 +86,7 @@ class ArticleSearchResponse(BaseModel):
     success: bool = Field(..., description="Whether the search was successful")
     results: List[SearchResult] = Field(default=[], description="List of matching articles")
     count: int = Field(default=0, description="Number of articles found")
+    query: Optional[str] = Field(None, description="The search query that was executed")
     error: Optional[str] = Field(None, description="Error message if search failed")
 
 @router.get(

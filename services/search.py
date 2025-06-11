@@ -546,51 +546,36 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
         }
 
 async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
-    """FastAPI-compatible version of search_articles function - EXACTLY equal to original"""
+    """FastAPI-compatible version of search_articles function"""
     try:
         if not query:
             return {'error': 'Query is required'}
 
         # Slugify the query
-        query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('utf-8').lower()
+        normalized_query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('utf-8').lower()
 
         # Set similarity threshold
-        similarity_threshold = 0.3  # Adjust this value for more or less strict matching
+        similarity_threshold = 0.1  # Adjust this value for more or less strict matching
 
-        # Use trigram similarity for title fuzzy matching and ILIKE for URL
-        similar_articles = []
-        if db:  # FastAPI compatibility (equivalent to flask_db check)
-            similar_articles = db.execute(
-                select(models.Article, func.similarity(models.Article.title, query).label('similarity_score'))
-                .filter(
-                    (func.similarity(models.Article.title, query) > similarity_threshold) |
-                    (models.Article.url.ilike(f'%{query}%'))  # Simple ILIKE for URL matching
-                )
-                .order_by(
-                    func.greatest(
-                        func.similarity(models.Article.title, query),
-                        func.similarity(models.Article.url, query)
-                    ).desc()
-                )
-                .limit(1)  # Limit the results to 2 articles
-            ).all()
+        similar_articles = db.execute(
+            select(models.Article, func.similarity(models.Article.title, normalized_query).label('similarity_score'))
+            .filter(
+                (func.similarity(models.Article.title, normalized_query) > similarity_threshold) |
+                (models.Article.url.ilike(f'%{normalized_query}%'))  # Simple ILIKE for URL matching
+            )
+            .order_by(
+                func.greatest(
+                    func.similarity(models.Article.title, normalized_query),
+                    func.similarity(models.Article.url, normalized_query)
+                ).desc()
+            )
+            .limit(1)  # Limit the results to 2 articles
+        ).all()
 
         results = []
         for article, similarity_score in similar_articles:
-            # Create shortened URL - simplified for FastAPI
-            short_url = f"/admin/articles/{article.id}"
-
-            # Generate article summary - simplified for FastAPI (no shorten_url function)
-            summary_content = article.summary_content
-            if generate_article_summary and article.title and article.summary_content:
-                try:
-                    summary_content = generate_article_summary(
-                        article.title, 
-                        article.summary_content, 
-                        short_url
-                    )
-                except:
-                    summary_content = article.summary_content
+            # Create shortened URL
+            short_url = shorten_url(article.url)
 
             results.append({
                 'id': str(article.id),
@@ -600,40 +585,30 @@ async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
                 'published_date': article.published_date.strftime('%Y-%m-%-d') if article.published_date else None,
                 'author': article.author,
                 'description': article.description,
-                'summary_content': summary_content,
+                'summary_content': generate_article_summary(
+                    article.title, 
+                    article.summary_content, 
+                    short_url
+                ),
                 'key_words': article.keywords,
                 'similarity': float(similarity_score)
             })
 
-        return {
+        # Prepare response data
+        response_data = {
             'success': True,
             'results': results,
-            'count': len(results)
+            'count': len(results),
+            'query': query
         }
+        
+        return response_data
 
     except Exception as e:
         logging.error(f"Article search error: {e}")
         return {
             'success': False,
             'error': str(e)
-        }
-
-async def search_articles_page_service(request: Request, db: Session) -> Dict[str, Any]:
-    """FastAPI-compatible version of search_articles_page function"""
-    try:
-        # Get article statistics for the page
-        stats = await get_article_stats_service(db)
-        
-        return {
-            "total_articles": stats.get("stats", {}).get("total_count", 0),
-            "oldest_date": stats.get("stats", {}).get("oldest_date", "N/A"),
-            "newest_date": stats.get("stats", {}).get("newest_date", "N/A"),
-            "current_admin": None  # Will be set by the calling function
-        }
-    except Exception as e:
-        logging.error(f"Error in search_articles_page_service: {e}")
-        return {
-            "redirect": "/login"
         }
 
 @search_bp.route('/r/<short_id>')
