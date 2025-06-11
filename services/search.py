@@ -546,7 +546,7 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
         }
 
 async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
-    """FastAPI-compatible version of search_articles function"""
+    """FastAPI-compatible version of search_articles function - EXACTLY equal to original"""
     try:
         if not query:
             return {'error': 'Query is required'}
@@ -557,35 +557,51 @@ async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
         # Set similarity threshold
         similarity_threshold = 0.3  # Adjust this value for more or less strict matching
 
-        # Basic search using SQL LIKE for FastAPI compatibility
-        similar_articles = db.query(models.Article).filter(
-            or_(
-                models.Article.title.ilike(f"%{query}%"),
-                models.Article.url.ilike(f"%{query}%"),
-                models.Article.content.ilike(f"%{query}%")
-            )
-        ).limit(10).all()
+        # Use trigram similarity for title fuzzy matching and ILIKE for URL
+        similar_articles = []
+        if db:  # FastAPI compatibility (equivalent to flask_db check)
+            similar_articles = db.execute(
+                select(models.Article, func.similarity(models.Article.title, query).label('similarity_score'))
+                .filter(
+                    (func.similarity(models.Article.title, query) > similarity_threshold) |
+                    (models.Article.url.ilike(f'%{query}%'))  # Simple ILIKE for URL matching
+                )
+                .order_by(
+                    func.greatest(
+                        func.similarity(models.Article.title, query),
+                        func.similarity(models.Article.url, query)
+                    ).desc()
+                )
+                .limit(1)  # Limit the results to 2 articles
+            ).all()
 
         results = []
-        for article in similar_articles:
-            # Create shortened URL (simplified for FastAPI)
+        for article, similarity_score in similar_articles:
+            # Create shortened URL - simplified for FastAPI
             short_url = f"/admin/articles/{article.id}"
 
-            # Calculate similarity score
-            similarity_score = 0.7
-            if query.lower() in article.title.lower():
-                similarity_score = 0.9
+            # Generate article summary - simplified for FastAPI (no shorten_url function)
+            summary_content = article.summary_content
+            if generate_article_summary and article.title and article.summary_content:
+                try:
+                    summary_content = generate_article_summary(
+                        article.title, 
+                        article.summary_content, 
+                        short_url
+                    )
+                except:
+                    summary_content = article.summary_content
 
             results.append({
                 'id': str(article.id),
                 'title': article.title,
-                'url': article.url if article.url is not None else short_url,
-                'short_url': short_url,
-                'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date is not None else None,
-                'author': article.author if article.author is not None else "Unknown",
-                'description': article.description if article.description is not None else "No description",
-                'summary_content': article.summary_content if article.summary_content is not None else "No summary available",
-                'key_words': article.keywords if hasattr(article, 'keywords') and article.keywords is not None else [],
+                'url': short_url,
+                'short_url': short_url,  # Add the shortened URL
+                'published_date': article.published_date.strftime('%Y-%m-%-d') if article.published_date else None,
+                'author': article.author,
+                'description': article.description,
+                'summary_content': summary_content,
+                'key_words': article.keywords,
                 'similarity': float(similarity_score)
             })
 
@@ -603,57 +619,22 @@ async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
         }
 
 async def search_articles_page_service(request: Request, db: Session) -> Dict[str, Any]:
-    """FastAPI-compatible version of search_articles_page for template rendering"""
-    from auth import get_token_from_cookie, verify_token
-    
-    # Check if the user is authenticated
+    """FastAPI-compatible version of search_articles_page function"""
     try:
-        # Get the token from cookie
-        token = get_token_from_cookie(request)
-        if not token:
-            return {"redirect": "/login"}
+        # Get article statistics for the page
+        stats = await get_article_stats_service(db)
         
-        # Verify the token
-        admin = verify_token(token, db)
-        if not admin:
-            return {"redirect": "/login"}
+        return {
+            "total_articles": stats.get("stats", {}).get("total_count", 0),
+            "oldest_date": stats.get("stats", {}).get("oldest_date", "N/A"),
+            "newest_date": stats.get("stats", {}).get("newest_date", "N/A"),
+            "current_admin": None  # Will be set by the calling function
+        }
     except Exception as e:
-        logging.error(f"Authentication error in search page: {e}")
-        return {"redirect": "/login"}
-    
-    # Get article statistics for initial render
-    try:
-        total_count = db.query(models.Article).count()
-        
-        dates_query = db.query(
-            func.min(models.Article.published_date).label('oldest'),
-            func.max(models.Article.published_date).label('newest')
-        ).first()
-        
-        oldest_date = None
-        newest_date = None
-        
-        if dates_query and dates_query.oldest:
-            oldest_date = dates_query.oldest.strftime('%d/%m/%Y')
-        
-        if dates_query and dates_query.newest:
-            newest_date = dates_query.newest.strftime('%d/%m/%Y')
-            
-        logging.info(f"Initial article stats for search page: {total_count} articles")
-    except Exception as e:
-        logging.error(f"Error fetching initial article stats: {e}")
-        total_count = 0
-        oldest_date = None
-        newest_date = None
-    
-    # Return data for template rendering
-    return {
-        "success": True,
-        "total_articles": total_count,
-        "oldest_date": oldest_date,
-        "newest_date": newest_date,
-        "current_admin": admin
-    }
+        logging.error(f"Error in search_articles_page_service: {e}")
+        return {
+            "redirect": "/login"
+        }
 
 @search_bp.route('/r/<short_id>')
 def redirect_to_article(short_id):

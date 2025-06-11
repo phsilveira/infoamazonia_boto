@@ -6,7 +6,7 @@ from database import get_db
 import logging
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-from services.search import get_article_stats_service, search_term_service, search_articles_service, search_articles_page_service
+from services.search import get_article_stats_service, search_term_service, search_articles_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -227,40 +227,6 @@ async def search_term(
         system_prompt=search_data.system_prompt
     )
 
-# Endpoint to render the search_articles.html template
-@router.get(
-    "/search-articles",
-    response_class=HTMLResponse,
-    summary="Search Articles Page",
-    description="Render the search articles HTML page with article statistics",
-    responses={
-        200: {"description": "Successfully rendered search articles page"},
-        302: {"description": "Redirect to login - authentication required"}
-    },
-    tags=["Pages"]
-)
-async def search_articles_page(request: Request, db: Session = Depends(get_db)):
-    """Render the search articles page"""
-    templates = Jinja2Templates(directory="templates")
-    
-    # Use the page service function to get data
-    result = await search_articles_page_service(request, db)
-    
-    # Handle redirect case
-    if "redirect" in result:
-        return RedirectResponse(url=result["redirect"], status_code=302)
-    
-    # Return template response with data from service
-    return templates.TemplateResponse(
-        "search_articles.html", 
-        {
-            "request": request,
-            "total_articles": result["total_articles"],
-            "oldest_date": result["oldest_date"],
-            "newest_date": result["newest_date"],
-            "current_admin": result["current_admin"]
-        }
-    )
 
 @router.post(
     "/api/search-articles",
