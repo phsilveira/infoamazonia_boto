@@ -34,7 +34,7 @@ url_cache = TTLCache(maxsize=500, ttl=86400 * 30)  # 30 days cache
 url_impressions_cache = TTLCache(maxsize=1000, ttl=86400 * 30)  # 30 days cache
 url_clicks_cache = TTLCache(maxsize=1000, ttl=86400 * 30)  # 30 days cache
 
-def shorten_url(original_url):
+def shorten_url(original_url, host_url=None):
     """
     Creates a shortened URL for the original URL.
     Returns a tuple containing the path component and full URL.
@@ -54,8 +54,17 @@ def shorten_url(original_url):
     # Create short URL path
     short_path = f"/r/{short_id}"
 
-    # Return both path and full URL with domain
-    return request.host_url.rstrip('/') + short_path
+    # For FastAPI compatibility, use provided host_url or fallback to path only
+    if host_url:
+        return host_url.rstrip('/') + short_path
+    else:
+        try:
+            # Try to get Flask request context if available
+            from flask import request
+            return request.host_url.rstrip('/') + short_path
+        except (RuntimeError, ImportError):
+            # Fallback to just the path for FastAPI or when no request context
+            return short_path
 
 def cache_search_results(func):
     @wraps(func)
@@ -574,8 +583,12 @@ async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
 
         results = []
         for article, similarity_score in similar_articles:
-            # Create shortened URL
-            short_url = shorten_url(article.url)
+            # Create shortened URL with error handling for FastAPI compatibility
+            try:
+                short_url = shorten_url(article.url)
+            except RuntimeError:
+                # Fallback to simple path when Flask request context is not available
+                short_url = f"/admin/articles/{article.id}"
 
             results.append({
                 'id': str(article.id),
