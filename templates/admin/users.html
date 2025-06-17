@@ -51,6 +51,7 @@
                 <th>ID</th>
                 <th>Número de Telefone</th>
                 <th>Status</th>
+                <th>Agendamento</th>
                 <th>Criado Em</th>
                 <th>Ações</th>
             </tr>
@@ -65,6 +66,19 @@
                     <span class="badge bg-success">Ativo</span>
                     {% else %}
                     <span class="badge bg-danger">Inativo</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.schedule == 'daily' %}
+                    <span class="badge bg-info">Diário</span>
+                    {% elif user.schedule == 'weekly' %}
+                    <span class="badge bg-warning">Semanal</span>
+                    {% elif user.schedule == 'monthly' %}
+                    <span class="badge bg-primary">Mensal</span>
+                    {% elif user.schedule == 'immediately' %}
+                    <span class="badge bg-danger">Imediatamente</span>
+                    {% else %}
+                    <span class="badge bg-secondary">-</span>
                     {% endif %}
                 </td>
                 <td>{{ user.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</td>
