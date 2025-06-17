@@ -44,7 +44,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
         # Get active users with specified schedule
         active_users = db.query(User).filter(
             User.is_active == True,
-            User.schedule == schedule_type
+            # User.schedule == schedule_type
         ).all()
 
         # Get news based on API endpoint

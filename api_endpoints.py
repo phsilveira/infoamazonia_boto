@@ -59,6 +59,7 @@ class SearchResult(BaseModel):
     published_date: Optional[str] = Field(None, description="Publication date in YYYY-MM-DD format")
     author: Optional[str] = Field(None, description="Article author name")
     description: Optional[str] = Field(None, description="Article description or excerpt")
+    summary_content: Optional[str] = Field(None, description="AI-generated summary of article content")
     key_words: Optional[List[str]] = Field(None, description="Article keywords/tags")
 
 class ArticleStats(BaseModel):
@@ -86,7 +87,6 @@ class ArticleSearchResponse(BaseModel):
     success: bool = Field(..., description="Whether the search was successful")
     results: List[SearchResult] = Field(default=[], description="List of matching articles")
     count: int = Field(default=0, description="Number of articles found")
-    query: Optional[str] = Field(None, description="The search query that was executed")
     error: Optional[str] = Field(None, description="Error message if search failed")
 
 @router.get(

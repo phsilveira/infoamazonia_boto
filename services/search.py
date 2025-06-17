@@ -12,16 +12,12 @@ import uuid
 import urllib.parse
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from services.embeddings import generate_embedding, generate_completion, generate_article_summary
 
 # Import for compatibility with existing Flask routes
 try:
-    from embeddings import generate_embedding, generate_completion, generate_article_summary
     from app import db as flask_db
 except ImportError:
-    # These will be None if not available - for FastAPI compatibility
-    generate_embedding = None
-    generate_completion = None 
-    generate_article_summary = None
     flask_db = None
 
 # Cache for search results (100 items, expire after 5 minutes)
@@ -598,11 +594,7 @@ async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
                 'published_date': article.published_date.strftime('%Y-%m-%-d') if article.published_date else None,
                 'author': article.author,
                 'description': article.description,
-                'summary_content': generate_article_summary(
-                    article.title, 
-                    article.summary_content, 
-                    short_url
-                ),
+                'summary_content': generate_article_summary(article.title, article.summary_content, short_url),
                 'key_words': article.keywords,
                 'similarity': float(similarity_score)
             })
