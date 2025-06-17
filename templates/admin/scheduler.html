@@ -4,9 +4,61 @@
 
 {% block content %}
     <div class="container mt-4">
+        <!-- Manual Job Triggers -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Executar Tarefas Manualmente</h5>
+                <p class="text-muted">Execute as tarefas agendadas manualmente sem aguardar o horário programado.</p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <form method="POST" action="/admin/scheduler/trigger/daily-news" style="display: inline;">
+                            <button type="submit" class="btn btn-primary w-100" onclick="return confirm('Deseja executar o envio de notícias diárias?')">
+                                <i class="fas fa-newspaper me-2"></i>Notícias Diárias
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="POST" action="/admin/scheduler/trigger/weekly-news" style="display: inline;">
+                            <button type="submit" class="btn btn-success w-100" onclick="return confirm('Deseja executar o envio de notícias semanais?')">
+                                <i class="fas fa-calendar-week me-2"></i>Notícias Semanais
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="POST" action="/admin/scheduler/trigger/monthly-news" style="display: inline;">
+                            <button type="submit" class="btn btn-info w-100" onclick="return confirm('Deseja executar o envio de notícias mensais?')">
+                                <i class="fas fa-calendar-alt me-2"></i>Notícias Mensais
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="POST" action="/admin/scheduler/trigger/immediate-news" style="display: inline;">
+                            <button type="submit" class="btn btn-warning w-100" onclick="return confirm('Deseja executar o envio de notícias imediatas?')">
+                                <i class="fas fa-bolt me-2"></i>Notícias Imediatas
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="POST" action="/admin/scheduler/trigger/download-news" style="display: inline;">
+                            <button type="submit" class="btn btn-secondary w-100" onclick="return confirm('Deseja executar o download de notícias das fontes?')">
+                                <i class="fas fa-download me-2"></i>Baixar Notícias
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="POST" action="/admin/scheduler/trigger/clean-messages" style="display: inline;">
+                            <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Deseja executar a limpeza de mensagens antigas?')">
+                                <i class="fas fa-broom me-2"></i>Limpar Mensagens
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Scheduler Task History</h5>
+                <h5 class="card-title">Histórico de Execução das Tarefas</h5>
                 <div class="table-responsive">
                     <table class="table table-striped">
                         <thead>

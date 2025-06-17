@@ -65,23 +65,35 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
             db.commit()
             return
         
-        if not use_ingestion_api:
-            # Get news for the specified period
-            date_to = datetime.now().strftime('%Y-%m-%d')
-            date_from = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+        try:
+            if not use_ingestion_api:
+                # Get news for the specified period
+                date_to = datetime.now().strftime('%Y-%m-%d')
+                date_from = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
 
-            headers = {
-                'accept': 'application/json'
-            }
+                headers = {
+                    'accept': 'application/json'
+                }
 
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    settings.ARTICLES_API_URL,
-                    params={'date_from': date_from, 'date_to': date_to},
-                    headers=headers
-                )
-                news_data = response.json()
-                articles = news_data.get('articles', [])
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        settings.ARTICLES_API_URL,
+                        params={'date_from': date_from, 'date_to': date_to},
+                        headers=headers
+                    )
+                    news_data = response.json()
+                    articles = news_data.get('articles', [])
+        except Exception as e:
+            error_msg = f"Error during news fetching for {schedule_type}: {str(e)}"
+            logger.error(error_msg)
+            
+            # Log error in the scheduler run record and return
+            scheduler_run.status = 'failed'
+            scheduler_run.end_time = datetime.utcnow()
+            scheduler_run.error_message = error_msg
+            scheduler_run.affected_users = 0
+            db.commit()
+            return
 
         if not articles:
             logger.info(f"No articles found in the response")
@@ -141,7 +153,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
                         try:
                             await redis_client.setex(
                                 f"state:{user.phone_number}",
-                                2*60*60,  # 2 hours to expiry
+                                6*60*60,  # 6 hours to expiry
                                 "monthly_news_response"
                             )
                             logger.info(f"Set chatbot state to monthly_news_response for user {user.phone_number}")
