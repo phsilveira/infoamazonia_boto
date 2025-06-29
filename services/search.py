@@ -380,7 +380,11 @@ def get_ctr_stats():
         }), 500
 
 def remove_special_chars(text):
-    return unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("utf-8")
+    """Normalize text for search by removing accents but keeping letters"""
+    # Remove accents but keep all letters (including non-ASCII)
+    normalized = unicodedata.normalize('NFD', text)
+    without_accents = ''.join(c for c in normalized if unicodedata.category(c) != 'Mn')
+    return without_accents.lower()
 
 # FastAPI-compatible functions
 async def get_article_stats_service(db: Session) -> Dict[str, Any]:
@@ -431,55 +435,85 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
         if not query:
             return {'success': False, 'error': 'Query is required'}
 
-        # Generate embedding for query
+        # Try to generate embedding for query
         query_embedding = None
-        if generate_embedding:
-            query_embedding = generate_embedding(query)
+        use_vector_search = False
+        try:
+            if callable(generate_embedding):
+                query_embedding = generate_embedding(query)
+                if query_embedding:
+                    use_vector_search = True
+        except Exception as e:
+            logging.warning(f"Embedding generation failed: {e}")
+            use_vector_search = False
 
-        query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']' if query_embedding else None
-
-        # Only use vector search if generate_embedding is available
         similar_articles = []
-        # Perform vector similarity search using proper pgvector syntax
-        semantic_sql_query = f"""
-            SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
-                   (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
-            FROM articles
-            WHERE embedding IS NOT NULL
-            and (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.44
-            ORDER BY similarity desc
-        """
-
-        # Perform full text search
-        fulltext_sql_query = f"""
-            SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
-                                   ts_rank_cd(
-                to_tsvector(
-                  'portuguese',
-                  coalesce(title,'') || ' ' || coalesce(summary_content,'')
-                ),
-                plainto_tsquery('portuguese','{query}')
-              ) AS similarity
-                            FROM articles
-                            WHERE to_tsvector(
-                'portuguese',
-                coalesce(title,'') || ' ' || coalesce(summary_content,'')
-              )
-              @@ plainto_tsquery('portuguese','{query}')
+        
+        if use_vector_search and query_embedding:
+            # Perform vector similarity search using proper pgvector syntax
+            query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
+            semantic_sql_query = f"""
+                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                       (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
+                FROM articles
+                WHERE embedding IS NOT NULL
+                and (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.44
                 ORDER BY similarity desc
             """
+            
+            # Perform full text search
+            fulltext_sql_query = f"""
+                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                       ts_rank_cd(
+                    to_tsvector(
+                      'portuguese',
+                      coalesce(title,'') || ' ' || coalesce(summary_content,'')
+                    ),
+                    plainto_tsquery('portuguese','{query}')
+                  ) AS similarity
+                                FROM articles
+                                WHERE to_tsvector(
+                    'portuguese',
+                    coalesce(title,'') || ' ' || coalesce(summary_content,'')
+                  )
+                  @@ plainto_tsquery('portuguese','{query}')
+                    ORDER BY similarity desc
+                """
 
-        # Combine results from semantic and full text search into a single query
-        combined_sql_query = f"""
-            ({semantic_sql_query})
-            UNION
-            ({fulltext_sql_query})
-            ORDER BY similarity DESC
-        """
-
-        # Execute the combined query and remove duplicates
-        similar_articles = db.execute(text(combined_sql_query)).fetchall()
-        similar_articles = list({v.id: v for v in similar_articles}.values())
+            # Combine results from semantic and full text search into a single query
+            combined_sql_query = f"""
+                ({semantic_sql_query})
+                UNION
+                ({fulltext_sql_query})
+                ORDER BY similarity DESC
+            """
+            
+            # Execute the combined query and remove duplicates
+            similar_articles = db.execute(text(combined_sql_query)).fetchall()
+            similar_articles = list({v.id: v for v in similar_articles}.values())
+        
+        else:
+            # Fall back to full text search only
+            fulltext_sql_query = f"""
+                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                       ts_rank_cd(
+                    to_tsvector(
+                      'portuguese',
+                      coalesce(title,'') || ' ' || coalesce(summary_content,'')
+                    ),
+                    plainto_tsquery('portuguese','{query}')
+                  ) AS similarity
+                                FROM articles
+                                WHERE to_tsvector(
+                    'portuguese',
+                    coalesce(title,'') || ' ' || coalesce(summary_content,'')
+                  )
+                  @@ plainto_tsquery('portuguese','{query}')
+                    ORDER BY similarity desc
+                """
+            
+            # Execute the full text search query
+            similar_articles = db.execute(text(fulltext_sql_query)).fetchall()
 
         # Check if generation of summary is requested
         summary = None
