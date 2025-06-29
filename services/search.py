@@ -566,13 +566,13 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
             })
 
         # Prepare WhatsApp summary response
-        if valid == 'T':
+        if generate_summary and valid == 'T':
             whatsapp_articles = "\n\n🔗 Fonte(s):" + ''.join(
                 f"\n{article['title']}\n🔗 {article['short_url']}\n"
                 for article in results[:3]
             )
             whatsapp_summary = header + summary + whatsapp_articles
-        else:
+        elif generate_summary and valid != 'T':
             static_answer = """⚠️ Ops, não encontramos uma explicação completa para esse termo.
 
 😕 Isso pode acontecer porque:
@@ -585,12 +585,9 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
 ↩️ Voltando ao menu inicial...
 """
             whatsapp_summary = static_answer
-            return {
-                'success': False,
-                'results': [],
-                'count': len([]),
-                'summary': whatsapp_summary
-            }
+        else:
+            # No summary generation requested, just return results
+            whatsapp_summary = None
 
         return {
             'success': True,
