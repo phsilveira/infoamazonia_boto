@@ -506,6 +506,19 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
             # Create shortened URL - simplified for FastAPI
             short_url = f"/admin/articles/{article.id}"
 
+            # Parse keywords from PostgreSQL array format to Python list
+            keywords = []
+            if article.keywords:
+                try:
+                    # Remove the curly braces and split by comma
+                    keywords_str = article.keywords.strip('{}')
+                    if keywords_str:
+                        # Split by comma and clean each keyword
+                        keywords = [k.strip().strip('"') for k in keywords_str.split(',')]
+                except Exception as e:
+                    logging.warning(f"Failed to parse keywords '{article.keywords}': {e}")
+                    keywords = []
+
             results.append({
                 'id': str(article.id),
                 'title': article.title,
@@ -515,7 +528,7 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
                 'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
                 'author': article.author,
                 'description': article.description,
-                'key_words': article.keywords
+                'key_words': keywords
             })
 
         # Prepare WhatsApp summary response
@@ -595,16 +608,29 @@ async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
                 # Fallback to simple path when Flask request context is not available
                 short_url = f"/admin/articles/{article.id}"
 
+            # Parse keywords from PostgreSQL array format to Python list
+            keywords = []
+            if article.keywords:
+                try:
+                    # Remove the curly braces and split by comma
+                    keywords_str = article.keywords.strip('{}')
+                    if keywords_str:
+                        # Split by comma and clean each keyword
+                        keywords = [k.strip().strip('"') for k in keywords_str.split(',')]
+                except Exception as e:
+                    logging.warning(f"Failed to parse keywords '{article.keywords}': {e}")
+                    keywords = []
+
             results.append({
                 'id': str(article.id),
                 'title': article.title,
                 'url': short_url,
                 'short_url': short_url,  # Add the shortened URL
-                'published_date': article.published_date.strftime('%Y-%m-%-d') if article.published_date else None,
+                'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
                 'author': article.author,
                 'description': article.description,
                 'summary_content': generate_article_summary(article.title, article.summary_content, short_url),
-                'key_words': article.keywords,
+                'key_words': keywords,
                 'similarity': float(similarity_score)
             })
 
