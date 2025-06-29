@@ -153,7 +153,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
                         try:
                             await redis_client.setex(
                                 f"state:{user.phone_number}",
-                                6*60*60,  # 6 hours to expiry
+                                10*24*60*60,  # 10 days to expiry
                                 "monthly_news_response"
                             )
                             logger.info(f"Set chatbot state to monthly_news_response for user {user.phone_number}")

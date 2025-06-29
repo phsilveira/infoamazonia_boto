@@ -4,15 +4,15 @@ welcome:
 # Menu messages
 menu:
   main: |
-    🌱🐬 Olá! Eu sou o *BOTO*, o robô da InfoAmazonia que te fornece notícias personalizadas sobre a Amazônia brasileira, gratuitamente.  
+    🌱🐬 Olá! Bem-vindo de volta! Eu sou o *BOTO*, o robô da InfoAmazonia que te fornece notícias personalizadas sobre a Amazônia brasileira, gratuitamente.  
 
     Aqui você pode:
 
-    1️⃣ Inscreva-se ou altere seu cadastro para receber notícias do *BOTO* 🔧 
+    1️⃣ Inscrever-se ou alterar seu cadastro para receber notícias do *BOTO* 🔧 
     2️⃣ Tirar dúvidas sobre um termo 🔍
     3️⃣ Pedir um resumo de artigo 📄
     4️⃣ Enviar sugestão de pauta 📨
-    5️⃣ Descadastre-se 📤
+    5️⃣ Descadastrar-se 📤
     6️⃣ Saber mais sobre o *BOTO* ℹ️
 
     ⚙️ Digite o número da opção que deseja acessar.  
@@ -79,14 +79,14 @@ schedule:
     📆 Com que *frequência* você prefere receber notícias?  
 
     Escolha uma opção:  
-    1️⃣ Diariamente
-    2️⃣ Semanalmente
-    3️⃣ Mensalmente 
-    4️⃣ Assim que for publicada
+    1️⃣ Assim que for publicada
+    2️⃣ Diariamente
+    3️⃣ Semanalmente
+    4️⃣ Mensalmente 
 
     📌 Digite o número da sua escolha para continuar ou digite a frequência desejada.
 
-  invalid_option: "Opção inválida. Por favor selecione:\n1. Diariamente\n2. Semanalmente\n3. Mensalmente\n4. Assim que a notícia for publicada"
+  invalid_option: "Opção inválida. Por favor selecione:\n1. Assim que for publicada\n2.  Diariamente\n3. Semanalmente\n4. Mensalmente"
   confirmation: |
     Sua preferência foi configurada! 
     
@@ -128,7 +128,7 @@ unsubscribe:
   invalid_option: "Por favor, responda 'sim' para confirmar o cancelamento ou 'não' para manter sua inscrição."
 
 # return
-return: "Obrigado! Digite *MENU*, para ver outras opções"
+return: "Obrigado, vamos utilizar esse feedback para melhor o BOTO! Digite *MENU*, para ver outras opções"
 
 return_to_menu_from_subscription: "Digite *MENU* para voltar a menu principal"
 

@@ -32,7 +32,7 @@ class News:
                 }
             ]
 
-    def get_news(self, page_limit=10, offset=0):
+    def get_news(self, page_limit=3, offset=0):
         """Fetch the latest news from the APIs and process them."""
         documents = []
         api_error_count = 0

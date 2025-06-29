@@ -100,10 +100,11 @@ gpt-4:
     user: |
       Map the given schedule preference '{schedule}' to one of the following standard keys:
 
-      - 'daily' for daily notifications (option 1)
-      - 'weekly' for weekly notifications (option 2)
-      - 'monthly' for monthly notifications (option 3)
-      - 'immediately' for immediate notifications (option 4)
+      - 'immediately' for immediate notifications (option 1)
+      - 'daily' for daily notifications (option 2)
+      - 'weekly' for weekly notifications (option 3)
+      - 'monthly' for monthly notifications (option 4)
+      
 
       **Valid inputs include:**
       - Numbers (1-4)

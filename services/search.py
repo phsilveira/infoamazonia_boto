@@ -3,7 +3,7 @@ from fastapi import Request, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func, select, or_
 import models
-from database import get_db
+from database import SessionLocal
 import logging
 import unicodedata
 from cachetools import TTLCache, keys
@@ -16,9 +16,9 @@ from services.embeddings import generate_embedding, generate_completion, generat
 
 # Import for compatibility with existing Flask routes
 try:
-    from app import db as flask_db
+    db = SessionLocal()
 except ImportError:
-    flask_db = None
+    db = None
 
 # Cache for search results (100 items, expire after 5 minutes)
 search_cache = TTLCache(maxsize=100, ttl=300)
@@ -111,23 +111,23 @@ def search_articles():
             return jsonify({'error': 'Query is required'}), 400
 
         # Slugify the query
-        query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('utf-8').lower()
+        normalized_query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('utf-8').lower()
 
         # Set similarity threshold
         similarity_threshold = 0.3  # Adjust this value for more or less strict matching
 
         # Use trigram similarity for title fuzzy matching and ILIKE for URL
-        if flask_db:  # Flask compatibility
-            similar_articles = flask_db.session.execute(
-                select(models.Article, func.similarity(models.Article.title, query).label('similarity_score'))
+        if db:  # Flask compatibility
+            similar_articles = db.execute(
+                select(models.Article, func.similarity(models.Article.title, normalized_query).label('similarity_score'))
                 .filter(
-                    (func.similarity(models.Article.title, query) > similarity_threshold) |
-                    (models.Article.url.ilike(f'%{query}%'))  # Simple ILIKE for URL matching
+                    (func.similarity(models.Article.title, normalized_query) > similarity_threshold) |
+                    (models.Article.url.ilike(f'%{normalized_query}%'))  # Simple ILIKE for URL matching
                 )
                 .order_by(
                     func.greatest(
-                        func.similarity(models.Article.title, query),
-                        func.similarity(models.Article.url, query)
+                        func.similarity(models.Article.title, normalized_query),
+                        func.similarity(models.Article.url, normalized_query)
                     ).desc()
                 )
                 .limit(1)  # Limit the results to 2 articles
@@ -190,7 +190,7 @@ def search_term():
 
         # Only use vector search if generate_embedding is available
         similar_articles = []
-        if generate_embedding and flask_db:
+        if generate_embedding and db:
             # Perform vector similarity search using proper pgvector syntax
             semantic_sql_query = f"""
                 SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
@@ -218,7 +218,7 @@ def search_term():
             """
 
             # Execute the combined query and remove duplicates
-            similar_articles = flask_db.session.execute(text(combined_sql_query)).fetchall()
+            similar_articles = db.execute(text(combined_sql_query)).fetchall()
             similar_articles = list({v.id: v for v in similar_articles}.values())
 
         # Check if generation of summary is requested
@@ -440,36 +440,46 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
 
         # Only use vector search if generate_embedding is available
         similar_articles = []
-        if generate_embedding and query_embedding:
-            # Perform vector similarity search using proper pgvector syntax
-            semantic_sql_query = f"""
-                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
-                       (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
-                FROM articles
-                WHERE (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.84
+        # Perform vector similarity search using proper pgvector syntax
+        semantic_sql_query = f"""
+            SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                   (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
+            FROM articles
+            WHERE embedding IS NOT NULL
+            and (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.44
+            ORDER BY similarity desc
+        """
+
+        # Perform full text search
+        fulltext_sql_query = f"""
+            SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                                   ts_rank_cd(
+                to_tsvector(
+                  'portuguese',
+                  coalesce(title,'') || ' ' || coalesce(summary_content,'')
+                ),
+                plainto_tsquery('portuguese','{query}')
+              ) AS similarity
+                            FROM articles
+                            WHERE to_tsvector(
+                'portuguese',
+                coalesce(title,'') || ' ' || coalesce(summary_content,'')
+              )
+              @@ plainto_tsquery('portuguese','{query}')
                 ORDER BY similarity desc
             """
 
-            # Perform full text search
-            fulltext_sql_query = f"""
-                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
-                       ts_rank_cd(to_tsvector(title || ' ' || summary_content), plainto_tsquery('{query}')) AS similarity
-                FROM articles
-                WHERE to_tsvector(title || ' ' || summary_content) @@ plainto_tsquery('{query}')
-                ORDER BY similarity desc
-            """
+        # Combine results from semantic and full text search into a single query
+        combined_sql_query = f"""
+            ({semantic_sql_query})
+            UNION
+            ({fulltext_sql_query})
+            ORDER BY similarity DESC
+        """
 
-            # Combine results from semantic and full text search into a single query
-            combined_sql_query = f"""
-                ({semantic_sql_query})
-                UNION
-                ({fulltext_sql_query})
-                ORDER BY similarity DESC
-            """
-
-            # Execute the combined query and remove duplicates
-            similar_articles = db.execute(text(combined_sql_query)).fetchall()
-            similar_articles = list({v.id: v for v in similar_articles}.values())
+        # Execute the combined query and remove duplicates
+        similar_articles = db.execute(text(combined_sql_query)).fetchall()
+        similar_articles = list({v.id: v for v in similar_articles}.values())
 
         # Check if generation of summary is requested
         summary = None
@@ -484,8 +494,7 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
             if generate_completion:
                 summary = generate_completion(
                     query,
-                    '\n\n'.join(article_summaries),
-                    system_prompt=system_prompt
+                    '\n\n'.join(article_summaries)
                 )
 
         # Process the generated summary if available
