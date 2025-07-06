@@ -8,7 +8,7 @@ from database import get_db
 from models import UserInteraction, Location, Subject, User, Message # Added
 from datetime import datetime, timedelta
 from config import settings
-from services.search import search_term_service
+from services.search import search_term_service, search_articles_service
 
 logger = logging.getLogger(__name__)
 
@@ -525,135 +525,15 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
 
     return chatbot.state
 
-# async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
-#     """Handle the article info state logic using advanced search like in admin.py"""
-#     db = next(get_db())
-#     try:
-#         # Import necessary modules for advanced search
-#         import models
-#         import unicodedata
-#         from sqlalchemy import text, func, select, or_
-        
-#         logger.info(f"Using advanced article search for query: {message}")
-        
-#         # Make sure pg_trgm extension is enabled
-#         db.execute(text('CREATE EXTENSION IF NOT EXISTS pg_trgm;'))
-        
-#         # Set similarity threshold - lower than admin to get better results
-#         similarity_threshold = 0.1
-        
-#         # Normalize the query - consistent with search in admin.py
-#         query_normalized = ''.join(e for e in message if e.isalnum() or e.isspace()).lower()
-#         query_normalized = unicodedata.normalize("NFKD", query_normalized).encode("ASCII", "ignore").decode("utf-8")
-        
-#         # Build the advanced search query
-#         similarity_query = select(
-#             models.Article,
-#             func.similarity(models.Article.title, message).label('similarity_score')
-#         ).filter(
-#             or_(
-#                 func.similarity(models.Article.title, message) > similarity_threshold,
-#                 models.Article.title.ilike(f"%{message}%"),
-#                 models.Article.content.ilike(f"%{message}%"), 
-#                 models.Article.description.ilike(f"%{message}%"),
-#                 models.Article.url.ilike(f"%{message}%")
-#             )
-#         ).order_by(
-#             func.similarity(models.Article.title, message).desc()
-#         ).limit(5)  # Limit to top 5 results
-        
-#         # Execute the query and get all matching articles
-#         result = db.execute(similarity_query).all()
-        
-#         # If we have results
-#         if result and len(result) > 0:
-#             # Get the most similar article (first result)
-#             article, similarity_score = result[0]
-            
-#             # Create a simplified URL for the frontend (similar to admin)
-#             short_url = f"/admin/articles/{article.id}"
-#             article_url = article.url if article.url else short_url
-            
-#             # Generate the summary content
-#             summary_content = chatgpt_service.generate_article_summary(
-#                 article.title,
-#                 article.summary_content or article.content,
-#                 article_url
-#             )
-            
-#             # Get user if exists
-#             user = chatbot.get_user(phone_number)
-#             user_id = user.id if user else None
-
-#             # Create user interaction record
-#             interaction = UserInteraction(
-#                 user_id=user_id,
-#                 phone_number=phone_number,
-#                 category='article',
-#                 query=article_url,
-#                 response=summary_content
-#             )
-#             db.add(interaction)
-#             db.commit()
-
-#             # Store interaction ID in chatbot state for feedback
-#             await chatbot.set_current_interaction_id(interaction.id, phone_number)
-
-#             # Send the article summary to the user
-#             await send_message(phone_number, summary_content, db)
-#             chatbot.get_feedback()
-            
-#             # Send an interactive button message for feedback
-#             interactive_content = {
-#                 "type": "button",
-#                 "body": {
-#                     "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
-#                 },
-#                 "action": {
-#                     "buttons": [
-#                         {
-#                             "type": "reply",
-#                             "reply": {
-#                                 "id": "sim",
-#                                 "title": "Sim"
-#                             }
-#                         },
-#                         {
-#                             "type": "reply",
-#                             "reply": {
-#                                 "id": "não",
-#                                 "title": "Não"
-#                             }
-#                         }
-#                     ]
-#                 }
-#             }
-#             await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
-#         else:
-#             # No results found
-#             await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
-#             await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
-#             chatbot.end_conversation()
-                
-#     except Exception as e:
-#         logger.error(f"Error in article summary handler: {str(e)}")
-#         await send_message(phone_number, message_loader.get_message('error.general_error'), db)
-
-#     return chatbot.state
 
 async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
     """Handle the article info state logic"""
     db = next(get_db())
     try:
-        import httpx
-        api_url = f"{settings.SEARCH_BASE_URL}/api/v1/search/articles"
-        payload = {"query": message}
+        # Use the search service directly instead of making HTTP request
+        data = await search_articles_service(query=message, db=db, redis_client=None)
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(api_url, json=payload)
-            data = response.json()
-
-        if data.get("success") and data.get('count') > 0:
+        if data.get("success") and data.get('count', 0) > 0:
             # Get user if exists
             user = chatbot.get_user(phone_number)
             user_id = user.id if user else None

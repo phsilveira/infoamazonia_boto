@@ -83,6 +83,11 @@ Key deployment considerations:
 ## Changelog
 
 Changelog:
+- July 6, 2025: Optimized WhatsApp handler service calls
+  - Modified handle_term_info_state to use search_term_service directly instead of HTTP requests
+  - Modified handle_article_summary_state to use search_articles_service directly instead of HTTP requests
+  - Improved performance and reliability by eliminating internal HTTP calls
+  - Maintained all existing functionality including error handling and user interactions
 - July 6, 2025: Enhanced URL shortening with Redis support
   - Added Redis-backed URL storage with 30-day expiration
   - Implemented both sync and async versions of shorten_url function
