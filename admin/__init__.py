@@ -37,15 +37,12 @@ async def ctr_stats_page(
 ):
     """Display detailed click-through rate statistics"""
     try:
-        # Import the CTR stats service function
-        from services.search import get_ctr_stats_service
-        
-        # Get Redis client from app state
-        redis_client = getattr(request.app.state, 'redis', None)
-        
-        # Fetch CTR stats using the internal service function
-        ctr_data = await get_ctr_stats_service(redis_client, page=1, page_size=100)
-        
+        # Fetch CTR stats from the API endpoint
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{settings.SEARCH_BASE_URL}/api/v1/analytics/ctr-stats")
+            response.raise_for_status()
+            ctr_data = response.json()
+            
         return templates.TemplateResponse(
             "admin/ctr-stats.html",
             {"request": request, "ctr_data": ctr_data}
