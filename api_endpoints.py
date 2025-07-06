@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, Body, HTTPException
+from fastapi import APIRouter, Depends, Request, Body, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -110,6 +110,7 @@ class CTRStatsResponse(BaseModel):
     success: bool = Field(..., description="Whether the operation was successful")
     stats: List[CTRStatItem] = Field(default=[], description="List of CTR statistics")
     totals: Optional[CTRTotals] = Field(None, description="Overall statistics totals")
+    pagination: Optional[Dict[str, Any]] = Field(None, description="Pagination information")
     error: Optional[str] = Field(None, description="Error message if operation failed")
 
 @router.get(
@@ -355,6 +356,14 @@ async def search_articles_api(
                             "total_impressions": 350,
                             "total_clicks": 65,
                             "overall_ctr": 18.57
+                        },
+                        "pagination": {
+                            "page": 1,
+                            "page_size": 20,
+                            "total_items": 2,
+                            "total_pages": 1,
+                            "has_next": False,
+                            "has_prev": False
                         }
                     }
                 }
@@ -375,9 +384,13 @@ async def search_articles_api(
     },
     tags=["Analytics"]
 )
-async def get_ctr_stats(request: Request):
+async def get_ctr_stats(
+    request: Request,
+    page: int = Query(1, ge=1, description="Page number (starting from 1)"),
+    page_size: int = Query(20, ge=1, le=100, description="Number of items per page (1-100)")
+):
     """
-    Get comprehensive CTR statistics for shortened URLs.
+    Get comprehensive CTR statistics for shortened URLs with pagination.
     
     This endpoint provides detailed click-through rate analytics:
     - **Individual URL Performance**: Stats for each shortened URL
@@ -385,6 +398,7 @@ async def get_ctr_stats(request: Request):
     - **Click Tracking**: Number of times URLs were clicked
     - **CTR Calculation**: Click-through rate as percentage
     - **Overall Summary**: Aggregated statistics across all URLs
+    - **Pagination**: Support for paginated results
     
     Data is retrieved from both Redis cache and in-memory fallback storage.
     
@@ -393,4 +407,4 @@ async def get_ctr_stats(request: Request):
     # Get Redis client from app state
     redis_client = getattr(request.app.state, 'redis', None)
     
-    return await get_ctr_stats_service(redis_client)
+    return await get_ctr_stats_service(redis_client, page=page, page_size=page_size)

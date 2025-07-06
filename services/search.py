@@ -503,10 +503,10 @@ def get_ctr_stats():
             'error': str(e)
         }), 500
 
-async def get_ctr_stats_service(redis_client=None):
+async def get_ctr_stats_service(redis_client=None, page=1, page_size=20):
     """
-    FastAPI service function to get CTR statistics.
-    Returns CTR stats for all shortened URLs.
+    FastAPI service function to get CTR statistics with pagination.
+    Returns CTR stats for shortened URLs with pagination support.
     """
     try:
         # Get all unique short IDs from both Redis and in-memory cache
@@ -566,19 +566,38 @@ async def get_ctr_stats_service(redis_client=None):
         # Sort by CTR (highest first)
         stats.sort(key=lambda x: x['ctr'], reverse=True)
 
-        # Calculate overall totals
+        # Calculate overall totals (before pagination)
+        total_items = len(stats)
         total_impressions = sum(item['impressions'] for item in stats)
         total_clicks = sum(item['clicks'] for item in stats)
         overall_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
 
+        # Apply pagination
+        start_index = (page - 1) * page_size
+        end_index = start_index + page_size
+        paginated_stats = stats[start_index:end_index]
+
+        # Calculate pagination info
+        total_pages = (total_items + page_size - 1) // page_size  # Ceiling division
+        has_next = page < total_pages
+        has_prev = page > 1
+
         return {
             'success': True,
-            'stats': stats,
+            'stats': paginated_stats,
             'totals': {
-                'total_urls': len(stats),
+                'total_urls': total_items,
                 'total_impressions': total_impressions,
                 'total_clicks': total_clicks,
                 'overall_ctr': round(overall_ctr, 2)
+            },
+            'pagination': {
+                'page': page,
+                'page_size': page_size,
+                'total_items': total_items,
+                'total_pages': total_pages,
+                'has_next': has_next,
+                'has_prev': has_prev
             }
         }
     except Exception as e:
