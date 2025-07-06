@@ -503,6 +503,91 @@ def get_ctr_stats():
             'error': str(e)
         }), 500
 
+async def get_ctr_stats_service(redis_client=None):
+    """
+    FastAPI service function to get CTR statistics.
+    Returns CTR stats for all shortened URLs.
+    """
+    try:
+        # Get all unique short IDs from both Redis and in-memory cache
+        short_ids = set()
+        
+        # Get short IDs from Redis
+        if redis_client:
+            try:
+                # Get all URL keys from Redis
+                url_keys = await redis_client.keys("url:*")
+                for key in url_keys:
+                    short_id = key.split(":")[-1]
+                    short_ids.add(short_id)
+            except Exception as e:
+                logging.error(f"Error getting Redis keys: {e}")
+        
+        # Get short IDs from in-memory cache
+        short_ids.update(url_cache.keys())
+        
+        stats = []
+        
+        for short_id in short_ids:
+            impressions = 0
+            clicks = 0
+            original_url = None
+
+            # Try to get data from Redis first
+            if redis_client:
+                try:
+                    impressions_bytes = await redis_client.get(f"impressions:{short_id}")
+                    clicks_bytes = await redis_client.get(f"clicks:{short_id}")
+                    original_url = await redis_client.get(f"url:{short_id}")
+                    
+                    impressions = int(impressions_bytes) if impressions_bytes else 0
+                    clicks = int(clicks_bytes) if clicks_bytes else 0
+                except Exception as e:
+                    logging.error(f"Error getting data from Redis for {short_id}: {e}")
+
+            # Fallback to in-memory cache if Redis failed or returned no data
+            if impressions == 0 and clicks == 0 and original_url is None:
+                impressions = url_impressions_cache.get(short_id, 0)
+                clicks = url_clicks_cache.get(short_id, 0)
+                original_url = url_cache.get(short_id)
+
+            # Calculate CTR (avoid division by zero)
+            ctr = (clicks / impressions * 100) if impressions > 0 else 0
+
+            stats.append({
+                'short_id': short_id,
+                'short_url': f"/r/{short_id}",
+                'original_url': original_url,
+                'impressions': impressions,
+                'clicks': clicks,
+                'ctr': round(ctr, 2)  # Round to 2 decimal places
+            })
+
+        # Sort by CTR (highest first)
+        stats.sort(key=lambda x: x['ctr'], reverse=True)
+
+        # Calculate overall totals
+        total_impressions = sum(item['impressions'] for item in stats)
+        total_clicks = sum(item['clicks'] for item in stats)
+        overall_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
+
+        return {
+            'success': True,
+            'stats': stats,
+            'totals': {
+                'total_urls': len(stats),
+                'total_impressions': total_impressions,
+                'total_clicks': total_clicks,
+                'overall_ctr': round(overall_ctr, 2)
+            }
+        }
+    except Exception as e:
+        logging.error(f"Error fetching CTR stats: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
 async def shorten_url_async(original_url, host_url=None, redis_client=None):
     """
     Async version of shorten_url for use with async Redis clients.

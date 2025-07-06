@@ -6,7 +6,7 @@ from database import get_db
 import logging
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-from services.search import get_article_stats_service, search_term_service, search_articles_service
+from services.search import get_article_stats_service, search_term_service, search_articles_service, get_ctr_stats_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -88,6 +88,29 @@ class ArticleSearchResponse(BaseModel):
     results: List[SearchResult] = Field(default=[], description="List of matching articles")
     count: int = Field(default=0, description="Number of articles found")
     error: Optional[str] = Field(None, description="Error message if search failed")
+
+class CTRStatItem(BaseModel):
+    """Individual CTR statistics item"""
+    short_id: str = Field(..., description="Shortened URL identifier")
+    short_url: str = Field(..., description="Shortened URL path")
+    original_url: Optional[str] = Field(None, description="Original URL")
+    impressions: int = Field(..., description="Number of times URL was shown")
+    clicks: int = Field(..., description="Number of times URL was clicked")
+    ctr: float = Field(..., description="Click-through rate as percentage")
+
+class CTRTotals(BaseModel):
+    """CTR statistics totals"""
+    total_urls: int = Field(..., description="Total number of URLs tracked")
+    total_impressions: int = Field(..., description="Total impressions across all URLs")
+    total_clicks: int = Field(..., description="Total clicks across all URLs")
+    overall_ctr: float = Field(..., description="Overall click-through rate as percentage")
+
+class CTRStatsResponse(BaseModel):
+    """Response model for CTR statistics"""
+    success: bool = Field(..., description="Whether the operation was successful")
+    stats: List[CTRStatItem] = Field(default=[], description="List of CTR statistics")
+    totals: Optional[CTRTotals] = Field(None, description="Overall statistics totals")
+    error: Optional[str] = Field(None, description="Error message if operation failed")
 
 @router.get(
     "/api/article-stats",
@@ -296,3 +319,78 @@ async def search_articles_api(
 ):
     """Search articles with query parameter"""
     return await search_articles_service(search_data.query, db, redis_client=getattr(request.app.state, 'redis', None))
+
+@router.get(
+    "/api/ctr-stats",
+    response_model=CTRStatsResponse,
+    summary="Get CTR Statistics",
+    description="Retrieve comprehensive click-through rate statistics for shortened URLs",
+    responses={
+        200: {
+            "description": "CTR statistics retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "stats": [
+                            {
+                                "short_id": "abc123de",
+                                "short_url": "/r/abc123de",
+                                "original_url": "https://example.com/article/123",
+                                "impressions": 150,
+                                "clicks": 45,
+                                "ctr": 30.0
+                            },
+                            {
+                                "short_id": "def456gh",
+                                "short_url": "/r/def456gh", 
+                                "original_url": "https://example.com/article/456",
+                                "impressions": 200,
+                                "clicks": 20,
+                                "ctr": 10.0
+                            }
+                        ],
+                        "totals": {
+                            "total_urls": 2,
+                            "total_impressions": 350,
+                            "total_clicks": 65,
+                            "overall_ctr": 18.57
+                        }
+                    }
+                }
+            }
+        },
+        302: {"description": "Redirect to login - authentication required"},
+        500: {
+            "description": "Internal server error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": False,
+                        "error": "Unable to retrieve CTR statistics"
+                    }
+                }
+            }
+        }
+    },
+    tags=["Analytics"]
+)
+async def get_ctr_stats(request: Request):
+    """
+    Get comprehensive CTR statistics for shortened URLs.
+    
+    This endpoint provides detailed click-through rate analytics:
+    - **Individual URL Performance**: Stats for each shortened URL
+    - **Impression Tracking**: Number of times URLs were shown
+    - **Click Tracking**: Number of times URLs were clicked
+    - **CTR Calculation**: Click-through rate as percentage
+    - **Overall Summary**: Aggregated statistics across all URLs
+    
+    Data is retrieved from both Redis cache and in-memory fallback storage.
+    
+    Requires authentication via session token.
+    """
+    # Get Redis client from app state
+    redis_client = getattr(request.app.state, 'redis', None)
+    
+    return await get_ctr_stats_service(redis_client)
