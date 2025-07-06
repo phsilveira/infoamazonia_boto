@@ -523,85 +523,45 @@ async def list_articles_api(
     
     Requires authentication via session token.
     """
-    from models import Article
-    from search import shorten_url
-    from datetime import datetime
+    from services.search import list_articles_service
     
     try:
-        per_page = 10  # Number of items per page
+        # Get Redis client for URL shortening
+        redis_client = getattr(request.app.state, 'redis', None)
         
-        # Base query
-        query = db.query(Article)
+        # Use the service function to get articles
+        result = await list_articles_service(
+            db=db,
+            page=page,
+            search=search,
+            date_from=date_from,
+            date_to=date_to,
+            summary=summary,
+            redis_client=redis_client
+        )
         
-        # Apply search filter if search query exists
-        if search:
-            search_filter = f"%{search.strip()}%"
-            query = query.filter(Article.title.ilike(search_filter))
-        
-        # Apply date filters if they exist
-        if date_from:
-            try:
-                date_from_parsed = datetime.strptime(date_from, '%Y-%m-%d')
-                query = query.filter(Article.published_date >= date_from_parsed)
-            except ValueError:
-                return ArticleListResponse(
-                    success=False,
-                    articles=[],
-                    total=0,
-                    pages=0,
-                    current_page=page,
-                    error="Invalid date_from format. Use YYYY-MM-DD format."
-                )
-        
-        if date_to:
-            try:
-                date_to_parsed = datetime.strptime(date_to, '%Y-%m-%d')
-                query = query.filter(Article.published_date <= date_to_parsed)
-            except ValueError:
-                return ArticleListResponse(
-                    success=False,
-                    articles=[],
-                    total=0,
-                    pages=0,
-                    current_page=page,
-                    error="Invalid date_to format. Use YYYY-MM-DD format."
-                )
-        
-        # Apply summary content filter if it exists
-        if summary:
-            summary_filter = f"%{summary.strip()}%"
-            query = query.filter(Article.summary_content.ilike(summary_filter))
-        
-        # Get total count before pagination
-        total = query.count()
-        
-        # Calculate total pages
-        pages = (total + per_page - 1) // per_page
-        
-        # Apply pagination and ordering
-        articles = query.order_by(Article.published_date.desc()).offset((page - 1) * per_page).limit(per_page).all()
-        
-        # Format articles for response
+        # Convert articles to ArticleItem objects
         formatted_articles = []
-        for article in articles:
+        for article_data in result.get("articles", []):
             formatted_articles.append(ArticleItem(
-                id=str(article.id),
-                title=article.title,
-                url=shorten_url(article.url),
-                published_date=article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
-                author=article.author,
-                description=article.description,
-                summary_content=article.summary_content,
-                news_source=article.news_source,
-                language=article.language
+                id=article_data["id"],
+                title=article_data["title"],
+                url=article_data["url"],
+                published_date=article_data["published_date"],
+                author=article_data["author"],
+                description=article_data["description"],
+                summary_content=article_data["summary_content"],
+                news_source=article_data["news_source"],
+                language=article_data["language"]
             ))
         
         return ArticleListResponse(
-            success=True,
+            success=result["success"],
             articles=formatted_articles,
-            total=total,
-            pages=pages,
-            current_page=page
+            total=result["total"],
+            pages=result["pages"],
+            current_page=result["current_page"],
+            error=result.get("error")
         )
         
     except Exception as e:

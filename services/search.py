@@ -1014,3 +1014,105 @@ def redirect_to_article(short_id):
 
     # Redirect to the new URL
     return redirect(new_url)
+
+
+async def list_articles_service(
+    db: Session,
+    page: int = 1,
+    search: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    summary: Optional[str] = None,
+    redis_client=None
+):
+    """
+    Service function to list articles with filtering and pagination.
+    Returns a structured response for API consumption.
+    """
+    try:
+        per_page = 10
+        
+        # Base query
+        query = db.query(models.Article)
+        
+        # Apply search filter if search query exists
+        if search:
+            search_filter = f"%{search.strip()}%"
+            query = query.filter(models.Article.title.ilike(search_filter))
+        
+        # Apply date filters if they exist
+        if date_from:
+            try:
+                date_from_parsed = datetime.strptime(date_from, '%Y-%m-%d')
+                query = query.filter(models.Article.published_date >= date_from_parsed)
+            except ValueError:
+                return {
+                    "success": False,
+                    "articles": [],
+                    "total": 0,
+                    "pages": 0,
+                    "current_page": page,
+                    "error": "Invalid date_from format. Use YYYY-MM-DD format."
+                }
+        
+        if date_to:
+            try:
+                date_to_parsed = datetime.strptime(date_to, '%Y-%m-%d')
+                query = query.filter(models.Article.published_date <= date_to_parsed)
+            except ValueError:
+                return {
+                    "success": False,
+                    "articles": [],
+                    "total": 0,
+                    "pages": 0,
+                    "current_page": page,
+                    "error": "Invalid date_to format. Use YYYY-MM-DD format."
+                }
+        
+        # Apply summary content filter if it exists
+        if summary:
+            summary_filter = f"%{summary.strip()}%"
+            query = query.filter(models.Article.summary_content.ilike(summary_filter))
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Calculate total pages
+        pages = (total + per_page - 1) // per_page
+        
+        # Apply pagination and ordering
+        articles = query.order_by(models.Article.published_date.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        
+        # Format articles for response
+        formatted_articles = []
+        for article in articles:
+            formatted_articles.append({
+                "id": str(article.id),
+                "title": article.title or "",
+                "url": shorten_url(article.url or "", redis_client=redis_client),
+                "published_date": article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
+                "author": article.author,
+                "description": article.description,
+                "summary_content": article.summary_content,
+                "news_source": article.news_source,
+                "language": article.language
+            })
+        
+        return {
+            "success": True,
+            "articles": formatted_articles,
+            "total": total,
+            "pages": pages,
+            "current_page": page
+        }
+        
+    except Exception as e:
+        logging.error(f"Error in list_articles_service: {str(e)}")
+        return {
+            "success": False,
+            "articles": [],
+            "total": 0,
+            "pages": 0,
+            "current_page": page,
+            "error": f"Internal server error: {str(e)}"
+        }
