@@ -200,7 +200,7 @@ async def search_term(
     search_data: SearchQuery = Body(
         ...,
         example={
-            "query": "artificial intelligence",
+            "query": "amazonas",
             "generate_summary": True,
             "system_prompt": "Provide a brief technical summary"
         }

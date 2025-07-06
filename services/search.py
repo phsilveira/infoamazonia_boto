@@ -557,7 +557,7 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
                 'id': str(article.id),
                 'title': article.title,
                 'similarity': float(article.similarity),
-                'url': short_url,
+                'url': article.url,
                 'short_url': short_url,  # Add the shortened URL
                 'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
                 'author': article.author,

@@ -1,0 +1,102 @@
+@search_bp.route('/api/ctr-stats')
+def get_ctr_stats():
+    """
+    Get Click-Through Rate statistics for all shortened URLs.
+    """
+    try:
+        # Get all impression keys from Redis
+        impression_keys = RedisHelper.get_keys_pattern("impressions:*")
+        stats = []
+        
+        for key in impression_keys:
+            short_id = key.replace("impressions:", "")
+            impressions = int(RedisHelper.get_value(f"impressions:{short_id}") or 0)
+            clicks = int(RedisHelper.get_value(f"clicks:{short_id}") or 0)
+            
+            # Calculate CTR (avoid division by zero)
+            ctr = (clicks / impressions * 100) if impressions > 0 else 0
+            
+            # Get the original URL for reference
+            original_url = RedisHelper.get_value(f"url:{short_id}")
+            
+            if original_url:  # Only include if URL still exists
+                stats.append({
+                    'short_id': short_id,
+                    'short_url': f"/r/{short_id}",
+                    'original_url': original_url,
+                    'impressions': impressions,
+                    'clicks': clicks,
+                    'ctr': round(ctr, 2)  # Round to 2 decimal places
+                })
+        
+        # Sort by CTR (highest first)
+        stats.sort(key=lambda x: x['ctr'], reverse=True)
+        
+        # Calculate overall totals
+        total_impressions = sum(item['impressions'] for item in stats)
+        total_clicks = sum(item['clicks'] for item in stats)
+        overall_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'stats': stats,
+            'totals': {
+                'total_urls': len(stats),
+                'total_impressions': total_impressions,
+                'total_clicks': total_clicks,
+                'overall_ctr': round(overall_ctr, 2)
+            }
+        })
+    except Exception as e:
+        logging.error(f"Error fetching CTR stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+def remove_special_chars(text):
+    return unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("utf-8")
+
+@search_bp.route('/r/<short_id>')
+def redirect_to_article(short_id):
+    """
+    Redirect to the original article URL with UTM parameters.
+    Also tracks click for CTR calculation.
+    """
+    # Get the original URL from Redis
+    original_url = RedisHelper.get_value(f"url:{short_id}")
+    
+    if not original_url:
+        # Handle case when URL is not found (expired or invalid ID)
+        return render_template('404.html', message="Link expired or not found"), 404
+    
+    # Track the click
+    RedisHelper.increment(f"clicks:{short_id}")
+    
+    # Parse the original URL
+    parsed_url = urllib.parse.urlparse(original_url)
+    
+    # Get existing query parameters
+    query_params = dict(urllib.parse.parse_qsl(parsed_url.query))
+    
+    # Add UTM parameters
+    query_params.update({
+        "utmSource": "whatsapp",
+        "utmMedium": "news"
+    })
+    
+    # Build the new query string
+    new_query = urllib.parse.urlencode(query_params)
+    
+    # Construct the new URL with UTM parameters
+    new_url = urllib.parse.urlunparse((
+        parsed_url.scheme,
+        parsed_url.netloc,
+        parsed_url.path,
+        parsed_url.params,
+        new_query,
+        parsed_url.fragment
+    ))
+    
+    # Redirect to the new URL
+    return redirect(new_url)

@@ -138,6 +138,135 @@ class News:
             if news["success"]:
                 self.get_topics(news)
                 return news
+
+        # Get the article URL from the item
+        article_url = item.get("link", "")
+        if not article_url:
+            news["success"] = False
+            return None
+
+        try:
+            # Fetch the article page
+            response = requests.get(article_url, timeout=10)
+            response.raise_for_status()
+
+            # Parse the HTML content
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            # Extract metadata from meta tags
+            meta_tags = {}
+
+            # Get Open Graph and other meta tags
+            og_title = soup.find("meta", property="og:title")
+            if og_title:
+                meta_tags["og_title"] = og_title.get("content", "")
+
+            og_description = soup.find("meta", property="og:description")
+            if og_description:
+                meta_tags["description"] = og_description.get("content", "")
+
+            og_url = soup.find("meta", property="og:url")
+            if og_url:
+                meta_tags["og_url"] = og_url.get("content", "")
+
+            og_site_name = soup.find("meta", property="og:site_name")
+            if og_site_name:
+                meta_tags["og_site_name"] = og_site_name.get("content", "")
+
+            article_published_time = soup.find("meta", property="article:published_time")
+            if article_published_time:
+                meta_tags["article_published_time"] = article_published_time.get("content", "")
+
+            author_meta = soup.find("meta", attrs={"name": "author"})
+            if author_meta:
+                meta_tags["author"] = author_meta.get("content", "")
+
+            # Try to get language from html lang attribute
+            html_tag = soup.find("html")
+            if html_tag and html_tag.get("lang"):
+                meta_tags["inLanguage"] = html_tag.get("lang", "")
+
+            # Extract structured data from JSON-LD
+            json_ld_scripts = soup.find_all("script", type="application/ld+json")
+            keywords = []
+            subtopics = []
+
+            for script in json_ld_scripts:
+                try:
+                    import json
+                    data = json.loads(script.string)
+                    if isinstance(data, dict) and "@graph" in data:
+                        for item_data in data["@graph"]:
+                            if item_data.get("@type") == "NewsArticle":
+                                if "keywords" in item_data:
+                                    if isinstance(item_data["keywords"], list):
+                                        keywords = item_data["keywords"]
+                                    else:
+                                        keywords = [item_data["keywords"]]
+                                if "articleSection" in item_data:
+                                    if isinstance(item_data["articleSection"], list):
+                                        subtopics = item_data["articleSection"]
+                                    else:
+                                        subtopics = [item_data["articleSection"]]
+                                break
+                except (json.JSONDecodeError, KeyError):
+                    continue
+
+            # Set the extracted fields
+            news["Title"] = meta_tags.get("og_title", "")
+            news["Description"] = meta_tags.get("description", "")
+            news["URL"] = meta_tags.get("og_url", article_url)
+            news["site"] = meta_tags.get("og_site_name", "")
+            news["Published_date"] = meta_tags.get("article_published_time", "")
+            news["Author"] = meta_tags.get("author", "")
+            news["Language"] = meta_tags.get("inLanguage", "")
+            news["Keywords"] = keywords
+            news["Subtopics"] = subtopics
+
+            # Extract article content
+            # Try to find the main content area
+            content_selectors = [
+                "article .entry-content",
+                ".post-content",
+                ".article-content",
+                "[class*='content']",
+                "main"
+            ]
+
+            content_text = ""
+            for selector in content_selectors:
+                content_element = soup.select_one(selector)
+                if content_element:
+                    content_text = content_element.get_text(strip=True)
+                    break
+
+            # Fallback to getting all paragraph text
+            if not content_text:
+                paragraphs = soup.find_all("p")
+                content_text = " ".join([p.get_text(strip=True) for p in paragraphs])
+
+            news["content"] = content_text
+
+            # Validate required fields
+            if not news["Title"] or not news["URL"]:
+                news["success"] = False
+                return None
+
+            self.set_source(news)
+
+            if news["success"]:
+                self.get_topics(news)
+                return news
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error fetching article {article_url}: {e}")
+            news["success"] = False
+            return None
+        except Exception as e:
+            logging.error(f"Error processing article {article_url}: {e}")
+            news["success"] = False
+            return None
+
         return None
 
     def process_location(self, location):
