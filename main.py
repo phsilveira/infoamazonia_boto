@@ -141,6 +141,38 @@ async def health_check():
     logger.info(f"Health check response: {response}")
     return response
 
+# Shortened URL redirect endpoint
+@app.get("/r/{short_id}")
+async def redirect_to_url(short_id: str, request: Request):
+    """
+    Redirect to the original URL and track click metrics.
+    """
+    # Get Redis client from app state
+    redis_client = getattr(request.app.state, 'redis', None)
+    
+    # Try to get original URL from Redis first
+    original_url = None
+    if redis_client:
+        try:
+            original_url = await redis_client.get(f"url:{short_id}")
+            # Increment click count
+            await redis_client.incr(f"clicks:{short_id}")
+            await redis_client.expire(f"clicks:{short_id}", 86400 * 30)  # Refresh expiration
+        except Exception as e:
+            logger.error(f"Redis error in redirect_to_url: {e}")
+    
+    # Fallback to in-memory cache
+    if not original_url:
+        from services.search import url_cache, url_clicks_cache
+        original_url = url_cache.get(short_id)
+        if original_url:
+            url_clicks_cache[short_id] = url_clicks_cache.get(short_id, 0) + 1
+    
+    if original_url:
+        return RedirectResponse(url=original_url, status_code=302)
+    else:
+        raise HTTPException(status_code=404, detail="URL not found")
+
 # Mount static files and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")

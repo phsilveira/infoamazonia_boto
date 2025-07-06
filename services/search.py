@@ -30,22 +30,56 @@ url_cache = TTLCache(maxsize=500, ttl=86400 * 30)  # 30 days cache
 url_impressions_cache = TTLCache(maxsize=1000, ttl=86400 * 30)  # 30 days cache
 url_clicks_cache = TTLCache(maxsize=1000, ttl=86400 * 30)  # 30 days cache
 
-def shorten_url(original_url, host_url=None):
+def shorten_url(original_url, host_url=None, redis_client=None):
     """
     Creates a shortened URL for the original URL.
     Returns a tuple containing the path component and full URL.
     Also initializes tracking metrics for the URL.
+    Uses Redis for persistent storage with 30-day expiration.
     """
     # Generate a short unique ID
     short_id = str(uuid.uuid4())[:8]
 
-    # Store the original URL in the cache
-    url_cache[short_id] = original_url
-
-    # Initialize metrics for this URL
-    url_impressions_cache[short_id] = url_impressions_cache.get(short_id, 0) + 1
-    if short_id not in url_clicks_cache:
-        url_clicks_cache[short_id] = 0
+    # Store the original URL in Redis with 30-day expiration
+    if redis_client:
+        try:
+            # Check if this is an async Redis client (redis.asyncio)
+            import inspect
+            is_async = inspect.iscoroutinefunction(redis_client.setex) if hasattr(redis_client, 'setex') else False
+            
+            if is_async:
+                # This would need to be called in an async context
+                # For now, fall back to in-memory cache if we can't use sync Redis
+                raise Exception("Async Redis client not supported in sync context")
+            else:
+                # Store original URL
+                redis_client.setex(f"url:{short_id}", 86400 * 30, original_url)
+                
+                # Initialize or increment impressions
+                current_impressions = redis_client.get(f"impressions:{short_id}")
+                if current_impressions is None:
+                    redis_client.setex(f"impressions:{short_id}", 86400 * 30, "1")
+                else:
+                    redis_client.incr(f"impressions:{short_id}")
+                    redis_client.expire(f"impressions:{short_id}", 86400 * 30)
+                
+                # Initialize clicks if not exists
+                if not redis_client.exists(f"clicks:{short_id}"):
+                    redis_client.setex(f"clicks:{short_id}", 86400 * 30, "0")
+                
+        except Exception as e:
+            logging.error(f"Redis error in shorten_url: {e}. Falling back to in-memory cache.")
+            # Fallback to in-memory cache if Redis fails
+            url_cache[short_id] = original_url
+            url_impressions_cache[short_id] = url_impressions_cache.get(short_id, 0) + 1
+            if short_id not in url_clicks_cache:
+                url_clicks_cache[short_id] = 0
+    else:
+        # Fallback to in-memory cache if Redis is not available
+        url_cache[short_id] = original_url
+        url_impressions_cache[short_id] = url_impressions_cache.get(short_id, 0) + 1
+        if short_id not in url_clicks_cache:
+            url_clicks_cache[short_id] = 0
 
     # Create short URL path
     short_path = f"/r/{short_id}"
@@ -90,6 +124,41 @@ search_bp = Blueprint('search', __name__)
 @search_bp.route('/')
 def index():
     return render_template('search.html')
+
+@search_bp.route('/r/<short_id>')
+def redirect_to_url(short_id):
+    """
+    Redirect to the original URL and track click metrics.
+    """
+    # Get Redis client from Flask app context
+    redis_client = None
+    try:
+        from flask import current_app
+        redis_client = getattr(current_app, 'redis', None)
+    except:
+        pass
+    
+    # Try to get original URL from Redis first
+    original_url = None
+    if redis_client:
+        try:
+            original_url = redis_client.get(f"url:{short_id}")
+            # Increment click count
+            redis_client.incr(f"clicks:{short_id}")
+            redis_client.expire(f"clicks:{short_id}", 86400 * 30)  # Refresh expiration
+        except Exception as e:
+            logging.error(f"Redis error in redirect_to_url: {e}")
+    
+    # Fallback to in-memory cache
+    if not original_url:
+        original_url = url_cache.get(short_id)
+        if original_url:
+            url_clicks_cache[short_id] = url_clicks_cache.get(short_id, 0) + 1
+    
+    if original_url:
+        return redirect(original_url)
+    else:
+        return "URL not found", 404
 
 @search_bp.route('/search-articles')
 def search_articles_page():
@@ -136,9 +205,18 @@ def search_articles():
             similar_articles = []
 
         results = []
+        
+        # Get Redis client from Flask app context
+        redis_client = None
+        try:
+            from flask import current_app
+            redis_client = getattr(current_app, 'redis', None)
+        except:
+            pass
+        
         for article, similarity_score in similar_articles:
             # Create shortened URL
-            short_url = shorten_url(article.url)
+            short_url = shorten_url(article.url, redis_client=redis_client)
 
             results.append({
                 'id': str(article.id),
@@ -242,9 +320,18 @@ def search_term():
             valid, summary = summary.split('|', 1)
 
         results = []
+        
+        # Get Redis client from Flask app context
+        redis_client = None
+        try:
+            from flask import current_app
+            redis_client = getattr(current_app, 'redis', None)
+        except:
+            pass
+        
         for article in similar_articles:
             # Create shortened URL
-            short_url = shorten_url(article.url)
+            short_url = shorten_url(article.url, redis_client=redis_client)
 
             results.append({
                 'id': str(article.id),
@@ -332,18 +419,55 @@ def get_ctr_stats():
     Get Click-Through Rate statistics for all shortened URLs.
     """
     try:
-        # Get all short IDs from impressions cache
+        # Get all short IDs from impressions cache (both Redis and in-memory)
         stats = []
 
-        for short_id in url_impressions_cache:
-            impressions = url_impressions_cache.get(short_id, 0)
-            clicks = url_clicks_cache.get(short_id, 0)
+        # Try to get Redis client from Flask app context
+        redis_client = None
+        try:
+            from flask import current_app
+            redis_client = getattr(current_app, 'redis', None)
+        except:
+            pass
+
+        short_ids = set()
+        
+        # Get short IDs from Redis if available
+        if redis_client:
+            try:
+                # Get all impression keys from Redis
+                impression_keys = redis_client.keys("impressions:*")
+                for key in impression_keys:
+                    short_id = key.split(":")[-1]
+                    short_ids.add(short_id)
+            except Exception as e:
+                logging.error(f"Error getting impression keys from Redis: {e}")
+
+        # Also check in-memory cache for fallback
+        short_ids.update(url_impressions_cache.keys())
+
+        for short_id in short_ids:
+            impressions = 0
+            clicks = 0
+            original_url = None
+
+            # Try to get data from Redis first
+            if redis_client:
+                try:
+                    impressions = int(redis_client.get(f"impressions:{short_id}") or 0)
+                    clicks = int(redis_client.get(f"clicks:{short_id}") or 0)
+                    original_url = redis_client.get(f"url:{short_id}")
+                except Exception as e:
+                    logging.error(f"Error getting data from Redis for {short_id}: {e}")
+
+            # Fallback to in-memory cache if Redis failed or returned no data
+            if impressions == 0 and clicks == 0 and original_url is None:
+                impressions = url_impressions_cache.get(short_id, 0)
+                clicks = url_clicks_cache.get(short_id, 0)
+                original_url = url_cache.get(short_id)
 
             # Calculate CTR (avoid division by zero)
             ctr = (clicks / impressions * 100) if impressions > 0 else 0
-
-            # Get the original URL for reference
-            original_url = url_cache.get(short_id)
 
             stats.append({
                 'short_id': short_id,
@@ -378,6 +502,64 @@ def get_ctr_stats():
             'success': False,
             'error': str(e)
         }), 500
+
+async def shorten_url_async(original_url, host_url=None, redis_client=None):
+    """
+    Async version of shorten_url for use with async Redis clients.
+    Creates a shortened URL for the original URL.
+    Returns a tuple containing the path component and full URL.
+    Also initializes tracking metrics for the URL.
+    Uses Redis for persistent storage with 30-day expiration.
+    """
+    # Generate a short unique ID
+    short_id = str(uuid.uuid4())[:8]
+
+    # Store the original URL in Redis with 30-day expiration
+    if redis_client:
+        try:
+            # Store original URL
+            await redis_client.setex(f"url:{short_id}", 86400 * 30, original_url)
+            
+            # Initialize or increment impressions
+            current_impressions = await redis_client.get(f"impressions:{short_id}")
+            if current_impressions is None:
+                await redis_client.setex(f"impressions:{short_id}", 86400 * 30, "1")
+            else:
+                await redis_client.incr(f"impressions:{short_id}")
+                await redis_client.expire(f"impressions:{short_id}", 86400 * 30)
+            
+            # Initialize clicks if not exists
+            if not await redis_client.exists(f"clicks:{short_id}"):
+                await redis_client.setex(f"clicks:{short_id}", 86400 * 30, "0")
+                
+        except Exception as e:
+            logging.error(f"Redis error in shorten_url_async: {e}. Falling back to in-memory cache.")
+            # Fallback to in-memory cache if Redis fails
+            url_cache[short_id] = original_url
+            url_impressions_cache[short_id] = url_impressions_cache.get(short_id, 0) + 1
+            if short_id not in url_clicks_cache:
+                url_clicks_cache[short_id] = 0
+    else:
+        # Fallback to in-memory cache if Redis is not available
+        url_cache[short_id] = original_url
+        url_impressions_cache[short_id] = url_impressions_cache.get(short_id, 0) + 1
+        if short_id not in url_clicks_cache:
+            url_clicks_cache[short_id] = 0
+
+    # Create short URL path
+    short_path = f"/r/{short_id}"
+
+    # For FastAPI compatibility, use provided host_url or fallback to path only
+    if host_url:
+        return host_url.rstrip('/') + short_path
+    else:
+        try:
+            # Try to get Flask request context if available
+            from flask import request
+            return request.host_url.rstrip('/') + short_path
+        except (RuntimeError, ImportError):
+            # Fallback to just the path for FastAPI or when no request context
+            return short_path
 
 def remove_special_chars(text):
     """Normalize text for search by removing accents but keeping letters"""
@@ -425,7 +607,7 @@ async def get_article_stats_service(db: Session) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def search_term_service(query: str, db: Session, generate_summary: bool = False, system_prompt: Optional[str] = None) -> Dict[str, Any]:
+async def search_term_service(query: str, db: Session, generate_summary: bool = False, system_prompt: Optional[str] = None, redis_client=None) -> Dict[str, Any]:
     """FastAPI-compatible version of search_term function - EXACTLY equal to original"""
     try:
         if query:
@@ -537,8 +719,11 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
 
         results = []
         for article in similar_articles:
-            # Create shortened URL - simplified for FastAPI
-            short_url = f"/admin/articles/{article.id}"
+            # Create shortened URL using Redis-backed URL shortening
+            if redis_client:
+                short_url = await shorten_url_async(article.url, redis_client=redis_client)
+            else:
+                short_url = shorten_url(article.url, redis_client=redis_client)
 
             # Parse keywords from PostgreSQL array format to Python list
             keywords = []
@@ -603,7 +788,7 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
             'error': str(e)
         }
 
-async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
+async def search_articles_service(query: str, db: Session, redis_client=None) -> Dict[str, Any]:
     """FastAPI-compatible version of search_articles function"""
     try:
         if not query:
@@ -631,13 +816,13 @@ async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
         ).all()
 
         results = []
+        
         for article, similarity_score in similar_articles:
-            # Create shortened URL with error handling for FastAPI compatibility
-            try:
-                short_url = shorten_url(article.url)
-            except RuntimeError:
-                # Fallback to simple path when Flask request context is not available
-                short_url = f"/admin/articles/{article.id}"
+            # Create shortened URL using Redis-backed URL shortening
+            if redis_client:
+                short_url = await shorten_url_async(article.url, redis_client=redis_client)
+            else:
+                short_url = shorten_url(article.url, redis_client=redis_client)
 
             # Parse keywords from PostgreSQL array format to Python list
             keywords = []

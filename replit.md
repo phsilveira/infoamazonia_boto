@@ -83,6 +83,12 @@ Key deployment considerations:
 ## Changelog
 
 Changelog:
+- July 6, 2025: Enhanced URL shortening with Redis support
+  - Added Redis-backed URL storage with 30-day expiration
+  - Implemented both sync and async versions of shorten_url function
+  - Added FastAPI route handler for URL redirects (/r/<short_id>)
+  - Enhanced CTR tracking with Redis persistence
+  - Maintained fallback to in-memory cache for reliability
 - June 17, 2025. Initial setup
 
 ## User Preferences

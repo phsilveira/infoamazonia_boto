@@ -225,7 +225,8 @@ async def search_term(
         query=search_data.query,
         db=db,
         generate_summary=search_data.generate_summary,
-        system_prompt=search_data.system_prompt
+        system_prompt=search_data.system_prompt,
+        redis_client=getattr(request.app.state, 'redis', None)
     )
 
 
@@ -294,4 +295,4 @@ async def search_articles_api(
     db: Session = Depends(get_db)
 ):
     """Search articles with query parameter"""
-    return await search_articles_service(search_data.query, db)
+    return await search_articles_service(search_data.query, db, redis_client=getattr(request.app.state, 'redis', None))
