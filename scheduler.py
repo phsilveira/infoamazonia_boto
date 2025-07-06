@@ -48,15 +48,31 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
             User.schedule == schedule_type
         ).all()
 
-        # Get news based on API endpoint
+        # Get news for the specified period
+        date_to = datetime.now().strftime('%Y-%m-%d')
+        date_from = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+
+        # Get news based on ingestion process
         if use_ingestion_api:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                response = await client.post(
-                    f'{settings.SEARCH_BASE_URL}/api/v1/ingestion/download-articles',
-                    headers={'accept': 'application/json'}
+            try:
+                logger.info("Starting news ingestion from sources...")
+                # Call download_news_from_sources function directly
+                await download_news_from_sources()
+                logger.info("News ingestion completed successfully")
+                
+                # After ingesting news, get the latest articles
+                news_data = await list_articles_service(
+                    db=db,
+                    page=1,
+                    date_from=date_from,
+                    date_to=date_to,
+                    redis_client=redis_client
                 )
-                news_data = response.json()
-                articles = news_data.get('articles', []) if news_data.get('success') else []
+                articles = news_data.get('articles', [])
+                
+            except Exception as e:
+                logger.error(f"Error during news ingestion: {str(e)}")
+                articles = []
 
         if not active_users:
             logger.info(f"No active users with {schedule_type} schedule found")
@@ -68,10 +84,6 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
         
         try:
             if not use_ingestion_api:
-                # Get news for the specified period using service directly
-                date_to = datetime.now().strftime('%Y-%m-%d')
-                date_from = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
-
                 # Use the list_articles_service directly instead of HTTP request
                 news_data = await list_articles_service(
                     db=db,
