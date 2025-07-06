@@ -8,6 +8,7 @@ from database import get_db
 from models import UserInteraction, Location, Subject, User, Message # Added
 from datetime import datetime, timedelta
 from config import settings
+from services.search import search_term_service
 
 logger = logging.getLogger(__name__)
 
@@ -405,15 +406,10 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
     """Handle the term info state logic"""
     db = next(get_db())
     try:
-        import httpx
-        api_url = f"{settings.SEARCH_BASE_URL}/api/v1/search/term"
-        payload = {"query": message, "generate_summary": True}
+        # Use the search service directly instead of making HTTP request
+        data = await search_term_service(query=message, db=db, generate_summary=True, redis_client=None)
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(api_url, json=payload)
-            data = response.json()
-
-        if data.get("success") and data.get("summary") and int(data.get('count')) > 0:
+        if data.get("success") and data.get("summary") and int(data.get('count', 0)) > 0:
             # Get user if exists
             user = chatbot.get_user(phone_number)
             user_id = user.id if user else None
