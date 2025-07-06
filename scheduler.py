@@ -11,6 +11,7 @@ from services.whatsapp import send_message
 import httpx
 from typing import List, Dict
 from config import get_redis, settings
+from services.search import list_articles_service
 
 # Configure timezone
 SP_TIMEZONE = timezone('America/Sao_Paulo')
@@ -67,22 +68,19 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
         
         try:
             if not use_ingestion_api:
-                # Get news for the specified period
+                # Get news for the specified period using service directly
                 date_to = datetime.now().strftime('%Y-%m-%d')
                 date_from = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
 
-                headers = {
-                    'accept': 'application/json'
-                }
-
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(
-                        settings.ARTICLES_API_URL,
-                        params={'date_from': date_from, 'date_to': date_to},
-                        headers=headers
-                    )
-                    news_data = response.json()
-                    articles = news_data.get('articles', [])
+                # Use the list_articles_service directly instead of HTTP request
+                news_data = await list_articles_service(
+                    db=db,
+                    page=1,
+                    date_from=date_from,
+                    date_to=date_to,
+                    redis_client=redis_client
+                )
+                articles = news_data.get('articles', [])
         except Exception as e:
             error_msg = f"Error during news fetching for {schedule_type}: {str(e)}"
             logger.error(error_msg)

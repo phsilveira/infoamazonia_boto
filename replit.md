@@ -83,6 +83,11 @@ Key deployment considerations:
 ## Changelog
 
 Changelog:
+- July 6, 2025: Refactored scheduler.py to use direct service calls
+  - Modified send_news_template function to use list_articles_service directly instead of HTTP requests
+  - Improved performance and reliability by eliminating internal HTTP calls in scheduler
+  - Fixed Redis async operation warnings by using shorten_url_async in list_articles_service
+  - Enhanced error handling and reduced network overhead in scheduled tasks
 - July 6, 2025: Optimized WhatsApp handler service calls
   - Modified handle_term_info_state to use search_term_service directly instead of HTTP requests
   - Modified handle_article_summary_state to use search_articles_service directly instead of HTTP requests

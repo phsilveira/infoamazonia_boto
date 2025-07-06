@@ -1089,7 +1089,7 @@ async def list_articles_service(
             formatted_articles.append({
                 "id": str(article.id),
                 "title": article.title or "",
-                "url": shorten_url(article.url or "", redis_client=redis_client),
+                "url": await shorten_url_async(article.url or "", redis_client=redis_client),
                 "published_date": article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
                 "author": article.author,
                 "description": article.description,
