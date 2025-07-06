@@ -13,6 +13,7 @@ import urllib.parse
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from services.embeddings import generate_embedding, generate_completion, generate_article_summary
+from services.redis_helper import RedisHelper
 
 # Import for compatibility with existing Flask routes
 try:
@@ -30,37 +31,53 @@ url_cache = TTLCache(maxsize=500, ttl=86400 * 30)  # 30 days cache
 url_impressions_cache = TTLCache(maxsize=1000, ttl=86400 * 30)  # 30 days cache
 url_clicks_cache = TTLCache(maxsize=1000, ttl=86400 * 30)  # 30 days cache
 
-def shorten_url(original_url, host_url=None):
+def shorten_url(original_url, request=None):
     """
     Creates a shortened URL for the original URL.
-    Returns a tuple containing the path component and full URL.
+    Returns a shortened URL path.
     Also initializes tracking metrics for the URL.
     """
     # Generate a short unique ID
     short_id = str(uuid.uuid4())[:8]
-
-    # Store the original URL in the cache
+    
+    # Always fallback to cache system for Flask compatibility
     url_cache[short_id] = original_url
-
-    # Initialize metrics for this URL
     url_impressions_cache[short_id] = url_impressions_cache.get(short_id, 0) + 1
     if short_id not in url_clicks_cache:
         url_clicks_cache[short_id] = 0
 
     # Create short URL path
     short_path = f"/r/{short_id}"
+    
+    return short_path
 
-    # For FastAPI compatibility, use provided host_url or fallback to path only
-    if host_url:
-        return host_url.rstrip('/') + short_path
+async def shorten_url_async(original_url, request: Request):
+    """
+    Creates a shortened URL for the original URL using Redis (async version).
+    Returns a shortened URL path.
+    Also initializes tracking metrics for the URL.
+    """
+    # Generate a short unique ID
+    short_id = str(uuid.uuid4())[:8]
+    
+    # Store the original URL in Redis with 30-day expiration
+    await RedisHelper.set_value(f"url:{short_id}", original_url, request, expire=86400 * 30)
+    
+    # Initialize metrics for this URL
+    current_impressions = await RedisHelper.get_value(f"impressions:{short_id}", request)
+    if current_impressions is None:
+        await RedisHelper.set_value(f"impressions:{short_id}", 1, request, expire=86400 * 30)
     else:
-        try:
-            # Try to get Flask request context if available
-            from flask import request
-            return request.host_url.rstrip('/') + short_path
-        except (RuntimeError, ImportError):
-            # Fallback to just the path for FastAPI or when no request context
-            return short_path
+        await RedisHelper.increment(f"impressions:{short_id}", request, expire=86400 * 30)
+    
+    # Initialize clicks if not exists
+    if not await RedisHelper.exists(f"clicks:{short_id}", request):
+        await RedisHelper.set_value(f"clicks:{short_id}", 0, request, expire=86400 * 30)
+
+    # Create short URL path
+    short_path = f"/r/{short_id}"
+    
+    return short_path
 
 def cache_search_results(func):
     @wraps(func)
@@ -137,7 +154,7 @@ def search_articles():
 
         results = []
         for article, similarity_score in similar_articles:
-            # Create shortened URL
+            # Create shortened URL (sync version for Flask compatibility)
             short_url = shorten_url(article.url)
 
             results.append({
@@ -681,6 +698,192 @@ async def search_articles_service(query: str, db: Session) -> Dict[str, Any]:
             'success': False,
             'error': str(e)
         }
+
+# FastAPI service functions (async versions)
+async def search_term_service_async(query: str, db, request: Request, generate_summary: bool = False, system_prompt: Optional[str] = None):
+    """
+    Async version of search_term for FastAPI endpoints with Redis URL shortening
+    """
+    try:
+        if query:
+            # Normalize the string to lowercase and remove special characters
+            query = ''.join(e for e in query if e.isalnum() or e.isspace()).lower()
+            query = remove_special_chars(query)
+        if not query:
+            return {'success': False, 'error': 'Query is required'}
+
+        # Generate embedding for query
+        query_embedding = generate_embedding(query)
+        query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
+
+        # Perform vector similarity search using proper pgvector syntax
+        semantic_sql_query = f"""
+            SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                   (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
+            FROM articles
+            WHERE (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.84
+            ORDER BY similarity desc
+        """
+
+        try:
+            similar_articles = db.execute(text(semantic_sql_query)).fetchall()
+        except Exception as e:
+            logging.error(f"Vector search error: {e}")
+            similar_articles = []
+
+        results = []
+        for row in similar_articles:
+            # Create shortened URL using async version
+            short_url = await shorten_url_async(row.url, request)
+
+            # Parse keywords from PostgreSQL array format to Python list
+            keywords = []
+            if row.keywords:
+                try:
+                    keywords_str = row.keywords.strip('{}')
+                    if keywords_str:
+                        keywords = [k.strip().strip('"') for k in keywords_str.split(',')]
+                except Exception as e:
+                    logging.warning(f"Failed to parse keywords '{row.keywords}': {e}")
+                    keywords = []
+
+            results.append({
+                'id': str(row.id),
+                'title': row.title,
+                'url': short_url,
+                'short_url': short_url,
+                'published_date': row.published_date.strftime('%Y-%m-%d') if row.published_date else None,
+                'author': row.author,
+                'description': row.description,
+                'summary_content': generate_article_summary(row.title, row.summary_content, short_url),
+                'key_words': keywords,
+                'similarity': float(row.similarity)
+            })
+
+        # Prepare response data
+        response_data = {
+            'success': True,
+            'results': results,
+            'count': len(results)
+        }
+
+        # Generate AI summary if requested
+        if generate_summary and results:
+            summary = await generate_search_summary_async(results, query, system_prompt)
+            response_data['summary'] = summary
+
+        return response_data
+
+    except Exception as e:
+        logging.error(f"Article search error: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+async def search_articles_service_async(query: str, db, request: Request):
+    """
+    Async version of search_articles for FastAPI endpoints with Redis URL shortening
+    """
+    try:
+        if not query:
+            return {'success': False, 'error': 'Query is required'}
+
+        # Generate embedding for query
+        query_embedding = generate_embedding(query)
+        query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
+
+        # Perform vector similarity search
+        semantic_sql_query = f"""
+            SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
+                   (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
+            FROM articles
+            WHERE (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.75
+            ORDER BY similarity DESC
+            LIMIT 20
+        """
+
+        try:
+            similar_articles = db.execute(text(semantic_sql_query)).fetchall()
+        except Exception as e:
+            logging.error(f"Vector search error: {e}")
+            similar_articles = []
+
+        results = []
+        for row in similar_articles:
+            # Create shortened URL using async version
+            short_url = await shorten_url_async(row.url, request)
+
+            # Parse keywords
+            keywords = []
+            if row.keywords:
+                try:
+                    keywords_str = row.keywords.strip('{}')
+                    if keywords_str:
+                        keywords = [k.strip().strip('"') for k in keywords_str.split(',')]
+                except Exception as e:
+                    logging.warning(f"Failed to parse keywords '{row.keywords}': {e}")
+                    keywords = []
+
+            results.append({
+                'id': str(row.id),
+                'title': row.title,
+                'url': short_url,
+                'short_url': short_url,
+                'published_date': row.published_date.strftime('%Y-%m-%d') if row.published_date else None,
+                'author': row.author,
+                'description': row.description,
+                'summary_content': row.summary_content,
+                'key_words': keywords,
+                'similarity': float(row.similarity)
+            })
+
+        return {
+            'success': True,
+            'results': results,
+            'count': len(results)
+        }
+
+    except Exception as e:
+        logging.error(f"Search articles error: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+async def generate_search_summary_async(results: list, query: str, system_prompt: Optional[str] = None):
+    """
+    Generate AI summary of search results (async version)
+    """
+    try:
+        if not results:
+            return None
+
+        # Prepare articles text for summarization
+        articles_text = "\n\n".join([
+            f"Título: {result['title']}\nDescrição: {result.get('description', 'N/A')}\nResumo: {result.get('summary_content', 'N/A')}"
+            for result in results[:5]  # Limit to first 5 results
+        ])
+
+        default_prompt = f"📖 Aqui está o que descobrimos sobre o termo solicitado '{query}'"
+        
+        if system_prompt:
+            completion = generate_completion(system_prompt, articles_text)
+        else:
+            completion = generate_completion(
+                "Gere um resumo em português dos seguintes artigos relacionados ao termo pesquisado. "
+                "Seja conciso e informativo. Máximo 200 palavras.",
+                articles_text
+            )
+        
+        if completion and completion.strip():
+            return default_prompt + ":\n\n" + completion
+        else:
+            return default_prompt
+            
+    except Exception as e:
+        logging.error(f"Error generating search summary: {e}")
+        return f"📖 Aqui está o que descobrimos sobre o termo solicitado '{query}'"
 
 @search_bp.route('/r/<short_id>')
 def redirect_to_article(short_id):

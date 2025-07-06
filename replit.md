@@ -84,6 +84,13 @@ Key deployment considerations:
 
 Changelog:
 - June 17, 2025. Initial setup
+- July 6, 2025. Added Redis-based URL shortening and CTR analytics system
+  - Refactored shorten_url function to use Redis with 30-day expiration
+  - Created RedisHelper utility for async Redis operations
+  - Added CTR statistics tracking (impressions/clicks)
+  - Added new API endpoints: /api/ctr-stats and /r/{short_id}
+  - Added FastAPI service functions for async URL shortening
+  - Enhanced analytics with UTM parameter tracking
 
 ## User Preferences
 
