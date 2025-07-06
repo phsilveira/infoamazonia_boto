@@ -113,6 +113,27 @@ class CTRStatsResponse(BaseModel):
     pagination: Optional[Dict[str, Any]] = Field(None, description="Pagination information")
     error: Optional[str] = Field(None, description="Error message if operation failed")
 
+class ArticleItem(BaseModel):
+    """Individual article item model"""
+    id: str = Field(..., description="Unique article identifier")
+    title: str = Field(..., description="Article title")
+    url: str = Field(..., description="Shortened URL for the article")
+    published_date: Optional[str] = Field(None, description="Publication date in YYYY-MM-DD format")
+    author: Optional[str] = Field(None, description="Article author name")
+    description: Optional[str] = Field(None, description="Article description or excerpt")
+    summary_content: Optional[str] = Field(None, description="AI-generated summary of article content")
+    news_source: Optional[str] = Field(None, description="News source name")
+    language: Optional[str] = Field(None, description="Article language")
+
+class ArticleListResponse(BaseModel):
+    """Response model for article list operations"""
+    success: bool = Field(..., description="Whether the operation was successful")
+    articles: List[ArticleItem] = Field(default=[], description="List of articles")
+    total: int = Field(..., description="Total number of articles matching the criteria")
+    pages: int = Field(..., description="Total number of pages")
+    current_page: int = Field(..., description="Current page number")
+    error: Optional[str] = Field(None, description="Error message if operation failed")
+
 @router.get(
     "/api/article-stats",
     response_model=ArticleStatsResponse,
@@ -408,3 +429,188 @@ async def get_ctr_stats(
     redis_client = getattr(request.app.state, 'redis', None)
     
     return await get_ctr_stats_service(redis_client, page=page, page_size=page_size)
+
+@router.get(
+    "/api/articles",
+    response_model=ArticleListResponse,
+    summary="List Articles with Filters",
+    description="Retrieve a paginated list of articles with optional filtering by search query, date range, and summary content",
+    responses={
+        200: {
+            "description": "Articles retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "articles": [
+                            {
+                                "id": "123e4567-e89b-12d3-a456-426614174000",
+                                "title": "Understanding Climate Change in the Amazon",
+                                "url": "/r/abc123de",
+                                "published_date": "2024-06-10",
+                                "author": "Dr. Maria Silva",
+                                "description": "A comprehensive study of climate impacts in the Amazon rainforest",
+                                "summary_content": "This article explores the various effects of climate change on the Amazon ecosystem...",
+                                "news_source": "Environmental Science Journal",
+                                "language": "pt"
+                            },
+                            {
+                                "id": "456e7890-e12b-34c5-d678-901234567890",
+                                "title": "New Species Discovery in Brazil",
+                                "url": "/r/def456gh",
+                                "published_date": "2024-06-09",
+                                "author": "Prof. João Santos",
+                                "description": "Scientists discover new species in the Amazon basin",
+                                "summary_content": "Researchers have identified a previously unknown species of bird...",
+                                "news_source": "Biology Today",
+                                "language": "pt"
+                            }
+                        ],
+                        "total": 245,
+                        "pages": 25,
+                        "current_page": 1
+                    }
+                }
+            }
+        },
+        302: {"description": "Redirect to login - authentication required"},
+        400: {
+            "description": "Bad request - invalid parameters",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": False,
+                        "error": "Invalid date format. Use YYYY-MM-DD format."
+                    }
+                }
+            }
+        },
+        500: {
+            "description": "Internal server error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": False,
+                        "error": "Database connection failed"
+                    }
+                }
+            }
+        }
+    },
+    tags=["Articles"]
+)
+async def list_articles_api(
+    request: Request,
+    page: int = Query(1, ge=1, description="Page number (starting from 1)"),
+    search: str = Query(None, description="Search query to filter articles by title"),
+    date_from: str = Query(None, description="Start date filter in YYYY-MM-DD format"),
+    date_to: str = Query(None, description="End date filter in YYYY-MM-DD format"),
+    summary: str = Query(None, description="Search query to filter articles by summary content"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve a paginated list of articles with comprehensive filtering options.
+    
+    This endpoint provides flexible article listing capabilities:
+    - **Pagination**: Navigate through large article collections
+    - **Search Filter**: Find articles by title using case-insensitive search
+    - **Date Range**: Filter articles by publication date range
+    - **Summary Search**: Search within article summary content
+    - **Sorting**: Articles are sorted by publication date (newest first)
+    
+    All filters can be combined for precise article discovery.
+    Each article includes shortened URLs for tracking and analytics.
+    
+    Requires authentication via session token.
+    """
+    from models import Article
+    from search import shorten_url
+    from datetime import datetime
+    
+    try:
+        per_page = 10  # Number of items per page
+        
+        # Base query
+        query = db.query(Article)
+        
+        # Apply search filter if search query exists
+        if search:
+            search_filter = f"%{search.strip()}%"
+            query = query.filter(Article.title.ilike(search_filter))
+        
+        # Apply date filters if they exist
+        if date_from:
+            try:
+                date_from_parsed = datetime.strptime(date_from, '%Y-%m-%d')
+                query = query.filter(Article.published_date >= date_from_parsed)
+            except ValueError:
+                return ArticleListResponse(
+                    success=False,
+                    articles=[],
+                    total=0,
+                    pages=0,
+                    current_page=page,
+                    error="Invalid date_from format. Use YYYY-MM-DD format."
+                )
+        
+        if date_to:
+            try:
+                date_to_parsed = datetime.strptime(date_to, '%Y-%m-%d')
+                query = query.filter(Article.published_date <= date_to_parsed)
+            except ValueError:
+                return ArticleListResponse(
+                    success=False,
+                    articles=[],
+                    total=0,
+                    pages=0,
+                    current_page=page,
+                    error="Invalid date_to format. Use YYYY-MM-DD format."
+                )
+        
+        # Apply summary content filter if it exists
+        if summary:
+            summary_filter = f"%{summary.strip()}%"
+            query = query.filter(Article.summary_content.ilike(summary_filter))
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Calculate total pages
+        pages = (total + per_page - 1) // per_page
+        
+        # Apply pagination and ordering
+        articles = query.order_by(Article.published_date.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        
+        # Format articles for response
+        formatted_articles = []
+        for article in articles:
+            formatted_articles.append(ArticleItem(
+                id=str(article.id),
+                title=article.title,
+                url=shorten_url(article.url),
+                published_date=article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
+                author=article.author,
+                description=article.description,
+                summary_content=article.summary_content,
+                news_source=article.news_source,
+                language=article.language
+            ))
+        
+        return ArticleListResponse(
+            success=True,
+            articles=formatted_articles,
+            total=total,
+            pages=pages,
+            current_page=page
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in list_articles_api: {str(e)}")
+        return ArticleListResponse(
+            success=False,
+            articles=[],
+            total=0,
+            pages=0,
+            current_page=page,
+            error=f"Internal server error: {str(e)}"
+        )
