@@ -6,9 +6,7 @@ from database import get_db
 import logging
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-from services.search import get_article_stats_service, search_term_service, search_articles_service, search_term_service_async, search_articles_service_async
-from services.redis_helper import RedisHelper
-import urllib.parse
+from services.search import get_article_stats_service, search_term_service, search_articles_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -90,29 +88,6 @@ class ArticleSearchResponse(BaseModel):
     results: List[SearchResult] = Field(default=[], description="List of matching articles")
     count: int = Field(default=0, description="Number of articles found")
     error: Optional[str] = Field(None, description="Error message if search failed")
-
-class CTRStatItem(BaseModel):
-    """Individual CTR statistics item"""
-    short_id: str = Field(..., description="Short URL identifier")
-    short_url: str = Field(..., description="Short URL path")
-    original_url: str = Field(..., description="Original article URL")
-    impressions: int = Field(..., description="Number of times the link was shown")
-    clicks: int = Field(..., description="Number of times the link was clicked")
-    ctr: float = Field(..., description="Click-through rate as percentage")
-
-class CTRTotals(BaseModel):
-    """Overall CTR statistics totals"""
-    total_urls: int = Field(..., description="Total number of tracked URLs")
-    total_impressions: int = Field(..., description="Total impressions across all URLs")
-    total_clicks: int = Field(..., description="Total clicks across all URLs")
-    overall_ctr: float = Field(..., description="Overall click-through rate as percentage")
-
-class CTRResponse(BaseModel):
-    """Response model for CTR statistics"""
-    success: bool = Field(..., description="Whether the operation was successful")
-    stats: List[CTRStatItem] = Field(default=[], description="List of CTR statistics")
-    totals: CTRTotals = Field(..., description="Overall statistics totals")
-    error: Optional[str] = Field(None, description="Error message if operation failed")
 
 @router.get(
     "/api/article-stats",
@@ -246,14 +221,12 @@ async def search_term(
     
     Requires authentication via session token.
     """
-    result = await search_term_service_async(
+    return await search_term_service(
         query=search_data.query,
         db=db,
-        request=request,
         generate_summary=search_data.generate_summary,
         system_prompt=search_data.system_prompt
     )
-    return SearchResponse(**result)
 
 
 @router.post(
@@ -321,181 +294,4 @@ async def search_articles_api(
     db: Session = Depends(get_db)
 ):
     """Search articles with query parameter"""
-    result = await search_articles_service_async(search_data.query, db, request)
-    return ArticleSearchResponse(**result)
-
-
-@router.get(
-    "/api/ctr-stats",
-    response_model=CTRResponse,
-    summary="Get CTR Statistics",
-    description="Retrieve comprehensive click-through rate statistics for all shortened URLs",
-    responses={
-        200: {
-            "description": "CTR statistics retrieved successfully",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": True,
-                        "stats": [
-                            {
-                                "short_id": "abc123",
-                                "short_url": "/r/abc123",
-                                "original_url": "https://example.com/article/123",
-                                "impressions": 100,
-                                "clicks": 15,
-                                "ctr": 15.0
-                            }
-                        ],
-                        "totals": {
-                            "total_urls": 1,
-                            "total_impressions": 100,
-                            "total_clicks": 15,
-                            "overall_ctr": 15.0
-                        }
-                    }
-                }
-            }
-        },
-        500: {"description": "Internal server error"}
-    },
-    tags=["Analytics"]
-)
-async def get_ctr_stats(request: Request):
-    """
-    Get comprehensive Click-Through Rate statistics for all shortened URLs.
-    
-    This endpoint provides detailed analytics for URL shortening performance:
-    - **Individual URL Stats**: Impressions, clicks, and CTR for each shortened URL
-    - **Overall Metrics**: Total impressions, clicks, and aggregate CTR
-    - **Performance Ranking**: URLs sorted by CTR performance
-    
-    All data is retrieved from Redis cache with 30-day retention.
-    Requires authentication via session token.
-    """
-    try:
-        # Get all impression keys from Redis
-        impression_keys = await RedisHelper.get_keys_pattern("impressions:*", request)
-        stats = []
-        
-        for key in impression_keys:
-            short_id = key.replace("impressions:", "")
-            impressions = await RedisHelper.get_value(f"impressions:{short_id}", request) or 0
-            clicks = await RedisHelper.get_value(f"clicks:{short_id}", request) or 0
-            
-            # Convert to integers if they're strings
-            impressions = int(impressions) if impressions else 0
-            clicks = int(clicks) if clicks else 0
-            
-            # Calculate CTR (avoid division by zero)
-            ctr = (clicks / impressions * 100) if impressions > 0 else 0
-            
-            # Get the original URL for reference
-            original_url = await RedisHelper.get_value(f"url:{short_id}", request)
-            
-            if original_url:  # Only include if URL still exists
-                stats.append(CTRStatItem(
-                    short_id=short_id,
-                    short_url=f"/r/{short_id}",
-                    original_url=original_url,
-                    impressions=impressions,
-                    clicks=clicks,
-                    ctr=round(ctr, 2)  # Round to 2 decimal places
-                ))
-        
-        # Sort by CTR (highest first)
-        stats.sort(key=lambda x: x.ctr, reverse=True)
-        
-        # Calculate overall totals
-        total_impressions = sum(item.impressions for item in stats)
-        total_clicks = sum(item.clicks for item in stats)
-        overall_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
-        
-        totals = CTRTotals(
-            total_urls=len(stats),
-            total_impressions=total_impressions,
-            total_clicks=total_clicks,
-            overall_ctr=round(overall_ctr, 2)
-        )
-        
-        return CTRResponse(
-            success=True,
-            stats=stats,
-            totals=totals,
-            error=None
-        )
-    except Exception as e:
-        logger.error(f"Error fetching CTR stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get(
-    "/r/{short_id}",
-    summary="Redirect Shortened URL",
-    description="Redirect to original article URL with UTM tracking and click analytics",
-    responses={
-        302: {"description": "Redirect to original URL with UTM parameters"},
-        404: {"description": "Short URL not found or expired"},
-        500: {"description": "Internal server error"}
-    },
-    tags=["URL Shortening"]
-)
-async def redirect_to_article(short_id: str, request: Request):
-    """
-    Redirect to the original article URL with UTM tracking parameters.
-    
-    This endpoint handles URL shortening redirection with analytics tracking:
-    - **Click Tracking**: Increments click counter for CTR analysis
-    - **UTM Parameters**: Adds WhatsApp and news tracking parameters
-    - **Expiration Handling**: Returns 404 for expired or invalid links
-    
-    The redirection preserves existing query parameters while adding:
-    - utmSource: whatsapp
-    - utmMedium: news
-    
-    Link expiration is handled automatically by Redis TTL (30 days).
-    """
-    try:
-        # Get the original URL from Redis
-        original_url = await RedisHelper.get_value(f"url:{short_id}", request)
-        
-        if not original_url:
-            # Handle case when URL is not found (expired or invalid ID)
-            raise HTTPException(status_code=404, detail="Link expired or not found")
-        
-        # Track the click
-        await RedisHelper.increment(f"clicks:{short_id}", request, expire=86400 * 30)
-        
-        # Parse the original URL
-        parsed_url = urllib.parse.urlparse(original_url)
-        
-        # Get existing query parameters
-        query_params = dict(urllib.parse.parse_qsl(parsed_url.query))
-        
-        # Add UTM parameters
-        query_params.update({
-            "utmSource": "whatsapp",
-            "utmMedium": "news"
-        })
-        
-        # Build the new query string
-        new_query = urllib.parse.urlencode(query_params)
-        
-        # Construct the new URL with UTM parameters
-        new_url = urllib.parse.urlunparse((
-            parsed_url.scheme,
-            parsed_url.netloc,
-            parsed_url.path,
-            parsed_url.params,
-            new_query,
-            parsed_url.fragment
-        ))
-        
-        # Redirect to the new URL
-        return RedirectResponse(url=new_url, status_code=302)
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error redirecting short URL {short_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+    return await search_articles_service(search_data.query, db)
