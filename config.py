@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     ARTICLES_API_URL: str = os.getenv("ARTICLES_API_URL", "https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/articles/list")
     SEARCH_BASE_URL: str = os.getenv("SEARCH_BASE_URL", "https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev")
 
+    # InfoAmazonia Host url
+    HOST_URL: str = os.getenv("HOST_URL", "https://boto.infoamazonia.org/")
+
     class Config:
         case_sensitive = True
         env_file = ".env"

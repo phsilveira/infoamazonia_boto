@@ -4,7 +4,6 @@ from app import db
 from sqlalchemy import or_
 from datetime import datetime
 
-from search import shorten_url
 
 article_bp = Blueprint('articles', __name__)
 
@@ -78,7 +77,7 @@ def list_articles():
         return [{
             'id': str(article.id),
             'title': article.title,
-            'url': shorten_url(article.url),
+            'url': article.url,
             'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
             'author': article.author,
             'description': article.description,

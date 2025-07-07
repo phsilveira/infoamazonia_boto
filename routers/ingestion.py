@@ -3,7 +3,7 @@ from services.article_ingestion import ingest_articles
 from services.news import News
 import logging
 from models import Article
-from services.search import shorten_url  # Import Article model to access the newly added articles
+
 
 ingestion_bp = Blueprint('ingestion', __name__)
 
@@ -65,7 +65,7 @@ def download_articles():
             formatted_articles = [{
                 'id': str(article.id),
                 'title': article.title,
-                'url': shorten_url(article.url),
+                'url': article.url,
                 'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
                 'author': article.author,
                 'news_source': article.news_source,

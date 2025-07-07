@@ -13,6 +13,8 @@ import urllib.parse
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from services.embeddings import generate_embedding, generate_completion, generate_article_summary
+from config import settings
+
 
 # Import for compatibility with existing Flask routes
 try:
@@ -216,12 +218,12 @@ def search_articles():
         
         for article, similarity_score in similar_articles:
             # Create shortened URL
-            short_url = shorten_url(article.url, redis_client=redis_client)
+            short_url = shorten_url(article.url, settings.HOST_URL, redis_client=redis_client)
 
             results.append({
                 'id': str(article.id),
                 'title': article.title,
-                'url': short_url,
+                'url': article.url,
                 'short_url': short_url,  # Add the shortened URL
                 'published_date': article.published_date.strftime('%Y-%m-%-d') if article.published_date else None,
                 'author': article.author,
@@ -331,7 +333,7 @@ def search_term():
         
         for article in similar_articles:
             # Create shortened URL
-            short_url = shorten_url(article.url, redis_client=redis_client)
+            short_url = shorten_url(article.url, settings.HOST_URL, redis_client=redis_client)
 
             results.append({
                 'id': str(article.id),
@@ -825,9 +827,9 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
         for article in similar_articles:
             # Create shortened URL using Redis-backed URL shortening
             if redis_client:
-                short_url = await shorten_url_async(article.url, redis_client=redis_client)
+                short_url = await shorten_url_async(article.url, settings.HOST_URL, redis_client=redis_client)
             else:
-                short_url = shorten_url(article.url, redis_client=redis_client)
+                short_url = shorten_url(article.url, settings.HOST_URL, redis_client=redis_client)
 
             # Parse keywords from PostgreSQL array format to Python list
             keywords = []
@@ -924,9 +926,9 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
         for article, similarity_score in similar_articles:
             # Create shortened URL using Redis-backed URL shortening
             if redis_client:
-                short_url = await shorten_url_async(article.url, redis_client=redis_client)
+                short_url = await shorten_url_async(article.url, settings.HOST_URL, redis_client=redis_client)
             else:
-                short_url = shorten_url(article.url, redis_client=redis_client)
+                short_url = shorten_url(article.url, settings.HOST_URL, redis_client=redis_client)
 
             # Parse keywords from PostgreSQL array format to Python list
             keywords = []
@@ -1089,7 +1091,7 @@ async def list_articles_service(
             formatted_articles.append({
                 "id": str(article.id),
                 "title": article.title or "",
-                "url": await shorten_url_async(article.url or "", redis_client=redis_client),
+                "url": await shorten_url_async(article.url or "", settings.HOST_URL, redis_client=redis_client),
                 "published_date": article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
                 "author": article.author,
                 "description": article.description,
