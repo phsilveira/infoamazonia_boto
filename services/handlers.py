@@ -764,14 +764,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
             return chatbot.state
 
         # Reuse the article summary functionality with the selected title
-        api_url = f"{settings.SEARCH_BASE_URL}/api/v1/search/articles"
-        payload = {"query": selected_title}
-
-        import httpx
-
-        async with httpx.AsyncClient(timeout=50.0) as client:
-            response = await client.post(api_url, json=payload)
-            data = response.json()
+        data = await search_articles_service(query=message, db=db, redis_client=None)
 
         if data.get("success") and data.get('count') > 0:
             # Get user if exists

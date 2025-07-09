@@ -108,13 +108,13 @@ class ChatGPTService:
             logger.error(f"Error generating term summary: {e}")
             raise
 
-    def generate_article_summary(self, title: str, content: str, url: str) -> str:
+    def generate_article_summary(self, title: str, content: str, url: str, news_source: Optional[str] = None) -> str:
         """Generate a summary for an article using OpenAI's chat API."""
         try:
             prompt = prompt_loader.get_prompt('gpt-4.article_summary')
             messages = [
                 {"role": "system", "content": prompt['system']},
-                {"role": "user", "content": f"Title: {title}\n\nContent: {content}\n\nURL: {url}"}
+                {"role": "user", "content": f"Title: {title}\n\nContent: {content}\n\nURL: {url}\n\nNews Source: {news_source}"}
             ]
 
             # Common parameters

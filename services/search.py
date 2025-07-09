@@ -231,7 +231,8 @@ def search_articles():
                 'summary_content': generate_article_summary(
                     article.title, 
                     article.summary_content, 
-                    short_url
+                    short_url,
+                    article.news_source,
                 ),
                 'key_words': article.keywords,
                 'similarity': float(similarity_score)
@@ -951,7 +952,12 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
                 'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
                 'author': article.author,
                 'description': article.description,
-                'summary_content': generate_article_summary(article.title, article.summary_content, short_url),
+                'summary_content': generate_article_summary(
+                    article.title, 
+                    article.summary_content, 
+                    short_url,
+                    article.news_source,
+                ),
                 'key_words': keywords,
                 'similarity': float(similarity_score)
             })
