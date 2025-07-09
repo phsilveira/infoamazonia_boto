@@ -904,7 +904,7 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
         normalized_query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('utf-8').lower()
 
         # Set similarity threshold
-        similarity_threshold = 0.1  # Adjust this value for more or less strict matching
+        similarity_threshold = 0.3  # Adjust this value for more or less strict matching
 
         similar_articles = db.execute(
             select(models.Article, func.similarity(models.Article.title, normalized_query).label('similarity_score'))

@@ -2,6 +2,7 @@
 Embeddings service for FastAPI
 """
 import logging
+from typing import Optional
 from services.chatgpt import ChatGPTService
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,6 @@ def generate_completion(query: str, context: str, system_prompt: str = None) -> 
     """Generate completion using ChatGPT service"""
     return chatgpt_service.generate_completion(query, context, system_prompt)
 
-def generate_article_summary(title: str, content: str, url: str) -> str:
+def generate_article_summary(title: str, content: str, url: str, news_source: Optional[str] = None) -> str:
     """Generate article summary using ChatGPT service"""
     return chatgpt_service.generate_article_summary(title, content, url)

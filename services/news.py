@@ -20,6 +20,7 @@ class News:
                     "api_source": f"{news_source.name.lower().replace(' ', '_')}",
                     "lang": "pt",  # Default to Portuguese, could be made configurable
                     "api_url": f"{news_source.url.rstrip('/')}/wp-json/wp/v2/posts",
+                    "news_source_name": news_source.name
                 }
             ]
         else:
@@ -39,6 +40,7 @@ class News:
         total_apis = len(self.api_sources)
 
         for api in self.api_sources:
+            news_source_name = api.get("news_source_name")
             api_source = api.get("api_source")
             api_url = api.get("api_url")
             lang = api.get("lang")
@@ -69,7 +71,7 @@ class News:
 
                         logging.info(f"API: {api_source}, Page {page}")
                         for item in response.json():
-                            news = self.process_news_item(item, api_source)
+                            news = self.process_news_item(item, api_source, news_source_name)
                             if news and not self.is_duplicate_news(news):
                                 documents.append(news)
                     except requests.exceptions.RequestException as e:
@@ -105,7 +107,7 @@ class News:
                 "message": "No new articles found"
             }
 
-    def process_news_item(self, item, api_source):
+    def process_news_item(self, item, api_source, news_source_name):
         """Process a single news item."""
         news = {}
         meta = item.get("meta")
@@ -113,6 +115,7 @@ class News:
         location_dict = self.process_location(location)
 
         news["success"] = True
+        news["news_source"] = news_source_name
         news["_id"] = f"{api_source}_{item.get('id')}"
         news["collection_date"] = datetime.now(pytz.timezone("America/Sao_Paulo"))
         news["location"] = location_dict
@@ -129,7 +132,6 @@ class News:
             self.check_news_field(schema, news, "articleSection", "Subtopics", [])
             self.check_news_field(schema, news, "keywords", "Keywords", [])
             self.check_news_field(schema, news, "inLanguage", "Language", "")
-            self.set_source(news)
 
             content = item.get('content', {}).get('rendered', '')
             soup = BeautifulSoup(content, 'html.parser')
@@ -252,8 +254,6 @@ class News:
                 news["success"] = False
                 return None
 
-            self.set_source(news)
-
             if news["success"]:
                 self.get_topics(news)
                 return news
@@ -310,16 +310,6 @@ class News:
             ).first()
 
         return existing is not None
-
-    def set_source(self, news):
-        """Set the source of the news item."""
-        if "//infoamazonia.org/" in news["URL"]:
-            news["news_source"] = "infoamazonia.org"
-        elif "//plenamata.eco/" in news["URL"]:
-            news["news_source"] = "plenamata.eco"
-        else:
-            news["news_source"] = ""
-            news["success"] = False
 
     def check_news_field(self, api_dict, news, field, field_name, empty):
         """Check and set a field in the news item."""
