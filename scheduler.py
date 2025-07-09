@@ -56,19 +56,34 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
         if use_ingestion_api:
             try:
                 logger.info("Starting news ingestion from sources...")
-                # Call download_news_from_sources function directly
-                await download_news_from_sources()
+                # Call download_news_from_sources function directly and get newly downloaded article IDs
+                newly_downloaded_article_ids = await download_news_from_sources()
                 logger.info("News ingestion completed successfully")
                 
-                # After ingesting news, get the latest articles
-                news_data = await list_articles_service(
-                    db=db,
-                    page=1,
-                    date_from=date_from,
-                    date_to=date_to,
-                    redis_client=redis_client
-                )
-                articles = news_data.get('articles', [])
+                # Get only the newly downloaded articles
+                if newly_downloaded_article_ids:
+                    from models import Article
+                    db_articles = db.query(Article).filter(Article.id.in_(newly_downloaded_article_ids)).all()
+                    
+                    # Format articles to match the expected structure
+                    articles = []
+                    for article in db_articles:
+                        articles.append({
+                            'id': str(article.id),
+                            'title': article.title,
+                            'url': article.url,
+                            'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
+                            'author': article.author,
+                            'news_source': article.news_source,
+                            'language': article.language,
+                            'topics': article.topics,
+                            'description': article.description,
+                            'summary_content': article.summary_content,
+                        })
+                    logger.info(f"Retrieved {len(articles)} newly downloaded articles")
+                else:
+                    articles = []
+                    logger.info("No new articles were downloaded")
                 
             except Exception as e:
                 logger.error(f"Error during news ingestion: {str(e)}")
@@ -216,9 +231,10 @@ async def send_monthly_news_template():
     await send_news_template('monthly', days_back=30)
 
 async def download_news_from_sources():
-    """Download news from all active news sources"""
+    """Download news from all active news sources and return IDs of newly downloaded articles"""
     db = None
     scheduler_run = None
+    newly_downloaded_article_ids = []
 
     try:
         # Start scheduler run record
@@ -240,13 +256,13 @@ async def download_news_from_sources():
             scheduler_run.end_time = datetime.utcnow()
             scheduler_run.affected_users = 0
             db.commit()
-            return
+            return newly_downloaded_article_ids
 
         total_articles_added = 0
         successful_sources = 0
 
         # Import required classes for article processing
-        from services.article_ingestion import ingest_articles
+        from services.article_ingestion import ingest_articles_with_ids
         from services.news import News
         from models import Article
         import types
@@ -281,9 +297,10 @@ async def download_news_from_sources():
                     result = news.get_news()
                     
                     if result.get('success', False):
-                        # Process and store articles
-                        articles_added = ingest_articles(result.get('news', []))
+                        # Process and store articles, get back the IDs of newly added articles
+                        articles_added, new_article_ids = ingest_articles_with_ids(result.get('news', []))
                         total_articles_added += articles_added
+                        newly_downloaded_article_ids.extend(new_article_ids)
                         successful_sources += 1
                         
                         logger.info(f"Successfully processed {articles_added} articles from {source.name}")
@@ -306,6 +323,7 @@ async def download_news_from_sources():
         db.commit()
 
         logger.info(f"News download completed: {total_articles_added} articles added from {successful_sources}/{len(active_sources)} sources")
+        return newly_downloaded_article_ids
 
     except Exception as e:
         error_msg = f"Error in news download: {str(e)}"
@@ -317,6 +335,7 @@ async def download_news_from_sources():
             scheduler_run.end_time = datetime.utcnow()
             scheduler_run.error_message = error_msg
             db.commit()
+        return newly_downloaded_article_ids
     finally:
         if db:
             db.close()

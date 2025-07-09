@@ -63,18 +63,24 @@ def process_article(news_item: Dict[str, Any]):
 
 def ingest_articles(news_items: List[Dict[str, Any]]) -> int:
     """Ingest multiple articles into the database with proper error handling"""
+    articles_added, _ = ingest_articles_with_ids(news_items)
+    return articles_added
+
+def ingest_articles_with_ids(news_items: List[Dict[str, Any]]) -> tuple[int, List[int]]:
+    """Ingest multiple articles into the database and return count and IDs of newly added articles"""
     # Import at function scope to allow dependency injection via sys.modules
     import sys
     
     # Get db from app module (injected by admin.py)
     if 'app' not in sys.modules:
         logger.error("app module not found. Make sure it's injected before calling this function.")
-        return 0
+        return 0, []
         
     from app import db
     from models import Article
     
     articles_added = 0
+    newly_added_article_ids = []
     errors = []
 
     logger.info(f"Starting ingestion of {len(news_items)} articles")
@@ -106,7 +112,10 @@ def ingest_articles(news_items: List[Dict[str, Any]]) -> int:
                 # Commit after each successful article to prevent losing all on error
                 try:
                     db.session.commit()
-                    logger.info(f"Successfully saved article {news_item.get('_id')}")
+                    # Refresh to get the ID
+                    db.session.refresh(article)
+                    newly_added_article_ids.append(article.id)
+                    logger.info(f"Successfully saved article {news_item.get('_id')} with ID {article.id}")
                 except Exception as commit_error:
                     logger.error(f"Error committing article {news_item.get('_id')}: {commit_error}")
                     db.session.rollback()
@@ -123,5 +132,5 @@ def ingest_articles(news_items: List[Dict[str, Any]]) -> int:
     if errors:
         logger.error(f"Encountered {len(errors)} errors during ingestion: {errors}")
 
-    logger.info(f"Ingestion complete. Added {articles_added} new articles")
-    return articles_added
+    logger.info(f"Ingestion complete. Added {articles_added} new articles with IDs: {newly_added_article_ids}")
+    return articles_added, newly_added_article_ids
