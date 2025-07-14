@@ -748,6 +748,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
 
         # Get the selected article title based on user's numeric choice
         selected_title = await chatgpt_service.get_selected_article_title(message, last_template.message_content)
+        logger.info(f"Selected article title: {selected_title}")
 
         if not selected_title:
             await send_message(
@@ -764,7 +765,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
             return chatbot.state
 
         # Reuse the article summary functionality with the selected title
-        data = await search_articles_service(query=message, db=db, redis_client=None)
+        data = await search_articles_service(query=selected_title, db=db, redis_client=None)
 
         if data.get("success") and data.get('count') > 0:
             # Get user if exists

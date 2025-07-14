@@ -104,7 +104,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
                     db=db,
                     page=1,
                     date_from=date_from,
-                    date_to=date_to,
+                    # date_to=date_to,
                     redis_client=redis_client
                 )
                 articles = news_data.get('articles', [])

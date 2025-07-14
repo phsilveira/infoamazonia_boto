@@ -210,7 +210,7 @@ class ChatGPTService:
                     {"role": "system", "content": prompt['system']},
                     {"role": "user", "content": prompt['user']}
                 ],
-                "temperature": prompt.get('temperature', 0.1),
+                "temperature": prompt.get('temperature', 0.3),
                 "max_tokens": prompt.get('max_tokens', 150)
             }
             
