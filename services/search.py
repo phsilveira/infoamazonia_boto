@@ -279,6 +279,7 @@ def search_term():
                 FROM articles
                 WHERE (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.84
                 ORDER BY similarity desc
+                LIMIT 10
             """
 
             # Perform full text search
@@ -288,6 +289,7 @@ def search_term():
                 FROM articles
                 WHERE to_tsvector(title || ' ' || summary_content) @@ plainto_tsquery('{query}')
                 ORDER BY similarity desc
+                LIMIT 10
             """
 
             # Combine results from semantic and full text search into a single query

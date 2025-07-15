@@ -151,7 +151,7 @@ class ChatGPTService:
                     {"role": "user", "content": prompt['user']}
                 ],
                 "temperature": prompt.get('temperature', 0.3),
-                "max_tokens": prompt.get('max_tokens', 250)
+                # "max_tokens": prompt.get('max_tokens', 500)
             }
             
             # Set the model based on whether we're using Azure or standard OpenAI
