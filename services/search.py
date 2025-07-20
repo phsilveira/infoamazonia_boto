@@ -264,6 +264,10 @@ def search_term():
         if not query:
             return jsonify({'error': 'Query is required'}), 400
 
+        # Genereate a query refinament using chatgpt
+        query = generate_completion(query, "Otimize a consulta de busca para obter melhor acurácia nos resultados sobre a Amazônia", system_prompt="Dada essa consulta do usuário relacionada à Amazônia, refine-a para melhorar a precisão e relevância dos resultados, retorne somente a consulta refinada")
+        logging.info(f"Searching for query: {query}")
+
         # Generate embedding for query
         query_embedding = generate_embedding(query)
 
@@ -277,18 +281,25 @@ def search_term():
                 SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
                        (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
                 FROM articles
-                WHERE (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.84
+                WHERE (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.60
                 ORDER BY similarity desc
                 LIMIT 5
             """
 
             # Perform full text search
             fulltext_sql_query = f"""
-                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
-                       ts_rank_cd(to_tsvector(title || ' ' || summary_content), plainto_tsquery('{query}')) AS similarity
+                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content,
+                       ts_rank_cd(to_tsvector(title || ' ' || summary_content), phraseto_tsquery('{query}')) +
+                       (CASE 
+                           WHEN title ILIKE '%{query}%' THEN 0.1 
+                           WHEN summary_content ILIKE '%{query}%' THEN 0.1 
+                           ELSE 0 
+                       END) AS similarity
                 FROM articles
-                WHERE to_tsvector(title || ' ' || summary_content) @@ plainto_tsquery('{query}')
-                ORDER BY similarity desc
+                WHERE to_tsvector(title || ' ' || summary_content) @@ phraseto_tsquery('{query}')
+                   OR title ILIKE '%{query}%'
+                   OR summary_content ILIKE '%{query}%'
+                ORDER BY similarity DESC
                 LIMIT 5
             """
 
@@ -727,6 +738,10 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
         if not query:
             return {'success': False, 'error': 'Query is required'}
 
+        # Genereate a query refinament using chatgpt
+        query = generate_completion(query, "Otimize a consulta de busca para obter melhor acurácia nos resultados sobre a Amazônia", system_prompt="Dada essa consulta do usuário relacionada à Amazônia, refine-a para melhorar a precisão e relevância dos resultados, retorne somente a consulta refinada")
+        logging.info(f"Searching for query: {query}")
+
         # Try to generate embedding for query
         query_embedding = None
         use_vector_search = False
@@ -749,28 +764,27 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
                        (1 - (embedding <=> '{query_embedding_str}'::vector))::float AS similarity
                 FROM articles
                 WHERE embedding IS NOT NULL
-                and (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.44
+                and (1 - (embedding <=> '{query_embedding_str}'::vector))::float > 0.60
                 ORDER BY similarity desc
+                LIMIT 10
             """
             
             # Perform full text search
             fulltext_sql_query = f"""
-                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content, 
-                       ts_rank_cd(
-                    to_tsvector(
-                      'portuguese',
-                      coalesce(title,'') || ' ' || coalesce(summary_content,'')
-                    ),
-                    plainto_tsquery('portuguese','{query}')
-                  ) AS similarity
-                                FROM articles
-                                WHERE to_tsvector(
-                    'portuguese',
-                    coalesce(title,'') || ' ' || coalesce(summary_content,'')
-                  )
-                  @@ plainto_tsquery('portuguese','{query}')
-                    ORDER BY similarity desc
-                """
+                SELECT id, title, content, url, published_date, author, description, keywords::text, article_metadata, summary_content,
+                       ts_rank_cd(to_tsvector(title || ' ' || summary_content), phraseto_tsquery('{query}')) +
+                       (CASE 
+                           WHEN title ILIKE '%{query}%' THEN 0.3 
+                           WHEN summary_content ILIKE '%{query}%' THEN 0.2 
+                           ELSE 0 
+                       END) AS similarity
+                FROM articles
+                WHERE to_tsvector(title || ' ' || summary_content) @@ phraseto_tsquery('{query}')
+                   OR title ILIKE '%{query}%'
+                   OR summary_content ILIKE '%{query}%'
+                ORDER BY similarity DESC
+                LIMIT 10
+            """
 
             # Combine results from semantic and full text search into a single query
             combined_sql_query = f"""

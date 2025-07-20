@@ -128,7 +128,7 @@ unsubscribe:
   invalid_option: "Por favor, responda 'sim' para confirmar o cancelamento ou 'não' para manter sua inscrição."
 
 # return
-return: "Obrigado, vamos utilizar esse feedback para melhor o BOTO! Digite *MENU*, para ver outras opções"
+return: "Obrigado, vamos utilizar esse feedback para melhorar o BOTO! Digite *MENU*, para ver outras opções"
 
 return_to_menu_from_subscription: "Digite *MENU* para voltar a menu principal"
 

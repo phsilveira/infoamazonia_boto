@@ -33,7 +33,7 @@ class News:
                 }
             ]
 
-    def get_news(self, page_limit=3, offset=0):
+    def get_news(self, page_limit=2, offset=0):
         """Fetch the latest news from the APIs and process them."""
         documents = []
         api_error_count = 0
@@ -64,7 +64,7 @@ class News:
 
                 # Process each page
                 for page in range(1, number_of_pages + 1):  # Changed to start from 1 instead of 0
-                    api_url_page = f"{api_url}?_embed=wp:term&per_page=10&page={page}"
+                    api_url_page = f"{api_url}?per_page=10&page={page}"
                     try:
                         response = requests.get(api_url_page)
                         response.raise_for_status()
@@ -120,6 +120,11 @@ class News:
         news["collection_date"] = datetime.now(pytz.timezone("America/Sao_Paulo"))
         news["location"] = location_dict
 
+        soup = BeautifulSoup(item.get('excerpt', {}).get('rendered', ''), "html.parser")
+        description = soup.get_text()
+
+        news['description'] = description
+
         yoast = item.get("yoast_head_json")
         if yoast:
             self.check_news_field(yoast, news, "og_title", "Title", "")
@@ -132,7 +137,6 @@ class News:
             self.check_news_field(schema, news, "articleSection", "Subtopics", [])
             self.check_news_field(schema, news, "keywords", "Keywords", [])
             self.check_news_field(schema, news, "inLanguage", "Language", "")
-
             content = item.get('content', {}).get('rendered', '')
             soup = BeautifulSoup(content, 'html.parser')
             news['content'] = soup.get_text()
@@ -315,12 +319,12 @@ class News:
         """Check and set a field in the news item."""
         try:
             news[field_name] = api_dict.get(field, empty)
-            if not news[field_name] and field in ["title", "description", "URL"]:
+            if not news[field_name] and field in ["title", "URL"]:
                 news["success"] = False
         except Exception as e:
             logging.error(f"{field} exception: {e}")
             news[field_name] = empty
-            if field in ["title", "description", "URL"]:
+            if field in ["title", "URL"]:
                 news["success"] = False
 
     def get_topics(self, news):
