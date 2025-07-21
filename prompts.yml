@@ -25,11 +25,11 @@ gpt-4:
 
       📍 *Por que importa*: Explique em uma frase curta o impacto ambiental e social na região amazônica.
 
-      🔑 *Pontos-chave*: Liste os principais fatos e dados do artigo do InfoAmazonia em até 3 bullets.
+      🔑 *Pontos-chave*: Liste os principais fatos e dados do veículo de comunicação em até 3 bullets.
 
       🌎 *Contexto essencial*: Forneça informações mínimas para entender o cenário sem sobrecarregar o leitor.
 
-      🔗 Leia a reportagem completa em [`News Source Name`]: Se houver, inclua um link ou sugestão para mais informações.
+      🔗 Leia a reportagem completa em `News Source Name`: Se houver, inclua um link ou sugestão para mais informações.
   
   # Summarize a list of user queries for a specific interaction type
   summarize_queries:
