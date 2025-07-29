@@ -32,10 +32,62 @@ url_cache = TTLCache(maxsize=500, ttl=86400 * 30)  # 30 days cache
 url_impressions_cache = TTLCache(maxsize=1000, ttl=86400 * 30)  # 30 days cache
 url_clicks_cache = TTLCache(maxsize=1000, ttl=86400 * 30)  # 30 days cache
 
+async def _store_url_in_redis_async(redis_client, short_id, original_url):
+    """
+    Async helper function to store URL and initialize metrics in Redis.
+    """
+    # Store original URL
+    await redis_client.setex(f"url:{short_id}", 86400 * 30, original_url)
+    
+    # Initialize impressions to 1 (creation counts as impression)
+    await redis_client.setex(f"impressions:{short_id}", 86400 * 30, "1")
+    
+    # Initialize clicks to 0
+    await redis_client.setex(f"clicks:{short_id}", 86400 * 30, "0")
+
+def _store_url_in_redis_sync(redis_client, short_id, original_url):
+    """
+    Sync helper function to store URL and initialize metrics in Redis.
+    """
+    # Store original URL
+    redis_client.setex(f"url:{short_id}", 86400 * 30, original_url)
+    
+    # Initialize impressions to 1 (creation counts as impression)
+    redis_client.setex(f"impressions:{short_id}", 86400 * 30, "1")
+    
+    # Initialize clicks to 0
+    redis_client.setex(f"clicks:{short_id}", 86400 * 30, "0")
+
+def _store_url_in_memory_cache(short_id, original_url):
+    """
+    Helper function to store URL and initialize metrics in memory cache.
+    """
+    url_cache[short_id] = original_url
+    url_impressions_cache[short_id] = 1  # Creation counts as 1 impression
+    url_clicks_cache[short_id] = 0
+
+def _build_short_url(short_id, host_url=None):
+    """
+    Helper function to build the complete short URL.
+    """
+    short_path = f"/r/{short_id}"
+    
+    # For FastAPI compatibility, use provided host_url or fallback to path only
+    if host_url:
+        return host_url.rstrip('/') + short_path
+    else:
+        try:
+            # Try to get Flask request context if available
+            from flask import request
+            return request.host_url.rstrip('/') + short_path
+        except (RuntimeError, ImportError):
+            # Fallback to just the path for FastAPI or when no request context
+            return short_path
+
 def shorten_url(original_url, host_url=None, redis_client=None):
     """
     Creates a shortened URL for the original URL.
-    Returns a tuple containing the path component and full URL.
+    Returns the complete short URL.
     Also initializes tracking metrics for the URL.
     Uses Redis for persistent storage with 30-day expiration.
     """
@@ -54,49 +106,17 @@ def shorten_url(original_url, host_url=None, redis_client=None):
                 # For now, fall back to in-memory cache if we can't use sync Redis
                 raise Exception("Async Redis client not supported in sync context")
             else:
-                # Store original URL
-                redis_client.setex(f"url:{short_id}", 86400 * 30, original_url)
-                
-                # Initialize or increment impressions
-                current_impressions = redis_client.get(f"impressions:{short_id}")
-                if current_impressions is None:
-                    redis_client.setex(f"impressions:{short_id}", 86400 * 30, "1")
-                else:
-                    redis_client.incr(f"impressions:{short_id}")
-                    redis_client.expire(f"impressions:{short_id}", 86400 * 30)
-                
-                # Initialize clicks if not exists
-                if not redis_client.exists(f"clicks:{short_id}"):
-                    redis_client.setex(f"clicks:{short_id}", 86400 * 30, "0")
+                _store_url_in_redis_sync(redis_client, short_id, original_url)
                 
         except Exception as e:
             logging.error(f"Redis error in shorten_url: {e}. Falling back to in-memory cache.")
             # Fallback to in-memory cache if Redis fails
-            url_cache[short_id] = original_url
-            url_impressions_cache[short_id] = url_impressions_cache.get(short_id, 0) + 1
-            if short_id not in url_clicks_cache:
-                url_clicks_cache[short_id] = 0
+            _store_url_in_memory_cache(short_id, original_url)
     else:
         # Fallback to in-memory cache if Redis is not available
-        url_cache[short_id] = original_url
-        url_impressions_cache[short_id] = url_impressions_cache.get(short_id, 0) + 1
-        if short_id not in url_clicks_cache:
-            url_clicks_cache[short_id] = 0
+        _store_url_in_memory_cache(short_id, original_url)
 
-    # Create short URL path
-    short_path = f"/r/{short_id}"
-
-    # For FastAPI compatibility, use provided host_url or fallback to path only
-    if host_url:
-        return host_url.rstrip('/') + short_path
-    else:
-        try:
-            # Try to get Flask request context if available
-            from flask import request
-            return request.host_url.rstrip('/') + short_path
-        except (RuntimeError, ImportError):
-            # Fallback to just the path for FastAPI or when no request context
-            return short_path
+    return _build_short_url(short_id, host_url)
 
 def cache_search_results(func):
     @wraps(func)
@@ -628,7 +648,7 @@ async def shorten_url_async(original_url, host_url=None, redis_client=None):
     """
     Async version of shorten_url for use with async Redis clients.
     Creates a shortened URL for the original URL.
-    Returns a tuple containing the path component and full URL.
+    Returns the complete short URL.
     Also initializes tracking metrics for the URL.
     Uses Redis for persistent storage with 30-day expiration.
     """
@@ -638,49 +658,17 @@ async def shorten_url_async(original_url, host_url=None, redis_client=None):
     # Store the original URL in Redis with 30-day expiration
     if redis_client:
         try:
-            # Store original URL
-            await redis_client.setex(f"url:{short_id}", 86400 * 30, original_url)
-            
-            # Initialize or increment impressions
-            current_impressions = await redis_client.get(f"impressions:{short_id}")
-            if current_impressions is None:
-                await redis_client.setex(f"impressions:{short_id}", 86400 * 30, "1")
-            else:
-                await redis_client.incr(f"impressions:{short_id}")
-                await redis_client.expire(f"impressions:{short_id}", 86400 * 30)
-            
-            # Initialize clicks if not exists
-            if not await redis_client.exists(f"clicks:{short_id}"):
-                await redis_client.setex(f"clicks:{short_id}", 86400 * 30, "0")
+            await _store_url_in_redis_async(redis_client, short_id, original_url)
                 
         except Exception as e:
             logging.error(f"Redis error in shorten_url_async: {e}. Falling back to in-memory cache.")
             # Fallback to in-memory cache if Redis fails
-            url_cache[short_id] = original_url
-            url_impressions_cache[short_id] = url_impressions_cache.get(short_id, 0) + 1
-            if short_id not in url_clicks_cache:
-                url_clicks_cache[short_id] = 0
+            _store_url_in_memory_cache(short_id, original_url)
     else:
         # Fallback to in-memory cache if Redis is not available
-        url_cache[short_id] = original_url
-        url_impressions_cache[short_id] = url_impressions_cache.get(short_id, 0) + 1
-        if short_id not in url_clicks_cache:
-            url_clicks_cache[short_id] = 0
+        _store_url_in_memory_cache(short_id, original_url)
 
-    # Create short URL path
-    short_path = f"/r/{short_id}"
-
-    # For FastAPI compatibility, use provided host_url or fallback to path only
-    if host_url:
-        return host_url.rstrip('/') + short_path
-    else:
-        try:
-            # Try to get Flask request context if available
-            from flask import request
-            return request.host_url.rstrip('/') + short_path
-        except (RuntimeError, ImportError):
-            # Fallback to just the path for FastAPI or when no request context
-            return short_path
+    return _build_short_url(short_id, host_url)
 
 def remove_special_chars(text):
     """Normalize text for search by removing accents but keeping letters"""

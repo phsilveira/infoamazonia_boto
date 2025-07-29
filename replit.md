@@ -82,7 +82,14 @@ Key deployment considerations:
 
 ## Changelog
 
-Changelog:
+Recent changes:
+- July 29, 2025: Refactored URL shortening functions with DRY principle
+  - ✓ Eliminated code duplication between shorten_url and shorten_url_async functions
+  - ✓ Created shared helper functions for Redis storage operations
+  - ✓ Fixed Redis storage bug where impressions were incorrectly incrementing instead of initializing
+  - ✓ Improved Redis error handling and fallback mechanisms
+  - ✓ Verified URL shortening and redirect functionality working correctly
+  - ✓ Enhanced code maintainability by separating sync and async Redis operations
 - July 6, 2025: Refactored scheduler.py to use direct service calls
   - Modified send_news_template function to use list_articles_service directly instead of HTTP requests
   - Replaced HTTP ingestion API calls with direct download_news_from_sources function calls
