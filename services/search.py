@@ -49,6 +49,13 @@ def _store_url_in_redis_sync(redis_client, short_id, original_url):
     """
     Sync helper function to store URL and initialize metrics in Redis.
     """
+    # Check if this is an async Redis client
+    import inspect
+    
+    # If it's an async client being used in sync context, we can't use it
+    if hasattr(redis_client, 'setex') and inspect.iscoroutinefunction(redis_client.setex):
+        raise Exception("Async Redis client cannot be used in sync context")
+    
     # Store original URL
     redis_client.setex(f"url:{short_id}", 86400 * 30, original_url)
     

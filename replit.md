@@ -83,6 +83,12 @@ Key deployment considerations:
 ## Changelog
 
 Recent changes:
+- July 29, 2025: Fixed URL redirect authentication and Redis coroutine issues
+  - ✓ Removed authentication requirement for `/r/{short_id}` redirect endpoints
+  - ✓ Fixed RuntimeWarnings about unawaited coroutines in sync Redis operations
+  - ✓ Updated middleware to exclude redirect paths from authentication
+  - ✓ Verified redirect functionality works without login requirements
+  - ✓ Maintained security for admin endpoints while allowing public URL redirects
 - July 29, 2025: Refactored URL shortening functions with DRY principle
   - ✓ Eliminated code duplication between shorten_url and shorten_url_async functions
   - ✓ Created shared helper functions for Redis storage operations
