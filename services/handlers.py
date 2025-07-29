@@ -776,7 +776,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
             interaction = UserInteraction(
                 user_id=user_id,
                 phone_number=phone_number,
-                category='news_response',
+                category='article',
                 query=selected_title,
                 response=data["results"][0]["summary_content"]
             )

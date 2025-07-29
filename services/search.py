@@ -260,7 +260,7 @@ def search_articles():
                     article.summary_content, 
                     short_url,
                     article.news_source,
-                ),
+                ) if article.content is not None else "sorry",
                 'key_words': article.keywords,
                 'similarity': float(similarity_score)
             })
@@ -956,6 +956,8 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
                     logging.warning(f"Failed to parse keywords '{article.keywords}': {e}")
                     keywords = []
 
+            message_content_not_found = "Essa matéria não se encontra em nossa base de dados. Lamentamos, mas será necessário ler o artigo completo no site do veículo parceiro."
+
             results.append({
                 'id': str(article.id),
                 'title': article.title,
@@ -969,7 +971,7 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
                     article.summary_content, 
                     short_url,
                     article.news_source,
-                ),
+                ) if article.content != "" else message_content_not_found,
                 'key_words': keywords,
                 'similarity': float(similarity_score)
             })
@@ -1064,7 +1066,7 @@ async def list_articles_service(
         if date_from:
             try:
                 date_from_parsed = datetime.strptime(date_from, '%Y-%m-%d')
-                query = query.filter(models.Article.published_date >= date_from_parsed)
+                query = query.filter(models.Article.collection_date >= date_from_parsed)
             except ValueError:
                 return {
                     "success": False,
@@ -1078,7 +1080,7 @@ async def list_articles_service(
         if date_to:
             try:
                 date_to_parsed = datetime.strptime(date_to, '%Y-%m-%d')
-                query = query.filter(models.Article.published_date <= date_to_parsed)
+                query = query.filter(models.Article.collection_date <= date_to_parsed)
             except ValueError:
                 return {
                     "success": False,

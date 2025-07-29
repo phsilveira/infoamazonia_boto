@@ -274,7 +274,7 @@
                 // Clean up extra whitespace and format properly
                 const cleanSummary = data.summary //data.summary.replace(/\n\s*\n/g, '\n\n').trim()
                 const queryCount = data.query_count
-                summaryElement.innerHTML = `<div style="white-space: pre-line; line-height: 1.6;">${cleanSummary} ${category}</div>`
+                summaryElement.innerHTML = `<div style="white-space: pre-line; line-height: 1.6;">${cleanSummary}</div>`
             } else {
                 summaryElement.innerHTML = '<div class="text-muted">No summary available for this category.</div>'
             }
