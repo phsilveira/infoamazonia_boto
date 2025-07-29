@@ -24,4 +24,4 @@ def generate_completion(query: str, context: str, system_prompt: str = None) -> 
 
 def generate_article_summary(title: str, content: str, url: str, news_source: Optional[str] = None) -> str:
     """Generate article summary using ChatGPT service"""
-    return chatgpt_service.generate_article_summary(title, content, url)
+    return chatgpt_service.generate_article_summary(title, content, url, news_source)

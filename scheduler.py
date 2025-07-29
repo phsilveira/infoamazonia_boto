@@ -11,7 +11,7 @@ from services.whatsapp import send_message
 import httpx
 from typing import List, Dict
 from config import get_redis, settings
-from services.search import list_articles_service
+from services.search import list_articles_service, shorten_url
 
 # Configure timezone
 SP_TIMEZONE = timezone('America/Sao_Paulo')
@@ -71,7 +71,7 @@ async def send_news_template(schedule_type: str, days_back: int = 30, use_ingest
                         articles.append({
                             'id': str(article.id),
                             'title': article.title,
-                            'url': article.url,
+                            'url': shorten_url(article.url, settings.HOST_URL, redis_client=redis_client),
                             'published_date': article.published_date.strftime('%Y-%m-%d') if article.published_date else None,
                             'author': article.author,
                             'news_source': article.news_source,

@@ -29,7 +29,7 @@ gpt-4:
 
       🌎 *Contexto essencial*: Forneça informações mínimas para entender o cenário sem sobrecarregar o leitor.
 
-      🔗 Leia a reportagem completa em `News Source Name`: Se houver, inclua um link ou sugestão para mais informações.
+      🔗 Leia a reportagem completa em news_source_name: url da matéria.
   
   # Summarize a list of user queries for a specific interaction type
   summarize_queries:
