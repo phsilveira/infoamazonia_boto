@@ -407,7 +407,7 @@ async def handle_term_info_state(chatbot: ChatBot, phone_number: str, message: s
     db = next(get_db())
     try:
         # Use the search service directly instead of making HTTP request
-        data = await search_term_service(query=message, db=db, generate_summary=True, redis_client=None)
+        data = await search_term_service(query=message, db=db, generate_summary=True, redis_client=chatbot.redis_client)
 
         if data.get("success") and data.get("summary") and int(data.get('count', 0)) > 0:
             # Get user if exists
@@ -492,33 +492,12 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
 
             chatbot.end_conversation()
             await send_message(phone_number, message_loader.get_message('return'), db)
-        # else:
-        #     # Send an interactive button message for feedback
-        #     interactive_content = {
-        #         "type": "button",
-        #         "body": {
-        #             "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
-        #         },
-        #         "action": {
-        #             "buttons": [
-        #                 {
-        #                     "type": "reply",
-        #                     "reply": {
-        #                         "id": "sim",
-        #                         "title": "Sim"
-        #                     }
-        #                 },
-        #                 {
-        #                     "type": "reply",
-        #                     "reply": {
-        #                         "id": "não",
-        #                         "title": "Não"
-        #                     }
-        #                 }
-        #             ]
-        #         }
-        #     }
-        #     await send_message(phone_number, interactive_content, db, message_type="interactive")
+
+        else:
+
+            chatbot.end_conversation()
+            await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
+        
     except Exception as e:
         logger.error(f"Error in feedback handler: {str(e)}")
         await send_message(phone_number, message_loader.get_message('error.general_error'), db)
@@ -765,7 +744,7 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
             return chatbot.state
 
         # Reuse the article summary functionality with the selected title
-        data = await search_articles_service(query=selected_title, db=db, redis_client=None)
+        data = await search_articles_service(query=selected_title, db=db, redis_client=chatbot.redis_client)
 
         if data.get("success") and data.get('count') > 0:
             # Get user if exists
