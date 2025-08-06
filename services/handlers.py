@@ -474,7 +474,7 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
     try:
         message = message.strip()
         # Process feedback response (from button click or text message)
-        if message in ['1', '2', 'sim', 'não']:
+        if message in ['1', '2', 'sim', 'não', 'nao']:
             # Get the interaction ID from chatbot state
             interaction_id = await chatbot.get_current_interaction_id(phone_number)
             if interaction_id:
@@ -492,33 +492,33 @@ async def handle_feedback_state(chatbot: ChatBot, phone_number: str, message: st
 
             chatbot.end_conversation()
             await send_message(phone_number, message_loader.get_message('return'), db)
-        else:
-            # Send an interactive button message for feedback
-            interactive_content = {
-                "type": "button",
-                "body": {
-                    "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
-                },
-                "action": {
-                    "buttons": [
-                        {
-                            "type": "reply",
-                            "reply": {
-                                "id": "sim",
-                                "title": "Sim"
-                            }
-                        },
-                        {
-                            "type": "reply",
-                            "reply": {
-                                "id": "não",
-                                "title": "Não"
-                            }
-                        }
-                    ]
-                }
-            }
-            await send_message(phone_number, interactive_content, db, message_type="interactive")
+        # else:
+        #     # Send an interactive button message for feedback
+        #     interactive_content = {
+        #         "type": "button",
+        #         "body": {
+        #             "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
+        #         },
+        #         "action": {
+        #             "buttons": [
+        #                 {
+        #                     "type": "reply",
+        #                     "reply": {
+        #                         "id": "sim",
+        #                         "title": "Sim"
+        #                     }
+        #                 },
+        #                 {
+        #                     "type": "reply",
+        #                     "reply": {
+        #                         "id": "não",
+        #                         "title": "Não"
+        #                     }
+        #                 }
+        #             ]
+        #         }
+        #     }
+        #     await send_message(phone_number, interactive_content, db, message_type="interactive")
     except Exception as e:
         logger.error(f"Error in feedback handler: {str(e)}")
         await send_message(phone_number, message_loader.get_message('error.general_error'), db)

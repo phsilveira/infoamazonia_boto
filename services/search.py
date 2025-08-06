@@ -212,7 +212,7 @@ def search_articles():
         normalized_query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('utf-8').lower()
 
         # Set similarity threshold
-        similarity_threshold = 0.3  # Adjust this value for more or less strict matching
+        similarity_threshold = 0.5  # Adjust this value for more or less strict matching
 
         # Use trigram similarity for title fuzzy matching and ILIKE for URL
         if db:  # Flask compatibility
@@ -917,7 +917,7 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
         normalized_query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('utf-8').lower()
 
         # Set similarity threshold
-        similarity_threshold = 0.3  # Adjust this value for more or less strict matching
+        similarity_threshold = 0.5  # Adjust this value for more or less strict matching
 
         similar_articles = db.execute(
             select(models.Article, func.similarity(models.Article.title, normalized_query).label('similarity_score'))
@@ -956,7 +956,7 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
                     logging.warning(f"Failed to parse keywords '{article.keywords}': {e}")
                     keywords = []
 
-            message_content_not_found = "Essa matéria não se encontra em nossa base de dados. Lamentamos, mas será necessário ler o artigo completo no site do veículo parceiro."
+            message_content_not_found = "Infelizmente esse conteúdo é de um parceiro que ainda não está presente aqui. Você terá que ler a matéria inteira no site do parceiro nesse link.\n\n{url}"
 
             results.append({
                 'id': str(article.id),
@@ -971,7 +971,7 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
                     article.summary_content, 
                     short_url,
                     article.news_source,
-                ) if article.content != "" else message_content_not_found,
+                ) if article.content != "" else message_content_not_found.format(url=short_url),
                 'key_words': keywords,
                 'similarity': float(similarity_score)
             })
