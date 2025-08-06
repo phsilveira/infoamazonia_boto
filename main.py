@@ -358,8 +358,60 @@ async def get_dashboard_stats(request: Request, db: Session = Depends(get_db)):
             .filter(models.Message.created_at >= last_24h)\
             .scalar()
 
-        # Calculate click rate from latest metrics if available
-        click_rate = latest_metrics.click_through_rate if latest_metrics else 0
+        # Calculate click rate using CTR stats function logic
+        # Get Redis client from app state
+        redis_client = getattr(request.app.state, 'redis', None)
+        
+        # Import caches from search service
+        from services.search import url_impressions_cache, url_clicks_cache, url_cache
+        
+        # Get short IDs from both Redis and in-memory cache
+        short_ids = set()
+        
+        # Get short IDs from Redis if available
+        if redis_client:
+            try:
+                # Get all impression keys from Redis
+                impression_keys = await redis_client.keys("impressions:*")
+                for key in impression_keys:
+                    if isinstance(key, bytes):
+                        key = key.decode('utf-8')
+                    short_id = key.split(":")[-1]
+                    short_ids.add(short_id)
+            except Exception as e:
+                logger.error(f"Error getting impression keys from Redis: {e}")
+
+        # Also check in-memory cache for fallback
+        short_ids.update(url_impressions_cache.keys())
+        
+        # Calculate overall CTR
+        total_impressions = 0
+        total_clicks = 0
+        
+        for short_id in short_ids:
+            impressions = 0
+            clicks = 0
+
+            # Try to get data from Redis first
+            if redis_client:
+                try:
+                    imp_val = await redis_client.get(f"impressions:{short_id}")
+                    click_val = await redis_client.get(f"clicks:{short_id}")
+                    impressions = int(imp_val) if imp_val else 0
+                    clicks = int(click_val) if click_val else 0
+                except Exception as e:
+                    logger.error(f"Error getting data from Redis for {short_id}: {e}")
+
+            # Fallback to in-memory cache if Redis failed or returned no data
+            if impressions == 0 and clicks == 0:
+                impressions = url_impressions_cache.get(short_id, 0)
+                clicks = url_clicks_cache.get(short_id, 0)
+            
+            total_impressions += impressions
+            total_clicks += clicks
+        
+        # Calculate overall CTR
+        click_rate = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
 
         return {
             "total_users": total_users,
@@ -680,12 +732,12 @@ async def get_scheduler_runs(
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting server on port 8000...")
+    logger.info("Starting server on port 5000...")
     # Ensure host is 0.0.0.0 to be accessible
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=5000,
         reload=True,
         log_level="info",
         # access_log=True
