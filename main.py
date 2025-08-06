@@ -732,12 +732,12 @@ async def get_scheduler_runs(
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting server on port 5000...")
+    logger.info("Starting server on port 8000...")
     # Ensure host is 0.0.0.0 to be accessible
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=5000,
+        port=8000,
         reload=True,
         log_level="info",
         # access_log=True
