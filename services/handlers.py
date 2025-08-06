@@ -531,7 +531,7 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
     db = next(get_db())
     try:
         # Use the search service directly instead of making HTTP request
-        data = await search_articles_service(query=message, db=db, redis_client=None)
+        data = await search_articles_service(query=message, db=db, redis_client=chatbot.redis_client)
 
         if data.get("success") and data.get('count', 0) > 0:
             # Get user if exists
