@@ -22,20 +22,27 @@ def process_article(news_item: Dict[str, Any]):
         
         logger.debug(f"Processing article: {news_item.get('_id')}")
 
+        # Process title based on news source
+        title = news_item['Title']
+        if news_item.get('news_source') == 'Amazon Underworld':
+            # Remove "- Amazon Underworld" pattern from title
+            title = title.replace(' - Amazon Underworld', '').replace('- Amazon Underworld', '')
+            logger.debug(f"Processed title for Amazon Underworld: {title}")
+
         # Generate article summary
         logger.debug("Generating article summary")
-        summary = generate_term_summary(news_item['Title'], news_item['content'])
+        summary = generate_term_summary(title, news_item['content'])
         logger.debug("Successfully generated summary")
 
         # Generate embedding for article content and metadata
-        embedding_text = f"{news_item['Title']} {' '.join(news_item.get('Keywords', []))} {summary}"
+        embedding_text = f"{title} {' '.join(news_item.get('Keywords', []))} {summary}"
 
         logger.debug(f"Generating embedding for text length: {len(embedding_text)}")
         embedding = generate_embedding(str(embedding_text))
         logger.debug("Successfully generated embedding")
 
         article = Article(
-            title=news_item['Title'],
+            title=title,
             content=news_item['content'],
             summary_content=summary,  # Add the generated summary
             original_id=news_item['_id'],
