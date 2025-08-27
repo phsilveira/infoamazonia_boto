@@ -813,12 +813,14 @@ async def handle_url_processing_state(chatbot: ChatBot, phone_number: str, messa
         # For now, just respond with "hello world" as requested for testing
         await send_message(phone_number, "hello world", db)
         
-        # End the conversation and return to start state
-        chatbot.end_conversation()
+        # Instead of using end_conversation(), manually set state to start
+        # This is safer and avoids state machine transition errors
+        chatbot.set_state('start')
         
     except Exception as e:
         logger.error(f"Error in URL processing handler: {str(e)}")
         await send_message(phone_number, message_loader.get_message('error.general_error'), db)
-        chatbot.end_conversation()
+        # Set state to start in case of error too
+        chatbot.set_state('start')
 
     return chatbot.state

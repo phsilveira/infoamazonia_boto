@@ -83,6 +83,14 @@ Key deployment considerations:
 ## Changelog
 
 Recent changes:
+- August 27, 2025: Added URL detection and processing functionality
+  - ✓ Created URL detection utility (utils/url_detector.py) supporting both protocol and non-protocol URLs
+  - ✓ Added new 'process_url_state' to chatbot state machine with transitions from any state
+  - ✓ Modified webhook.py process_message function to detect URLs in incoming messages
+  - ✓ Created handle_url_processing_state handler that responds with "hello world" for testing
+  - ✓ Updated ChatBot class with process_url() trigger method
+  - ✓ Successfully tested URL detection with both https://example.com and www.google.com formats
+  - ✓ Fixed state machine transition issues by using manual state setting instead of end_conversation
 - July 29, 2025: Fixed URL redirect authentication and Redis coroutine issues
   - ✓ Removed authentication requirement for `/r/{short_id}` redirect endpoints
   - ✓ Fixed RuntimeWarnings about unawaited coroutines in sync Redis operations
