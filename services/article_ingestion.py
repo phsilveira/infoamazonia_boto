@@ -24,9 +24,9 @@ def process_article(news_item: Dict[str, Any]):
 
         # Process title based on news source
         title = news_item['Title']
-        if news_item.get('news_source') == 'Amazon Underworld':
+        if news_item.get('news_source', '').lower() == 'amazon underworld':
             # Remove "- Amazon Underworld" pattern from title
-            title = title.replace(' - Amazon Underworld', '').replace('- Amazon Underworld', '')
+            title = title.replace(' - Amazon Underworld', '')
             logger.debug(f"Processed title for Amazon Underworld: {title}")
 
         # Generate article summary

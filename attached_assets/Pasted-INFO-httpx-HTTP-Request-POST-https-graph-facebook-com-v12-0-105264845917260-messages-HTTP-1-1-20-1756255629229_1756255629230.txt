@@ -1,0 +1,65 @@
+INFO:httpx:HTTP Request: POST https://graph.facebook.com/v12.0/105264845917260/messages "HTTP/1.1 200 OK"
+2025-08-26 21:46:29.36
+4da76a50
+User
+DEBUG:httpcore.http11:receive_response_body.started request=
+2025-08-26 21:46:29.36
+4da76a50
+User
+DEBUG:httpcore.http11:receive_response_body.complete
+2025-08-26 21:46:29.45
+4da76a50
+User
+DEBUG:httpcore.http11:response_closed.started
+2025-08-26 21:46:29.45
+4da76a50
+User
+DEBUG:httpcore.http11:response_closed.complete
+2025-08-26 21:46:29.45
+4da76a50
+User
+DEBUG:httpcore.connection:close.started
+2025-08-26 21:46:29.45
+4da76a50
+User
+DEBUG:httpcore.connection:close.complete
+2025-08-26 21:46:30.05
+4da76a50
+User
+INFO:services.whatsapp:Successfully logged outgoing message wamid.HBgNNTUxMTkzMDE0NjAwNRUCABEYEkE1QkM4N0Y5MzkyRDE4RTg2RgA=
+2025-08-26 21:46:30.15
+4da76a50
+User
+DEBUG:webhook:Updated Redis state for 5511930146005: menu_state
+2025-08-26 21:46:30.41
+4da76a50
+User
+INFO: 34.30.225.124:0 - "POST /webhook/ HTTP/1.1" 307 Temporary Redirect
+2025-08-26 21:46:30.61
+4da76a50
+User
+DEBUG:webhook:Received webhook data: {'object': 'whatsapp_business_account', 'entry': [{'id': '121117804317326', 'changes': [{'value': {'messaging_product': 'whatsapp', 'metadata': {'display_phone_number': '5511910230000', 'phone_number_id': '105264845917260'}, 'statuses': [{'id': 'wamid.HBgNNTUxMTkzMDE0NjAwNRUCABEYEkE1QkM4N0Y5MzkyRDE4RTg2RgA=', 'status': 'sent', 'timestamp': '1756255589', 'recipient_id': '5511930146005', 'conversation': {'id': '234dbd191bc9cf99a8fb3583c91ff631', 'expiration_timestamp': '1756255589', 'origin': {'type': 'service'}}, 'pricing': {'billable': False, 'pricing_model': 'PMP', 'category': 'service', 'type': 'free_customer_service'}}]}, 'field': 'messages'}]}]}
+2025-08-26 21:46:30.90
+4da76a50
+User
+INFO:webhook:Updated message status: sent for wamid.HBgNNTUxMTkzMDE0NjAwNRUCABEYEkE1QkM4N0Y5MzkyRDE4RTg2RgA=
+2025-08-26 21:46:30.90
+4da76a50
+User
+INFO: 34.69.46.147:0 - "POST /webhook HTTP/1.1" 200 OK
+2025-08-26 21:46:30.92
+4da76a50
+User
+INFO: 34.69.46.147:0 - "POST /webhook/ HTTP/1.1" 307 Temporary Redirect
+2025-08-26 21:46:31.12
+4da76a50
+User
+DEBUG:webhook:Received webhook data: {'object': 'whatsapp_business_account', 'entry': [{'id': '121117804317326', 'changes': [{'value': {'messaging_product': 'whatsapp', 'metadata': {'display_phone_number': '5511910230000', 'phone_number_id': '105264845917260'}, 'statuses': [{'id': 'wamid.HBgNNTUxMTkzMDE0NjAwNRUCABEYEkE1QkM4N0Y5MzkyRDE4RTg2RgA=', 'status': 'delivered', 'timestamp': '1756255590', 'recipient_id': '5511930146005', 'conversation': {'id': '234dbd191bc9cf99a8fb3583c91ff631', 'origin': {'type': 'service'}}, 'pricing': {'billable': False, 'pricing_model': 'PMP', 'category': 'service', 'type': 'free_customer_service'}}]}, 'field': 'messages'}]}]}
+2025-08-26 21:46:31.43
+4da76a50
+User
+INFO: 34.58.89.73:0 - "POST /webhook HTTP/1.1" 200 OK
+2025-08-26 21:46:31.43
+4da76a50
+User
+INFO:webhook:Updated message status: delivered for wamid.HBgNNTUxMTkzMDE0NjAwNRUCABEYEkE1QkM4N0Y5MzkyRDE4RTg2RgA=
