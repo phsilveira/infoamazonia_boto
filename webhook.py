@@ -24,9 +24,11 @@ from services.handlers import (
     handle_news_suggestion_state,
     handle_feedback_state,
     handle_unsubscribe_state,
-    handle_monthly_news_response  
+    handle_monthly_news_response,
+    handle_url_processing_state
 )
 import os
+from utils.url_detector import is_url
 
 # Configure logging
 logging.basicConfig(level=settings.LOG_LEVEL)
@@ -311,6 +313,12 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> 
     try:
         current_state = chatbot.state
 
+        # Check if the message contains a URL - if so, transition to URL processing state
+        if is_url(message):
+            logger.info(f"URL detected in message from {phone_number}: {message}")
+            chatbot.process_url()  # Trigger the URL processing state transition
+            return await handle_url_processing_state(chatbot, phone_number, message, chatgpt_service)
+
         # Map states to their handler functions
         state_handlers = {
             'start': handle_start_state,
@@ -326,7 +334,8 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> 
             'get_article_summary': handle_article_summary_state,
             'get_news_suggestion': handle_news_suggestion_state,
             'unsubscribe_state': handle_unsubscribe_state,
-            'monthly_news_response': handle_monthly_news_response,  
+            'monthly_news_response': handle_monthly_news_response,
+            'process_url_state': handle_url_processing_state,
         }
 
         # Get the appropriate handler for the current state

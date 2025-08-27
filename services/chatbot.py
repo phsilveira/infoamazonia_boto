@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class ChatBot:
     states = ['start', 'register', 'menu_state', 'modify_subscription_state', 'get_user_location', 'get_user_subject', 
               'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 
-              'get_news_suggestion', 'feedback_state', 'unsubscribe_state', 'monthly_news_response']
+              'get_news_suggestion', 'feedback_state', 'unsubscribe_state', 'monthly_news_response', 'process_url_state']
 
     def __init__(self, db: Session, redis_client: Optional[redis.Redis] = None):
         self.db = db
@@ -117,8 +117,15 @@ class ChatBot:
             trigger='end_conversation',
             source=['register', 'get_user_schedule', 'about', 'feedback_state', 
                    'get_news_suggestion', 'get_article_summary', 'get_term_info', 
-                   'unsubscribe_state', 'monthly_news_response'],
+                   'unsubscribe_state', 'monthly_news_response', 'process_url_state'],
             dest='start'
+        )
+        
+        # Add URL processing transition - can be triggered from any state
+        self.machine.add_transition(
+            trigger='process_url',
+            source='*',
+            dest='process_url_state'
         )
 
     def set_state(self, state):
@@ -273,3 +280,9 @@ class ChatBot:
         self.current_phone_number = phone_number
         logger.info(f"Set current phone number to: {phone_number}")
         return True
+    
+    def process_url(self):
+        """Trigger URL processing state transition"""
+        # This method triggers the transition to process_url_state
+        # The actual transition is defined in the machine setup
+        pass

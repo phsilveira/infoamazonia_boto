@@ -804,3 +804,21 @@ async def handle_monthly_news_response(chatbot: ChatBot, phone_number: str, mess
         await send_message(phone_number, message_loader.get_message('error.general_error'), db)
 
     return chatbot.state
+
+
+async def handle_url_processing_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
+    """Handle URL processing state - for testing purposes, respond with 'hello world'"""
+    db = next(get_db())
+    try:
+        # For now, just respond with "hello world" as requested for testing
+        await send_message(phone_number, "hello world", db)
+        
+        # End the conversation and return to start state
+        chatbot.end_conversation()
+        
+    except Exception as e:
+        logger.error(f"Error in URL processing handler: {str(e)}")
+        await send_message(phone_number, message_loader.get_message('error.general_error'), db)
+        chatbot.end_conversation()
+
+    return chatbot.state
