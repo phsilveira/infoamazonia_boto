@@ -91,6 +91,8 @@ Recent changes:
   - ✓ Updated ChatBot class with process_url() trigger method
   - ✓ Successfully tested URL detection with both https://example.com and www.google.com formats
   - ✓ Fixed state machine transition issues by using manual state setting instead of end_conversation
+  - ✓ Modified URL detection to use handle_article_summary_state instead of handle_url_processing_state
+  - ✓ URLs now trigger article summary functionality for content processing
 - July 29, 2025: Fixed URL redirect authentication and Redis coroutine issues
   - ✓ Removed authentication requirement for `/r/{short_id}` redirect endpoints
   - ✓ Fixed RuntimeWarnings about unawaited coroutines in sync Redis operations

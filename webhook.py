@@ -313,11 +313,11 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> 
     try:
         current_state = chatbot.state
 
-        # Check if the message contains a URL - if so, transition to URL processing state
+        # Check if the message contains a URL - if so, transition to article summary state
         if is_url(message):
             logger.info(f"URL detected in message from {phone_number}: {message}")
-            chatbot.process_url()  # Trigger the URL processing state transition
-            return await handle_url_processing_state(chatbot, phone_number, message, chatgpt_service)
+            chatbot.select_article_summary()  # Trigger the article summary state transition
+            return await handle_article_summary_state(chatbot, phone_number, message, chatgpt_service)
 
         # Map states to their handler functions
         state_handlers = {
