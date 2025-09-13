@@ -28,7 +28,7 @@ from services.handlers import (
     handle_url_processing_state
 )
 import os
-from utils.url_detector import is_url
+from utils.url_detector import is_url, extract_urls
 
 # Configure logging
 logging.basicConfig(level=settings.LOG_LEVEL)
@@ -38,6 +38,14 @@ router = APIRouter(prefix="/webhook", tags=["webhook"])
 
 # Initialize ChatGPT service
 chatgpt_service = ChatGPTService()
+
+def extract_url_from_message(message_content: str) -> str:
+    """Extract the first URL found in a message"""
+    if not message_content:
+        return None
+    
+    urls = extract_urls(message_content)
+    return urls[0] if urls else None
 
 @router.get("")
 async def verify_webhook_endpoint(request: Request):
@@ -190,9 +198,26 @@ async def webhook_endpoint(
                                     db.add(incoming_message)
                                     db.commit()
 
+                                    # Check if this is a reply to another message
+                                    reply_url = None
+                                    if 'context' in message_data:
+                                        original_message_id = message_data['context'].get('id')
+                                        if original_message_id:
+                                            # Look up the original message in the database
+                                            original_message = db.query(models.Message).filter(
+                                                models.Message.whatsapp_message_id == original_message_id
+                                            ).first()
+                                            
+                                            if original_message and original_message.message_content:
+                                                # Extract URL from the original message if it exists
+                                                reply_url = extract_url_from_message(original_message.message_content)
+                                                if reply_url:
+                                                    logger.info(f"Reply detected with URL from original message: {reply_url}")
+
                                     webhook_data = {
                                         'phone_number': message_data['from'],
-                                        'message': message_data['text']['body']
+                                        'message': message_data['text']['body'],
+                                        'reply_url': reply_url  # Include the URL from the replied message
                                     }
                                     background_tasks.add_task(
                                         process_webhook_message,
