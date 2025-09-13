@@ -90,7 +90,7 @@ class ChatBot:
         )
         self.machine.add_transition(
             trigger='select_article_summary',
-            source=['menu_state', 'monthly_news_response'],
+            source=['menu_state', 'monthly_news_response', 'start'],
             dest='get_article_summary'
         )
         self.machine.add_transition(
