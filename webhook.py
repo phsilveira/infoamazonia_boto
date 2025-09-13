@@ -83,6 +83,7 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
         phone_number = data.get('phone_number')
         message = data.get('message')
         reply_url = data.get('reply_url')  # Extract reply URL if present
+        reply_context = data.get('reply_context')  # Extract reply context
         current_state = None
         redis_client = request.app.state.redis
 
@@ -115,7 +116,7 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
             chatbot.set_state(current_state)
 
         # Process the message using the unified processing function
-        new_state = await process_message(phone_number, message, chatbot, reply_url)
+        new_state = await process_message(phone_number, message, chatbot, reply_url, reply_context)
 
         # Try to update Redis cache with new state, but don't fail if Redis is unavailable
         if redis_client:
@@ -201,6 +202,7 @@ async def webhook_endpoint(
 
                                     # Check if this is a reply to another message
                                     reply_url = None
+                                    reply_context = None
                                     if 'context' in message_data:
                                         original_message_id = message_data['context'].get('id')
                                         if original_message_id:
@@ -214,11 +216,19 @@ async def webhook_endpoint(
                                                 reply_url = extract_url_from_message(original_message.message_content)
                                                 if reply_url:
                                                     logger.info(f"Reply detected with URL from original message: {reply_url}")
+                                                    reply_context = "found_url"
+                                                else:
+                                                    logger.info(f"Reply detected but no URL found in original message: {original_message.message_content}")
+                                                    reply_context = "no_url"
+                                            else:
+                                                logger.info(f"Reply detected but original message not found or empty: {original_message_id}")
+                                                reply_context = "message_not_found"
 
                                     webhook_data = {
                                         'phone_number': message_data['from'],
                                         'message': message_data['text']['body'],
-                                        'reply_url': reply_url  # Include the URL from the replied message
+                                        'reply_url': reply_url,  # Include the URL from the replied message
+                                        'reply_context': reply_context  # Include context about the reply
                                     }
                                     background_tasks.add_task(
                                         process_webhook_message,
@@ -334,10 +344,18 @@ def handle_message_status(status: Dict, db: Session) -> None:
         logger.error(f"Error processing message status: {str(e)}")
         db.rollback()
 
-async def process_message(phone_number: str, message: str, chatbot: ChatBot, reply_url: str = None) -> str:
+async def process_message(phone_number: str, message: str, chatbot: ChatBot, reply_url: str = None, reply_context: str = None) -> str:
     """Process a message and return the new state"""
     try:
         current_state = chatbot.state
+
+        # Handle reply context errors first
+        if reply_context == "message_not_found":
+            await send_message(phone_number, "Desculpe, não consegui encontrar a mensagem original. Tente responder a uma mensagem mais recente com link.", next(get_db()))
+            return current_state
+        elif reply_context == "no_url":
+            await send_message(phone_number, "A mensagem que você respondeu não contém um link para resumir. Responda a uma mensagem com link válido.", next(get_db()))
+            return current_state
 
         # Check if this is a reply with a URL from the original message
         if reply_url:
