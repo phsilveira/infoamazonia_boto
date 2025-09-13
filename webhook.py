@@ -363,11 +363,22 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot, rep
             chatbot.select_article_summary()  # Trigger the article summary state transition
             return await handle_article_summary_state(chatbot, phone_number, reply_url, chatgpt_service)
 
-        # Check if the message contains a URL - if so, transition to article summary state
-        if is_url(message):
-            logger.info(f"URL detected in message from {phone_number}: {message}")
-            chatbot.select_article_summary()  # Trigger the article summary state transition
-            return await handle_article_summary_state(chatbot, phone_number, message, chatgpt_service)
+        # Check if the message contains URLs - handle single or multiple URLs
+        from utils.url_detector import extract_urls
+        detected_urls = extract_urls(message)
+        
+        if detected_urls:
+            logger.info(f"URL(s) detected in message from {phone_number}: {detected_urls}")
+            
+            # If more than 2 URLs, go to URL selection state
+            if len(detected_urls) > 2:
+                logger.info(f"Multiple URLs detected ({len(detected_urls)}), showing selection menu")
+                chatbot.select_from_multiple_urls()  # Trigger the URL selection state transition
+                return await handle_select_url_state(chatbot, phone_number, detected_urls, message)
+            # If 1-2 URLs, proceed directly to article summary
+            else:
+                chatbot.select_article_summary()  # Trigger the article summary state transition
+                return await handle_article_summary_state(chatbot, phone_number, message, chatgpt_service)
 
         # Map states to their handler functions
         state_handlers = {
@@ -386,6 +397,7 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot, rep
             'unsubscribe_state': handle_unsubscribe_state,
             'monthly_news_response': handle_monthly_news_response,
             'process_url_state': handle_url_processing_state,
+            'select_url_state': handle_select_url_state,
         }
 
         # Get the appropriate handler for the current state
