@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class ChatBot:
     states = ['start', 'register', 'menu_state', 'modify_subscription_state', 'get_user_location', 'get_user_subject', 
               'get_user_schedule', 'about', 'get_term_info', 'get_article_summary', 
-              'get_news_suggestion', 'feedback_state', 'unsubscribe_state', 'monthly_news_response', 'process_url_state']
+              'get_news_suggestion', 'feedback_state', 'unsubscribe_state', 'monthly_news_response', 'process_url_state', 'select_url_state']
 
     def __init__(self, db: Session, redis_client: Optional[redis.Redis] = None):
         self.db = db
@@ -117,7 +117,7 @@ class ChatBot:
             trigger='end_conversation',
             source=['register', 'get_user_schedule', 'about', 'feedback_state', 
                    'get_news_suggestion', 'get_article_summary', 'get_term_info', 
-                   'unsubscribe_state', 'monthly_news_response', 'process_url_state'],
+                   'unsubscribe_state', 'monthly_news_response', 'process_url_state', 'select_url_state'],
             dest='start'
         )
         
@@ -126,6 +126,20 @@ class ChatBot:
             trigger='process_url',
             source='*',
             dest='process_url_state'
+        )
+        
+        # Add URL selection transition - for multiple URLs
+        self.machine.add_transition(
+            trigger='select_from_multiple_urls',
+            source=['menu_state', 'monthly_news_response', 'start', 'feedback_state'],
+            dest='select_url_state'
+        )
+        
+        # Add transition from URL selection to article summary
+        self.machine.add_transition(
+            trigger='url_selected',
+            source='select_url_state',
+            dest='get_article_summary'
         )
 
     def set_state(self, state):
