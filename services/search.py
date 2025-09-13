@@ -913,15 +913,43 @@ async def _search_redis_urls(redis_client, query: str) -> List[str]:
         if not redis_client:
             return []
         
-        # Get all URL keys from Redis
-        url_keys = await redis_client.keys("url:*")
-        
         matching_urls = []
+        
+        # Extract short ID from URL if query contains a shortened URL pattern
+        short_id_from_url = None
+        if "/r/" in query:
+            parts = query.split("/r/")
+            if len(parts) > 1:
+                short_id_from_url = parts[-1].split('?')[0].split('#')[0]  # Remove query params and fragments
+        
+        # Check if query is a short ID (8 characters, alphanumeric)
+        potential_short_id = query.strip()
+        if len(potential_short_id) == 8 and potential_short_id.isalnum():
+            try:
+                original_url = await redis_client.get(f"url:{potential_short_id}")
+                if original_url:
+                    matching_urls.append(original_url)
+                    logging.info(f"Found URL for short ID {potential_short_id}: {original_url}")
+            except Exception as e:
+                logging.warning(f"Error retrieving URL for short ID {potential_short_id}: {e}")
+        
+        # Check if we extracted a short ID from a URL
+        if short_id_from_url and len(short_id_from_url) == 8 and short_id_from_url.isalnum():
+            try:
+                original_url = await redis_client.get(f"url:{short_id_from_url}")
+                if original_url and original_url not in matching_urls:
+                    matching_urls.append(original_url)
+                    logging.info(f"Found URL for extracted short ID {short_id_from_url}: {original_url}")
+            except Exception as e:
+                logging.warning(f"Error retrieving URL for extracted short ID {short_id_from_url}: {e}")
+        
+        # Search through all stored URLs for partial matches (existing functionality)
+        url_keys = await redis_client.keys("url:*")
         for key in url_keys:
             try:
                 # Get the original URL
                 original_url = await redis_client.get(key)
-                if original_url and query.lower() in original_url.lower():
+                if original_url and query.lower() in original_url.lower() and original_url not in matching_urls:
                     matching_urls.append(original_url)
             except Exception as e:
                 logging.warning(f"Error retrieving URL from Redis key {key}: {e}")
