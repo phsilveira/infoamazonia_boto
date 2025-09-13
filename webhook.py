@@ -82,6 +82,7 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
     try:
         phone_number = data.get('phone_number')
         message = data.get('message')
+        reply_url = data.get('reply_url')  # Extract reply URL if present
         current_state = None
         redis_client = request.app.state.redis
 
@@ -114,7 +115,7 @@ async def process_webhook_message(data: Dict, db: Session, request: Request) -> 
             chatbot.set_state(current_state)
 
         # Process the message using the unified processing function
-        new_state = await process_message(phone_number, message, chatbot)
+        new_state = await process_message(phone_number, message, chatbot, reply_url)
 
         # Try to update Redis cache with new state, but don't fail if Redis is unavailable
         if redis_client:
@@ -333,10 +334,16 @@ def handle_message_status(status: Dict, db: Session) -> None:
         logger.error(f"Error processing message status: {str(e)}")
         db.rollback()
 
-async def process_message(phone_number: str, message: str, chatbot: ChatBot) -> str:
+async def process_message(phone_number: str, message: str, chatbot: ChatBot, reply_url: str = None) -> str:
     """Process a message and return the new state"""
     try:
         current_state = chatbot.state
+
+        # Check if this is a reply with a URL from the original message
+        if reply_url:
+            logger.info(f"Reply detected with URL from original message: {reply_url}")
+            chatbot.select_article_summary()  # Trigger the article summary state transition
+            return await handle_article_summary_state(chatbot, phone_number, reply_url, chatgpt_service)
 
         # Check if the message contains a URL - if so, transition to article summary state
         if is_url(message):
