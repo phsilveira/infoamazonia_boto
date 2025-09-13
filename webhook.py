@@ -25,7 +25,9 @@ from services.handlers import (
     handle_feedback_state,
     handle_unsubscribe_state,
     handle_monthly_news_response,
-    handle_url_processing_state
+    handle_url_processing_state,
+    handle_select_url_state,
+    handle_url_selection_response
 )
 import os
 from utils.url_detector import is_url, extract_urls
@@ -411,6 +413,9 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot, rep
                 return await handler(chatbot, phone_number, message)
             elif handler == handle_about_state:
                 return await handler(chatbot, phone_number)
+            elif handler == handle_select_url_state:
+                # Special case: When in select_url_state, user is choosing a URL number
+                return await handle_url_selection_response(chatbot, phone_number, message, chatgpt_service)
             else:
                 return await handler(chatbot, phone_number, message, chatgpt_service)
 

@@ -571,6 +571,85 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
 
     return chatbot.state
 
+async def handle_select_url_state(chatbot: ChatBot, phone_number: str, urls: list, original_message: str) -> str:
+    """Handle URL selection when multiple URLs are detected"""
+    db = next(get_db())
+    try:
+        # Store URLs in Redis for later retrieval
+        if chatbot.redis_client:
+            # Store URLs with phone number as key
+            urls_key = f"urls:{phone_number}"
+            await chatbot.redis_client.setex(urls_key, 300, str(urls))  # 5 minutes expiration
+            await chatbot.redis_client.setex(f"original_message:{phone_number}", 300, original_message)
+        
+        # Create message with numbered URL options
+        url_options = "🔗 *Múltiplos links encontrados!*\n\n"
+        url_options += "Escolha qual link você quer que eu resuma:\n\n"
+        
+        for i, url in enumerate(urls, 1):
+            # Truncate long URLs for display
+            display_url = url if len(url) <= 60 else url[:57] + "..."
+            url_options += f"{i}. {display_url}\n"
+        
+        url_options += f"\n📝 Responda com o número (1-{len(urls)}) do link que deseja resumir."
+        
+        await send_message(phone_number, url_options, db)
+        
+    except Exception as e:
+        logger.error(f"Error in URL selection handler: {str(e)}")
+        await send_message(phone_number, message_loader.get_message('error.general_error'), db)
+        chatbot.end_conversation()
+    
+    return chatbot.state
+
+async def handle_url_selection_response(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
+    """Handle user response when they select a URL number"""
+    db = next(get_db())
+    try:
+        # Parse the user's selection
+        try:
+            selection = int(message.strip())
+        except ValueError:
+            await send_message(phone_number, "❌ Por favor, envie apenas o número do link que deseja resumir.", db)
+            return chatbot.state
+        
+        # Retrieve stored URLs from Redis
+        if chatbot.redis_client:
+            urls_key = f"urls:{phone_number}"
+            stored_urls = await chatbot.redis_client.get(urls_key)
+            
+            if stored_urls:
+                # Parse the stored URLs (they're stored as string representation of list)
+                import ast
+                urls = ast.literal_eval(stored_urls)
+                
+                # Validate selection
+                if 1 <= selection <= len(urls):
+                    selected_url = urls[selection - 1]
+                    logger.info(f"User {phone_number} selected URL {selection}: {selected_url}")
+                    
+                    # Transition to article summary state and process the selected URL
+                    chatbot.url_selected()
+                    return await handle_article_summary_state(chatbot, phone_number, selected_url, chatgpt_service)
+                else:
+                    await send_message(phone_number, f"❌ Número inválido. Escolha entre 1 e {len(urls)}.", db)
+                    return chatbot.state
+            else:
+                await send_message(phone_number, "❌ As opções de URL expiraram. Envie novamente sua mensagem com os links.", db)
+                chatbot.end_conversation()
+                return chatbot.state
+        else:
+            await send_message(phone_number, "❌ Erro interno. Tente novamente.", db)
+            chatbot.end_conversation()
+            return chatbot.state
+            
+    except Exception as e:
+        logger.error(f"Error in URL selection response handler: {str(e)}")
+        await send_message(phone_number, message_loader.get_message('error.general_error'), db)
+        chatbot.end_conversation()
+    
+    return chatbot.state
+
 
 async def handle_news_suggestion_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
     """Handle the news suggestion state logic"""
