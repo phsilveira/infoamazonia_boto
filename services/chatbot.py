@@ -128,10 +128,10 @@ class ChatBot:
             dest='process_url_state'
         )
         
-        # Add URL selection transition - for multiple URLs
+        # Add URL selection transition - for multiple URLs (can be triggered from any state)
         self.machine.add_transition(
             trigger='select_from_multiple_urls',
-            source=['menu_state', 'monthly_news_response', 'start', 'feedback_state'],
+            source='*',
             dest='select_url_state'
         )
         

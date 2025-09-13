@@ -15,7 +15,7 @@ def is_url(text: str) -> bool:
 
 def extract_urls(text: str) -> List[str]:
     """
-    Extract all URLs from the text
+    Extract and normalize all URLs from the text, removing duplicates
     """
     # URL pattern to match common URL formats
     url_pattern = r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:\w*))?)?'
@@ -24,14 +24,44 @@ def extract_urls(text: str) -> List[str]:
     simple_url_pattern = r'(?:www\.)?[\w\-\.]+\.[\w]{2,}(?:/[\w\-\.]*)*(?:\?[\w&=%]*)?(?:#\w*)?'
     
     urls = []
+    normalized_urls = set()  # To track normalized versions and avoid duplicates
     
-    # Find URLs with protocol
-    urls.extend(re.findall(url_pattern, text, re.IGNORECASE))
+    # Find URLs with protocol first
+    protocol_urls = re.findall(url_pattern, text, re.IGNORECASE)
+    for url in protocol_urls:
+        normalized = normalize_url(url)
+        if normalized and normalized not in normalized_urls:
+            urls.append(url)  # Keep original format for display
+            normalized_urls.add(normalized)
     
     # Find URLs without protocol
     simple_urls = re.findall(simple_url_pattern, text, re.IGNORECASE)
     for url in simple_urls:
-        if not any(full_url in url for full_url in urls):  # Avoid duplicates
-            urls.append(url)
+        # Add https:// prefix for normalization check
+        full_url = f"https://{url}" if not url.startswith(('http://', 'https://')) else url
+        normalized = normalize_url(full_url)
+        if normalized and normalized not in normalized_urls:
+            urls.append(url)  # Keep original format for display
+            normalized_urls.add(normalized)
     
     return urls
+
+def normalize_url(url: str) -> str:
+    """
+    Normalize a URL for duplicate detection
+    """
+    if not url:
+        return ""
+    
+    # Ensure protocol
+    if not url.startswith(('http://', 'https://')):
+        url = f"https://{url}"
+    
+    # Convert to lowercase for comparison
+    url = url.lower()
+    
+    # Remove trailing slash
+    if url.endswith('/'):
+        url = url[:-1]
+    
+    return url

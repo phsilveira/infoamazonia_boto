@@ -577,9 +577,10 @@ async def handle_select_url_state(chatbot: ChatBot, phone_number: str, urls: lis
     try:
         # Store URLs in Redis for later retrieval
         if chatbot.redis_client:
-            # Store URLs with phone number as key
+            # Store URLs with phone number as key (use JSON for proper serialization)
+            import json
             urls_key = f"urls:{phone_number}"
-            await chatbot.redis_client.setex(urls_key, 300, str(urls))  # 5 minutes expiration
+            await chatbot.redis_client.setex(urls_key, 300, json.dumps(urls))  # 5 minutes expiration
             await chatbot.redis_client.setex(f"original_message:{phone_number}", 300, original_message)
         
         # Create message with numbered URL options
@@ -619,9 +620,9 @@ async def handle_url_selection_response(chatbot: ChatBot, phone_number: str, mes
             stored_urls = await chatbot.redis_client.get(urls_key)
             
             if stored_urls:
-                # Parse the stored URLs (they're stored as string representation of list)
-                import ast
-                urls = ast.literal_eval(stored_urls)
+                # Parse the stored URLs (they're stored as JSON)
+                import json
+                urls = json.loads(stored_urls)
                 
                 # Validate selection
                 if 1 <= selection <= len(urls):
