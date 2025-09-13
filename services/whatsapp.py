@@ -18,10 +18,10 @@ async def send_message(
 ) -> Dict:
     """Send message using WhatsApp Cloud API with support for text, template, and interactive messages"""
     try:
-        url = f"{settings.API_URL}{settings.NUMBER_ID}/messages"
+        url = f"{settings.WHATSAPP_API_URL}{settings.WHATSAPP_NUMBER_ID}/messages"
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f"Bearer {settings.API_TOKEN}"
+            'Authorization': f"Bearer {settings.WHATSAPP_ACCESS_TOKEN}"
         }
 
         # Base payload structure

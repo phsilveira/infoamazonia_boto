@@ -24,9 +24,9 @@ class Settings(BaseSettings):
     WEBHOOK_VERIFY_TOKEN: str = os.getenv("WEBHOOK_VERIFY_TOKEN", "SAD")
 
     # WhatsApp API Configuration
-    API_URL: str = os.getenv("API_URL", "https://graph.facebook.com/v12.0/")
-    API_TOKEN: str = os.getenv("API_TOKEN", "")
-    NUMBER_ID: str = os.getenv("NUMBER_ID", "")
+    WHATSAPP_API_URL: str = os.getenv("WHATSAPP_API_URL", "https://graph.facebook.com/v12.0/")
+    WHATSAPP_ACCESS_TOKEN: str = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+    WHATSAPP_NUMBER_ID: str = os.getenv("WHATSAPP_NUMBER_ID", "")
     USE_OFFICIAL_API: bool = os.getenv("USE_OFFICIAL_API", "True") == "True"
 
     # Unofficial API Configuration
