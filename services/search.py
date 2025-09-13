@@ -907,6 +907,31 @@ async def search_term_service(query: str, db: Session, generate_summary: bool = 
             'error': str(e)
         }
 
+async def _search_redis_urls(redis_client, query: str) -> List[str]:
+    """Search for URLs in Redis that match the query"""
+    try:
+        if not redis_client:
+            return []
+        
+        # Get all URL keys from Redis
+        url_keys = await redis_client.keys("url:*")
+        
+        matching_urls = []
+        for key in url_keys:
+            try:
+                # Get the original URL
+                original_url = await redis_client.get(key)
+                if original_url and query.lower() in original_url.lower():
+                    matching_urls.append(original_url)
+            except Exception as e:
+                logging.warning(f"Error retrieving URL from Redis key {key}: {e}")
+                continue
+        
+        return matching_urls
+    except Exception as e:
+        logging.warning(f"Error searching Redis URLs: {e}")
+        return []
+
 async def search_articles_service(query: str, db: Session, redis_client=None) -> Dict[str, Any]:
     """FastAPI-compatible version of search_articles function"""
     try:
@@ -919,6 +944,7 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
         # Set similarity threshold
         similarity_threshold = 0.5  # Adjust this value for more or less strict matching
 
+        # Search for articles in database
         similar_articles = db.execute(
             select(models.Article, func.similarity(models.Article.title, normalized_query).label('similarity_score'))
             .filter(
@@ -934,9 +960,35 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
             .limit(1)  # Limit the results to 2 articles
         ).all()
 
+        # Search for shortened URLs in Redis
+        redis_urls = await _search_redis_urls(redis_client, query)
+        
+        # Find articles matching the URLs from Redis
+        redis_articles = []
+        if redis_urls:
+            redis_articles = db.execute(
+                select(models.Article, func.similarity(models.Article.title, normalized_query).label('similarity_score'))
+                .filter(models.Article.url.in_(redis_urls))
+                .order_by(
+                    func.greatest(
+                        func.similarity(models.Article.title, normalized_query),
+                        func.similarity(models.Article.url, normalized_query)
+                    ).desc()
+                )
+            ).all()
+
+        # Combine results and remove duplicates
+        all_articles = list(similar_articles) + list(redis_articles)
+        seen_ids = set()
+        unique_articles = []
+        for article, similarity_score in all_articles:
+            if article.id not in seen_ids:
+                unique_articles.append((article, similarity_score))
+                seen_ids.add(article.id)
+
         results = []
         
-        for article, similarity_score in similar_articles:
+        for article, similarity_score in unique_articles:
             # Create shortened URL using Redis-backed URL shortening
             if redis_client:
                 short_url = await shorten_url_async(article.url, settings.HOST_URL, redis_client=redis_client)
