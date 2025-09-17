@@ -19,6 +19,9 @@ from config import settings, get_redis
 import redis.asyncio as redis
 import logging
 import asyncio
+import sys
+import os
+import traceback
 import httpx
 import json
 from datetime import datetime, timedelta
@@ -33,6 +36,16 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Log deployment environment information at startup
+logger.info("=== Application Startup Information ===")
+logger.info(f"Python version: {sys.version}")
+logger.info(f"FastAPI app starting with debug mode: {settings.DEBUG}")
+logger.info(f"Log level: {settings.LOG_LEVEL}")
+logger.info(f"Database URL configured: {'Yes' if hasattr(settings, 'DATABASE_URL') and settings.DATABASE_URL else 'No'}")
+logger.info(f"Redis configured: {'Yes' if hasattr(settings, 'REDIS_URL') and settings.REDIS_URL else 'No'}")
+logger.info(f"OpenAI configured: {'Yes' if hasattr(settings, 'OPENAI_API_KEY') and settings.OPENAI_API_KEY else 'No'}")
+logger.info("=====================================")
 
 # Create all database tables
 init_db()
@@ -78,36 +91,82 @@ def cached(expire_seconds: int = 300, prefix: str = "cache"):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting application initialization...")
+    logger.info("=== Starting Application Lifespan Management ===")
+    startup_errors = []
+    
     try:
-        # Simplified Redis connection
+        logger.info("Initializing database connection...")
+        # Test database connection at startup
+        try:
+            from sqlalchemy import text
+            with engine.connect() as connection:
+                connection.execute(text("SELECT 1"))
+            logger.info("✓ Database connection verified successfully")
+        except Exception as e:
+            error_msg = f"✗ Database connection failed: {e}"
+            logger.error(error_msg)
+            startup_errors.append(error_msg)
+            # Don't fail completely, but log the error
+        
+        # Initialize Redis connection
+        logger.info("Initializing Redis connection...")
         app.state.redis = None
-        redis_client = await get_redis()
-        if redis_client:
-            await redis_client.ping()
-            logger.info("Redis connection established")
-            app.state.redis = redis_client
+        try:
+            redis_client = await get_redis()
+            if redis_client:
+                await redis_client.ping()
+                logger.info("✓ Redis connection established successfully")
+                app.state.redis = redis_client
+            else:
+                logger.warning("✗ Redis client creation returned None")
+                startup_errors.append("Redis client creation failed")
+        except Exception as e:
+            error_msg = f"✗ Redis connection failed: {e}"
+            logger.error(error_msg)
+            logger.error(f"Redis error traceback: {traceback.format_exc()}")
+            startup_errors.append(error_msg)
 
         # Initialize scheduler
-        logger.info("Starting scheduler initialization...")
+        logger.info("Initializing background scheduler...")
         try:
             # Create a task to run the scheduler
             await asyncio.sleep(1)  # Brief delay to ensure app is ready
             asyncio.create_task(start_scheduler())
-            logger.info("Scheduler initialization scheduled in background")
+            logger.info("✓ Scheduler initialization scheduled in background")
         except Exception as e:
-            logger.error(f"Failed to initialize scheduler: {e}")
+            error_msg = f"✗ Scheduler initialization failed: {e}"
+            logger.error(error_msg)
+            logger.error(f"Scheduler error traceback: {traceback.format_exc()}")
+            startup_errors.append(error_msg)
 
+        # Log startup summary
+        if startup_errors:
+            logger.warning(f"Application started with {len(startup_errors)} warnings/errors:")
+            for error in startup_errors:
+                logger.warning(f"  - {error}")
+            logger.warning("Application may have reduced functionality but will continue running")
+        else:
+            logger.info("✓ All components initialized successfully")
+            
+        logger.info("=== Application startup completed ===")
+        
     except Exception as e:
-        logger.error(f"Redis connection failed: {e}")
-
-    logger.info("Application initialization completed")
+        logger.critical(f"✗ Critical startup failure: {e}")
+        logger.critical(f"Critical error traceback: {traceback.format_exc()}")
+        # Allow the app to continue even with critical errors for debugging
+        
     yield
 
     # Cleanup
-    if hasattr(app.state, 'redis') and app.state.redis:
-        await app.state.redis.close()
-        logger.info("Redis connection closed")
+    logger.info("=== Starting Application Shutdown ===")
+    try:
+        if hasattr(app.state, 'redis') and app.state.redis:
+            await app.state.redis.close()
+            logger.info("✓ Redis connection closed")
+    except Exception as e:
+        logger.error(f"Error during Redis cleanup: {e}")
+    
+    logger.info("=== Application shutdown completed ===")
 
 app = FastAPI(
     title="InfoAmazonia Admin Dashboard",
@@ -115,31 +174,82 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Health check endpoint with enhanced logging
+# Health check endpoint with comprehensive status
 @app.get("/health")
-async def health_check():
+async def health_check(request: Request):
+    logger.info(f"Health check endpoint called at {datetime.utcnow().isoformat()}")
+    
+    # Check database
     try:
-        logger.info(f"Health check endpoint called at {datetime.utcnow().isoformat()}")
-        # Test database connection
-        db = next(get_db())
         from sqlalchemy import text
-        db.execute(text("SELECT 1"))
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
         db_status = "ok"
+        db_error = None
     except Exception as e:
         logger.error(f"Database health check failed: {str(e)}")
         db_status = "error"
+        db_error = str(e)
+    
+    # Check Redis
+    redis_status = "not_configured"
+    redis_error = None
+    if hasattr(request.app.state, 'redis') and request.app.state.redis:
+        try:
+            await request.app.state.redis.ping()
+            redis_status = "ok"
+        except Exception as e:
+            logger.error(f"Redis health check failed: {str(e)}")
+            redis_status = "error"
+            redis_error = str(e)
+    else:
+        redis_status = "not_connected"
 
     response = {
-        "status": "ok",
+        "status": "ok" if db_status == "ok" else "degraded",
         "timestamp": datetime.utcnow().isoformat(),
-        "database": db_status,
+        "components": {
+            "database": {
+                "status": db_status,
+                "error": db_error
+            },
+            "redis": {
+                "status": redis_status,
+                "error": redis_error
+            }
+        },
         "environment": {
             "debug": settings.DEBUG,
-            "log_level": settings.LOG_LEVEL
+            "log_level": settings.LOG_LEVEL,
+            "host": request.url.hostname,
+            "port": request.url.port
         }
     }
-    logger.info(f"Health check response: {response}")
-    return response
+    
+    status_code = 200 if response["status"] == "ok" else 503
+    logger.info(f"Health check response (status {status_code}): {response}")
+    
+    return JSONResponse(content=response, status_code=status_code)
+
+# Startup verification endpoint for deployment debugging
+@app.get("/startup-status")
+async def startup_status():
+    """Detailed startup status for deployment debugging"""
+    return {
+        "app_title": app.title,
+        "startup_time": datetime.utcnow().isoformat(),
+        "environment": {
+            "python_version": sys.version,
+            "debug_mode": settings.DEBUG,
+            "log_level": settings.LOG_LEVEL,
+        },
+        "configuration": {
+            "database_configured": hasattr(settings, 'DATABASE_URL') and bool(settings.DATABASE_URL),
+            "redis_configured": hasattr(settings, 'REDIS_URL') and bool(settings.REDIS_URL),
+            "openai_configured": hasattr(settings, 'OPENAI_API_KEY') and bool(settings.OPENAI_API_KEY),
+        },
+        "message": "Application startup verification endpoint"
+    }
 
 # Shortened URL redirect endpoint
 @app.get("/r/{short_id}")
@@ -155,6 +265,9 @@ async def redirect_to_url(short_id: str, request: Request):
     if redis_client:
         try:
             original_url = await redis_client.get(f"url:{short_id}")
+            # Decode bytes if necessary
+            if isinstance(original_url, bytes):
+                original_url = original_url.decode()
             # Increment click count
             await redis_client.incr(f"clicks:{short_id}")
             await redis_client.expire(f"clicks:{short_id}", 86400 * 30)  # Refresh expiration
@@ -732,13 +845,15 @@ async def get_scheduler_runs(
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting server on port 8000...")
+    # Use PORT environment variable for deployment compatibility
+    port = int(os.getenv("PORT", 8000))
+    logger.info(f"Starting server on port {port}...")
     # Ensure host is 0.0.0.0 to be accessible
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,
+        port=port,
+        reload=settings.DEBUG,  # Only reload in debug mode
         log_level="info",
         # access_log=True
     )
