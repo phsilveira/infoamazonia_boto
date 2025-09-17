@@ -43,7 +43,7 @@ logger.info(f"Python version: {sys.version}")
 logger.info(f"FastAPI app starting with debug mode: {settings.DEBUG}")
 logger.info(f"Log level: {settings.LOG_LEVEL}")
 logger.info(f"Database URL configured: {'Yes' if hasattr(settings, 'DATABASE_URL') and settings.DATABASE_URL else 'No'}")
-logger.info(f"Redis configured: {'Yes' if hasattr(settings, 'REDIS_URL') and settings.REDIS_URL else 'No'}")
+logger.info(f"Redis configured: {'Yes' if settings.REDIS_HOST and settings.REDIS_PORT else 'No'}")
 logger.info(f"OpenAI configured: {'Yes' if hasattr(settings, 'OPENAI_API_KEY') and settings.OPENAI_API_KEY else 'No'}")
 logger.info("=====================================")
 
@@ -245,7 +245,7 @@ async def startup_status():
         },
         "configuration": {
             "database_configured": hasattr(settings, 'DATABASE_URL') and bool(settings.DATABASE_URL),
-            "redis_configured": hasattr(settings, 'REDIS_URL') and bool(settings.REDIS_URL),
+            "redis_configured": bool(settings.REDIS_HOST and settings.REDIS_PORT),
             "openai_configured": hasattr(settings, 'OPENAI_API_KEY') and bool(settings.OPENAI_API_KEY),
         },
         "message": "Application startup verification endpoint"
@@ -282,7 +282,10 @@ async def redirect_to_url(short_id: str, request: Request):
             url_clicks_cache[short_id] = url_clicks_cache.get(short_id, 0) + 1
     
     if original_url:
-        return RedirectResponse(url=original_url, status_code=302)
+        # Ensure original_url is a string
+        if isinstance(original_url, bytes):
+            original_url = original_url.decode()
+        return RedirectResponse(url=str(original_url), status_code=302)
     else:
         raise HTTPException(status_code=404, detail="URL not found")
 
@@ -551,7 +554,7 @@ async def get_recent_users(request: Request, db: Session = Depends(get_db)):
         return [{
             "phone_number": user.phone_number,
             "joined": user.created_at.strftime("%d/%m/%Y %H:%M"),
-            "status": "Active" if user.is_active else "Inactive"
+            "status": "Active" if bool(user.is_active) else "Inactive"
         } for user in recent_users]
     except Exception as e:
         logger.error(f"Error fetching recent users: {e}")
@@ -571,7 +574,7 @@ async def get_news_sources(request: Request, db: Session = Depends(get_db)):
 
         return [{
             "name": source.name,
-            "status": "Active" if source.is_active else "Inactive",
+            "status": "Active" if bool(source.is_active) else "Inactive",
             "last_update": source.created_at.strftime("%d/%m/%Y %H:%M")
         } for source in sources]
     except Exception as e:
@@ -832,7 +835,7 @@ async def get_scheduler_runs(
             "task_name": run.task_name,
             "status": run.status,
             "start_time": run.start_time.strftime("%d/%m/%Y %H:%M:%S"),
-            "end_time": run.end_time.strftime("%d/%m/%Y %H:%M:%S") if run.end_time else None,
+            "end_time": run.end_time.strftime("%d/%m/%Y %H:%M:%S") if run.end_time is not None else None,
             "affected_users": run.affected_users,
             "error_message": run.error_message
         } for run in runs]

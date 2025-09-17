@@ -74,7 +74,7 @@ class Settings(BaseSettings):
 def get_settings():
     """Get settings based on environment."""
     env = os.getenv("ENV", "development")
-    return Settings(_env_file=f".env.{env}")
+    return Settings()
 
 # Create settings instance
 settings = get_settings()
