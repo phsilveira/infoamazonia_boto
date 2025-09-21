@@ -82,6 +82,10 @@ def extract_urls(text: str) -> List[str]:
     # Find URLs without protocol
     simple_urls = re.findall(simple_url_pattern, text, re.IGNORECASE)
     for url in simple_urls:
+        # Skip if this URL is already found as a protocol URL (avoid duplicates)
+        if any(url in existing_url for existing_url in urls):
+            continue
+            
         # Add https:// prefix for normalization check
         full_url = f"https://{url}" if not url.startswith(('http://', 'https://')) else url
         # Remove UTM parameters before processing
