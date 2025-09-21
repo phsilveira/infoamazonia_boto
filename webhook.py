@@ -372,12 +372,12 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot, rep
         if detected_urls:
             logger.info(f"URL(s) detected in message from {phone_number}: {detected_urls}")
             
-            # If more than 2 URLs, go to URL selection state
-            if len(detected_urls) > 2:
+            # If more than 1 URL, go to URL selection state
+            if len(detected_urls) > 1:
                 logger.info(f"Multiple URLs detected ({len(detected_urls)}), showing selection menu")
                 chatbot.select_from_multiple_urls()  # Trigger the URL selection state transition
                 return await handle_select_url_state(chatbot, phone_number, detected_urls, message)
-            # If 1-2 URLs, proceed directly to article summary
+            # If exactly 1 URL, proceed directly to article summary
             else:
                 chatbot.select_article_summary()  # Trigger the article summary state transition
                 # Use the first cleaned URL instead of the original message
