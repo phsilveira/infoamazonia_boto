@@ -380,7 +380,8 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot, rep
             # If 1-2 URLs, proceed directly to article summary
             else:
                 chatbot.select_article_summary()  # Trigger the article summary state transition
-                return await handle_article_summary_state(chatbot, phone_number, message, chatgpt_service)
+                # Use the first cleaned URL instead of the original message
+                return await handle_article_summary_state(chatbot, phone_number, detected_urls[0], chatgpt_service)
 
         # Map states to their handler functions
         state_handlers = {
