@@ -518,48 +518,60 @@ async def handle_article_summary_state(chatbot: ChatBot, phone_number: str, mess
             user_id = user.id if user else None
 
             # Create user interaction record
+            summary_content = data["results"][0]["summary_content"]
+            
             interaction = UserInteraction(
                 user_id=user_id,
                 phone_number=phone_number,
                 category='article',
                 query=message,
-                response=data["results"][0]["summary_content"]
+                response=summary_content
             )
             db.add(interaction)
             db.commit()
 
-            # Store interaction ID in chatbot state for feedback
-            await chatbot.set_current_interaction_id(interaction.id, phone_number)
+            # Check if content is from partner source (not found) - bypass feedback if so
+            content_not_found_message = message_loader.get_message('error.content_not_found')
+            is_partner_content = content_not_found_message.split('\n\n')[0] in summary_content
+            
+            await send_message(phone_number, summary_content, db)
+            
+            if is_partner_content:
+                # Partner content - bypass feedback state and return to menu
+                await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
+                chatbot.end_conversation()
+            else:
+                # Regular content - proceed with feedback
+                # Store interaction ID in chatbot state for feedback
+                await chatbot.set_current_interaction_id(interaction.id, phone_number)
+                chatbot.get_feedback()
 
-            await send_message(phone_number, data["results"][0]["summary_content"], db)
-            chatbot.get_feedback()
-
-            # Send an interactive button message for feedback
-            interactive_content = {
-                "type": "button",
-                "body": {
-                    "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
-                },
-                "action": {
-                    "buttons": [
-                        {
-                            "type": "reply",
-                            "reply": {
-                                "id": "sim",
-                                "title": "Sim"
+                # Send an interactive button message for feedback
+                interactive_content = {
+                    "type": "button",
+                    "body": {
+                        "text": message_loader.get_message('feedback.request').split('\n')[0]  # Get only the text part
+                    },
+                    "action": {
+                        "buttons": [
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": "sim",
+                                    "title": "Sim"
+                                }
+                            },
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": "não",
+                                    "title": "Não"
+                                }
                             }
-                        },
-                        {
-                            "type": "reply",
-                            "reply": {
-                                "id": "não",
-                                "title": "Não"
-                            }
-                        }
-                    ]
+                        ]
+                    }
                 }
-            }
-            await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
+                await send_message(phone_number, interactive_content, next(get_db()), message_type="interactive")
         else:
             await send_message(phone_number, message_loader.get_message('error.article_not_found'), db)
             await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
