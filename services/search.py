@@ -980,11 +980,22 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
         similarity_threshold = 0.5  # Adjust this value for more or less strict matching
 
         # Search for articles in database
+        # For URL queries, also search with protocol variations (http/https)
+        url_variations = [normalized_query]
+        if normalized_query.startswith('https://'):
+            url_variations.append(normalized_query.replace('https://', 'http://'))
+        elif normalized_query.startswith('http://'):
+            url_variations.append(normalized_query.replace('http://', 'https://'))
+        
+        # Create URL matching conditions for all variations
+        url_conditions = [models.Article.url.ilike(f'%{url_var}%') for url_var in url_variations]
+        url_filter = or_(*url_conditions) if len(url_conditions) > 1 else url_conditions[0]
+        
         similar_articles = db.execute(
             select(models.Article, func.similarity(models.Article.title, normalized_query).label('similarity_score'))
             .filter(
                 (func.similarity(models.Article.title, normalized_query) > similarity_threshold) |
-                (models.Article.url.ilike(f'%{normalized_query}%'))  # Simple ILIKE for URL matching
+                url_filter  # Enhanced URL matching with protocol variations
             )
             .order_by(
                 func.greatest(
