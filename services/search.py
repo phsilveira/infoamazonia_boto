@@ -15,6 +15,10 @@ from datetime import datetime
 from services.embeddings import generate_embedding, generate_completion, generate_article_summary
 from config import settings
 from utils.url_detector import remove_utm_parameters
+from utils.message_loader import MessageLoader
+
+# Initialize message loader
+message_loader = MessageLoader()
 
 
 # Import for compatibility with existing Flask routes
@@ -1054,7 +1058,8 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
                     logging.warning(f"Failed to parse keywords '{article.keywords}': {e}")
                     keywords = []
 
-            message_content_not_found = "Infelizmente esse conteúdo é de um parceiro que ainda não está presente aqui. Você terá que ler a matéria inteira no site do parceiro nesse link.\n\n{url}"
+            # Get message from messages.yml instead of hardcoded
+            message_content_not_found = message_loader.get_message('error.content_not_found')
 
             results.append({
                 'id': str(article.id),
