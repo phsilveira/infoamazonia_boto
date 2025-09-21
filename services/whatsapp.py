@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Dict, Optional, List, Union
 from fastapi import Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from database import get_db
 import models
 from config import settings
@@ -122,3 +123,36 @@ async def send_message(
 #     ]
 # }
 # result = await send_message(to="1234567890", content=template_content, db=db, message_type="template")
+
+async def get_original_message_content(reply_url: str, db: Session) -> Optional[str]:
+    """
+    Retrieve the original message content that contains the given URL
+    
+    Args:
+        reply_url: The URL that was extracted from the original message
+        db: Database session
+        
+    Returns:
+        The original message content if found, None otherwise
+    """
+    try:
+        # Search for messages that contain the reply URL in their content
+        # Look for both outgoing messages (bot responses) and incoming messages (user messages)
+        message = db.query(models.Message).filter(
+            or_(
+                models.Message.message_content.like(f'%{reply_url}%'),
+                # Also search for the URL without protocol in case of variations
+                models.Message.message_content.like(f'%{reply_url.replace("https://", "").replace("http://", "")}%')
+            )
+        ).order_by(models.Message.created_at.desc()).first()
+        
+        if message:
+            logger.info(f"Found original message containing URL {reply_url}")
+            return message.message_content
+        else:
+            logger.warning(f"No message found containing URL {reply_url}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error retrieving original message content: {e}")
+        return None

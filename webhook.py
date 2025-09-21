@@ -362,6 +362,28 @@ async def process_message(phone_number: str, message: str, chatbot: ChatBot, rep
         # Check if this is a reply with a URL from the original message
         if reply_url:
             logger.info(f"Reply detected with URL from original message: {reply_url}")
+            
+            # Need to check if original message had multiple URLs by retrieving original content
+            # Get the original message content from database to check for multiple URLs
+            try:
+                from services.whatsapp import get_original_message_content
+                original_content = await get_original_message_content(reply_url, next(get_db()))
+                if original_content:
+                    # Extract all URLs from the original message content
+                    from utils.url_detector import extract_urls
+                    detected_urls = extract_urls(original_content)
+                    
+                    # If multiple URLs were found in the original message, show selection
+                    if len(detected_urls) > 1:
+                        logger.info(f"Multiple URLs detected in original message ({len(detected_urls)}), showing selection menu")
+                        chatbot.select_from_multiple_urls()  # Trigger the URL selection state transition
+                        return await handle_select_url_state(chatbot, phone_number, detected_urls, original_content)
+                    
+            except Exception as e:
+                logger.warning(f"Could not retrieve original message content: {e}")
+                # Fall back to single URL processing
+            
+            # Single URL or fallback - proceed directly to article summary
             chatbot.select_article_summary()  # Trigger the article summary state transition
             return await handle_article_summary_state(chatbot, phone_number, reply_url, chatgpt_service)
 
