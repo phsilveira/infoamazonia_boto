@@ -972,13 +972,26 @@ async def _search_redis_urls(redis_client, query: str) -> List[str]:
         return []
 
 async def search_articles_service(query: str, db: Session, redis_client=None) -> Dict[str, Any]:
-    """FastAPI-compatible version of search_articles function"""
+    """FastAPI-compatible version of search_articles function with caching"""
     try:
         if not query:
             return {'error': 'Query is required'}
 
         # Slugify the query
         normalized_query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('utf-8').lower()
+        
+        # Check cache first if Redis client is available
+        cache_key = f"article_search:{hash(normalized_query)}"
+        if redis_client:
+            try:
+                import json
+                cached_result = await redis_client.get(cache_key)
+                if cached_result:
+                    logging.info(f"Cache hit for query: {query}")
+                    return json.loads(cached_result)
+            except Exception as e:
+                logging.warning(f"Cache read error for query {query}: {e}")
+                # Continue with normal execution if cache fails
 
         # Set similarity threshold
         similarity_threshold = 0.5  # Adjust this value for more or less strict matching
@@ -1086,6 +1099,17 @@ async def search_articles_service(query: str, db: Session, redis_client=None) ->
             'count': len(results),
             'query': query
         }
+        
+        # Store results in cache if Redis client is available
+        if redis_client:
+            try:
+                import json
+                # Cache for 1 hour (3600 seconds)
+                await redis_client.setex(cache_key, 3600, json.dumps(response_data))
+                logging.info(f"Cached search results for query: {query}")
+            except Exception as e:
+                logging.warning(f"Cache write error for query {query}: {e}")
+                # Continue normally if cache storage fails
         
         return response_data
 
