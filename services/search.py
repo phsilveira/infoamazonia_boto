@@ -14,6 +14,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 from services.embeddings import generate_embedding, generate_completion, generate_article_summary
 from config import settings
+from utils.url_detector import remove_utm_parameters
 
 
 # Import for compatibility with existing Flask routes
@@ -98,6 +99,9 @@ def shorten_url(original_url, host_url=None, redis_client=None):
     Also initializes tracking metrics for the URL.
     Uses Redis for persistent storage with 30-day expiration.
     """
+    # Clean UTM parameters from the original URL
+    clean_url = remove_utm_parameters(original_url)
+    
     # Generate a short unique ID
     short_id = str(uuid.uuid4())[:8]
 
@@ -113,15 +117,15 @@ def shorten_url(original_url, host_url=None, redis_client=None):
                 # For now, fall back to in-memory cache if we can't use sync Redis
                 raise Exception("Async Redis client not supported in sync context")
             else:
-                _store_url_in_redis_sync(redis_client, short_id, original_url)
+                _store_url_in_redis_sync(redis_client, short_id, clean_url)
                 
         except Exception as e:
             logging.error(f"Redis error in shorten_url: {e}. Falling back to in-memory cache.")
             # Fallback to in-memory cache if Redis fails
-            _store_url_in_memory_cache(short_id, original_url)
+            _store_url_in_memory_cache(short_id, clean_url)
     else:
         # Fallback to in-memory cache if Redis is not available
-        _store_url_in_memory_cache(short_id, original_url)
+        _store_url_in_memory_cache(short_id, clean_url)
 
     return _build_short_url(short_id, host_url)
 
@@ -659,21 +663,24 @@ async def shorten_url_async(original_url, host_url=None, redis_client=None):
     Also initializes tracking metrics for the URL.
     Uses Redis for persistent storage with 30-day expiration.
     """
+    # Clean UTM parameters from the original URL
+    clean_url = remove_utm_parameters(original_url)
+    
     # Generate a short unique ID
     short_id = str(uuid.uuid4())[:8]
 
     # Store the original URL in Redis with 30-day expiration
     if redis_client:
         try:
-            await _store_url_in_redis_async(redis_client, short_id, original_url)
+            await _store_url_in_redis_async(redis_client, short_id, clean_url)
                 
         except Exception as e:
             logging.error(f"Redis error in shorten_url_async: {e}. Falling back to in-memory cache.")
             # Fallback to in-memory cache if Redis fails
-            _store_url_in_memory_cache(short_id, original_url)
+            _store_url_in_memory_cache(short_id, clean_url)
     else:
         # Fallback to in-memory cache if Redis is not available
-        _store_url_in_memory_cache(short_id, original_url)
+        _store_url_in_memory_cache(short_id, clean_url)
 
     return _build_short_url(short_id, host_url)
 

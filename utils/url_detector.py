@@ -48,11 +48,11 @@ def is_url(text: str) -> bool:
     """
     Check if the text contains a URL
     """
-    # URL pattern to match common URL formats
-    url_pattern = r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:\w*))?)?'
+    # URL pattern to match common URL formats - improved to handle hyphens and more characters
+    url_pattern = r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_\.\-~:@!$&\'()*+,;=%])*(?:\?(?:[\w&=%\.#\-~:@!$\'()*+,;/]*)*)?(?:\#(?:[\w\-~:@!$&\'()*+,;=%\.]*))?)?'
     
-    # Alternative pattern for URLs without protocol
-    simple_url_pattern = r'(?:www\.)?[\w\-\.]+\.[\w]{2,}(?:/[\w\-\.]*)*(?:\?[\w&=%]*)?(?:#\w*)?'
+    # Alternative pattern for URLs without protocol - improved to handle hyphens and more characters  
+    simple_url_pattern = r'(?:www\.)?[\w\-\.]+\.[\w]{2,}(?:/[\w\-\.~:@!$&\'()*+,;=%]*)*(?:\?[\w&=%\.#\-~:@!$\'()*+,;/]*)?(?:\#[\w\-~:@!$&\'()*+,;=%]*)?'
     
     return bool(re.search(url_pattern, text, re.IGNORECASE)) or bool(re.search(simple_url_pattern, text, re.IGNORECASE))
 
@@ -60,11 +60,11 @@ def extract_urls(text: str) -> List[str]:
     """
     Extract and normalize all URLs from the text, removing duplicates
     """
-    # URL pattern to match common URL formats
-    url_pattern = r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:\w*))?)?'
+    # URL pattern to match common URL formats - improved to handle hyphens and more characters
+    url_pattern = r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_\.\-~:@!$&\'()*+,;=%])*(?:\?(?:[\w&=%\.#\-~:@!$\'()*+,;/]*)*)?(?:\#(?:[\w\-~:@!$&\'()*+,;=%\.]*))?)?'
     
-    # Alternative pattern for URLs without protocol
-    simple_url_pattern = r'(?:www\.)?[\w\-\.]+\.[\w]{2,}(?:/[\w\-\.]*)*(?:\?[\w&=%]*)?(?:#\w*)?'
+    # Alternative pattern for URLs without protocol - improved to handle hyphens and more characters  
+    simple_url_pattern = r'(?:www\.)?[\w\-\.]+\.[\w]{2,}(?:/[\w\-\.~:@!$&\'()*+,;=%]*)*(?:\?[\w&=%\.#\-~:@!$\'()*+,;/]*)?(?:\#[\w\-~:@!$&\'()*+,;=%]*)?'
     
     urls = []
     normalized_urls = set()  # To track normalized versions and avoid duplicates
