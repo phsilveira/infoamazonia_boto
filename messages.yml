@@ -159,6 +159,7 @@ error:
   general_error: "Desculpe, ocorreu um erro ao processar sua solicitação."
   news_message_not_found: "Desculpe, não encontrei a mensagem original com as notícias."
   select_article: "Por favor, escolha uma das notícia que você quer ler."
+  content_not_found: "Infelizmente esse conteúdo é de um parceiro que ainda não está presente aqui. Você terá que ler a matéria inteira no site do parceiro nesse link.\n\n{url}"
 
 # Feedback messages
 feedback:
