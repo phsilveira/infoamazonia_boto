@@ -83,10 +83,13 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% if item.last_message %}
-                    <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ item.last_message }}">
-                        {{ item.last_message }}
-                    </span>
+                    {% if item.last_message_time %}
+                    <div>
+                        <small class="text-muted">{{ item.last_message_time.strftime('%d/%m/%Y %H:%M:%S') }}</small>
+                        <div class="text-truncate" style="max-width: 200px;" title="{{ item.last_message }}">
+                            {{ item.last_message }}
+                        </div>
+                    </div>
                     {% else %}
                     <span class="text-muted">-</span>
                     {% endif %}

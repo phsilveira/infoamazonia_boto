@@ -70,7 +70,8 @@ async def list_users(
     # Main query with left join to get last incoming message
     query = db.query(
         models.User,
-        MessageAlias.message_content.label('last_message')
+        MessageAlias.message_content.label('last_message'),
+        MessageAlias.created_at.label('last_message_time')
     ).outerjoin(
         latest_message_subquery,
         models.User.phone_number == latest_message_subquery.c.phone_number
@@ -102,12 +103,13 @@ async def list_users(
     # Apply pagination and get results
     results = query.offset(skip).limit(limit).all()
     
-    # Create a list of user dictionaries with last_message
+    # Create a list of user dictionaries with last_message and timestamp
     users_with_messages = []
-    for user, last_message in results:
+    for user, last_message, last_message_time in results:
         user_dict = {
             'user': user,
-            'last_message': last_message
+            'last_message': last_message,
+            'last_message_time': last_message_time
         }
         users_with_messages.append(user_dict)
 
