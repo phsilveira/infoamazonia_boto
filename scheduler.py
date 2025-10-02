@@ -488,13 +488,13 @@ async def start_scheduler():
     logger.info("Initializing scheduler...")
 
     try:
-        # scheduler.add_job(
-        #     update_user_status,
-        #     trigger=CronTrigger(hour=9, minute=0, timezone=SP_TIMEZONE),
-        #     id='update_user_status',
-        #     replace_existing=True,
-        #     misfire_grace_time=300  # 5 minutes grace time
-        # )
+        scheduler.add_job(
+            update_user_status,
+            trigger=CronTrigger(hour=9, minute=0, timezone=SP_TIMEZONE),
+            id='update_user_status',
+            replace_existing=True,
+            misfire_grace_time=300  # 5 minutes grace time
+        )
 
         # Daily news at 9:00 AM SP time
         scheduler.add_job(
