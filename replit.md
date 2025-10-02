@@ -83,6 +83,12 @@ Key deployment considerations:
 ## Changelog
 
 Recent changes:
+- October 2, 2025: Enhanced admin users page with last message display
+  - ✓ Added "Última Mensagem" (Last Message) column to admin users list
+  - ✓ Implemented SQL join to fetch most recent incoming message for each user
+  - ✓ Messages display truncated with full text on hover for better UX
+  - ✓ Shows "-" placeholder when no incoming messages exist for a user
+  - ✓ Query optimized with subquery and left join for performance
 - August 27, 2025: Added URL detection and processing functionality
   - ✓ Created URL detection utility (utils/url_detector.py) supporting both protocol and non-protocol URLs
   - ✓ Added new 'process_url_state' to chatbot state machine with transitions from any state

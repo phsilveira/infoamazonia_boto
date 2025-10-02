@@ -50,10 +50,42 @@ async def list_users(
     db: Session = get_db_dependency(),
     current_admin: models.Admin = get_current_admin_dependency()
 ):
-    query = db.query(models.User)
+    from sqlalchemy import func, and_
+    from sqlalchemy.orm import aliased
+    
+    # Subquery to get the latest incoming message for each phone number
+    latest_message_subquery = (
+        db.query(
+            models.Message.phone_number,
+            func.max(models.Message.created_at).label('max_created_at')
+        )
+        .filter(models.Message.message_type == 'incoming')
+        .group_by(models.Message.phone_number)
+        .subquery()
+    )
+    
+    # Alias for Message table to join with subquery
+    MessageAlias = aliased(models.Message)
+    
+    # Main query with left join to get last incoming message
+    query = db.query(
+        models.User,
+        MessageAlias.message_content.label('last_message')
+    ).outerjoin(
+        latest_message_subquery,
+        models.User.phone_number == latest_message_subquery.c.phone_number
+    ).outerjoin(
+        MessageAlias,
+        and_(
+            MessageAlias.phone_number == latest_message_subquery.c.phone_number,
+            MessageAlias.created_at == latest_message_subquery.c.max_created_at,
+            MessageAlias.message_type == 'incoming'
+        )
+    )
 
     # Apply phone number search
-    query = apply_search_filter(query, models.User.phone_number, phone_number)
+    if phone_number:
+        query = query.filter(models.User.phone_number.ilike(f"%{phone_number}%"))
 
     # Apply status filter
     if status == 'active':
@@ -67,11 +99,21 @@ async def list_users(
     else:  # Default to newest first
         query = query.order_by(models.User.created_at.desc())
 
-    users = apply_pagination(query, skip, limit).all()
+    # Apply pagination and get results
+    results = query.offset(skip).limit(limit).all()
+    
+    # Create a list of user dictionaries with last_message
+    users_with_messages = []
+    for user, last_message in results:
+        user_dict = {
+            'user': user,
+            'last_message': last_message
+        }
+        users_with_messages.append(user_dict)
 
     return templates.TemplateResponse(
         "admin/users.html",
-        {"request": request, "users": users}
+        {"request": request, "users": users_with_messages}
     )
 
 @router.get("/{user_id}", response_class=HTMLResponse)

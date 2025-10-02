@@ -52,38 +52,48 @@
                 <th>Número de Telefone</th>
                 <th>Status</th>
                 <th>Agendamento</th>
+                <th>Última Mensagem</th>
                 <th>Criado Em</th>
                 <th>Ações</th>
             </tr>
         </thead>
         <tbody>
-            {% for user in users %}
+            {% for item in users %}
             <tr>
-                <td>{{ user.id }}</td>
-                <td>{{ user.phone_number }}</td>
+                <td>{{ item.user.id }}</td>
+                <td>{{ item.user.phone_number }}</td>
                 <td>
-                    {% if user.is_active %}
+                    {% if item.user.is_active %}
                     <span class="badge bg-success">Ativo</span>
                     {% else %}
                     <span class="badge bg-danger">Inativo</span>
                     {% endif %}
                 </td>
                 <td>
-                    {% if user.schedule == 'daily' %}
+                    {% if item.user.schedule == 'daily' %}
                     <span class="badge bg-info">Diário</span>
-                    {% elif user.schedule == 'weekly' %}
+                    {% elif item.user.schedule == 'weekly' %}
                     <span class="badge bg-warning">Semanal</span>
-                    {% elif user.schedule == 'monthly' %}
+                    {% elif item.user.schedule == 'monthly' %}
                     <span class="badge bg-primary">Mensal</span>
-                    {% elif user.schedule == 'immediately' %}
+                    {% elif item.user.schedule == 'immediately' %}
                     <span class="badge bg-danger">Imediatamente</span>
                     {% else %}
                     <span class="badge bg-secondary">-</span>
                     {% endif %}
                 </td>
-                <td>{{ user.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</td>
                 <td>
-                    <a href="/admin/users/{{ user.id }}" class="btn btn-sm btn-primary">Visualizar/Editar</a>
+                    {% if item.last_message %}
+                    <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ item.last_message }}">
+                        {{ item.last_message }}
+                    </span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>{{ item.user.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                <td>
+                    <a href="/admin/users/{{ item.user.id }}" class="btn btn-sm btn-primary">Visualizar/Editar</a>
                 </td>
             </tr>
             {% endfor %}
