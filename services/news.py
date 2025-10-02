@@ -39,6 +39,15 @@ class News:
         api_error_count = 0
         total_apis = len(self.api_sources)
 
+        # Add proper headers to avoid 406 errors
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9,pt;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+        }
+
         for api in self.api_sources:
             news_source_name = api.get("news_source_name")
             api_source = api.get("api_source")
@@ -47,7 +56,7 @@ class News:
 
             try:
                 # First check if the API is accessible
-                response = requests.get(api_url)
+                response = requests.get(api_url, headers=headers)
                 response.raise_for_status()
             except requests.exceptions.RequestException as e:
                 logging.error(f"Error connecting to {api_url}: {e}")
@@ -56,24 +65,24 @@ class News:
 
             try:
                 # Determine page count
-                headers = response.headers
-                if int(headers.get("X-WP-TotalPages", 1)) > page_limit:
+                headers_resp = response.headers
+                if int(headers_resp.get("X-WP-TotalPages", 1)) > page_limit:
                     number_of_pages = page_limit
                 else:
-                    number_of_pages = int(headers.get("X-WP-TotalPages", 1))
+                    number_of_pages = int(headers_resp.get("X-WP-TotalPages", 1))
 
                 # Process each page
                 for page in range(1, number_of_pages + 1):  # Changed to start from 1 instead of 0
                     api_url_page = f"{api_url}?per_page=10&page={page}"
                     try:
-                        response = requests.get(api_url_page)
+                        response = requests.get(api_url_page, headers=headers)
                         response.raise_for_status()
 
                         logging.info(f"API: {api_source}, Page {page}")
                         for item in response.json():
                             news = self.process_news_item(item, api_source, news_source_name)
                             if news and not self.is_duplicate_news(news):
-                                documents.append(news)
+                              documents.append(news)
                     except requests.exceptions.RequestException as e:
                         logging.error(f"Error fetching page {page} from {api_url}: {e}")
                         continue
@@ -110,6 +119,73 @@ class News:
     def process_news_item(self, item, api_source, news_source_name):
         """Process a single news item."""
         news = {}
+
+        # Check if this is the new format (has title.rendered) or old format (has yoast_head_json)
+        is_new_format = 'title' in item and isinstance(item['title'], dict) and 'rendered' in item['title']
+
+        if is_new_format:
+            # Process new format (Alente-style)
+            return self.process_new_format_item(item, api_source, news_source_name)
+        else:
+            # Process old format (InfoAmazonia-style)
+            return self.process_old_format_item(item, api_source, news_source_name)
+
+    def process_new_format_item(self, item, api_source, news_source_name):
+        """Process news item in new format (title.rendered, content.rendered structure)."""
+        news = {}
+        news["success"] = True
+        news["news_source"] = news_source_name
+        news["_id"] = f"{api_source}_{item.get('id')}"
+        news["collection_date"] = datetime.now(pytz.timezone("America/Sao_Paulo"))
+
+        # No location data in new format
+        meta = item.get("meta")
+        location = meta.get("_related_point") if meta else None
+        location_dict = self.process_location(location)
+        news["location"] = location_dict
+
+        # Extract basic fields from new format
+        title_obj = item.get('title', {})
+        news['Title'] = title_obj.get('rendered', '') if isinstance(title_obj, dict) else str(title_obj)
+
+        # Extract description from excerpt
+        excerpt_obj = item.get('excerpt', {})
+        excerpt_html = excerpt_obj.get('rendered', '') if isinstance(excerpt_obj, dict) else str(excerpt_obj)
+        soup = BeautifulSoup(excerpt_html, "html.parser")
+        news['Description'] = soup.get_text().strip()
+        news['description'] = news['Description']  # Keep both for compatibility
+
+        # Extract content
+        content_obj = item.get('content', {})
+        content_html = content_obj.get('rendered', '') if isinstance(content_obj, dict) else str(content_obj)
+        soup = BeautifulSoup(content_html, 'html.parser')
+        news['content'] = soup.get_text().strip()
+
+        # Set other required fields
+        news['URL'] = item.get('link', '')
+        news['Published_date'] = item.get('date', '')
+        news['Author'] = ''  # Not directly available in this format
+        news['Language'] = 'pt'  # Default to Portuguese
+        news['site'] = news_source_name
+
+        # Categories and tags are arrays of IDs in new format
+        news['Keywords'] = []
+        news['Subtopics'] = []
+
+        # Validate required fields
+        if not news['Title'] or not news['URL']:
+            news["success"] = False
+            return None
+
+        if news["success"]:
+            self.get_topics(news)
+            return news
+
+        return None
+
+    def process_old_format_item(self, item, api_source, news_source_name):
+        """Process news item in old format (InfoAmazonia-style with yoast_head_json)."""
+        news = {}
         meta = item.get("meta")
         location = meta.get("_related_point") if meta else None
         location_dict = self.process_location(location)
@@ -122,7 +198,6 @@ class News:
 
         soup = BeautifulSoup(item.get('excerpt', {}).get('rendered', ''), "html.parser")
         description = soup.get_text()
-
         news['description'] = description
 
         yoast = item.get("yoast_head_json")
@@ -145,21 +220,28 @@ class News:
                 self.get_topics(news)
                 return news
 
-        # Get the article URL from the item
+        # Fallback: scrape article page if yoast data not available
         article_url = item.get("link", "")
         if not article_url:
             news["success"] = False
             return None
 
         try:
+            # Add headers for web scraping
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9,pt;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+            }
+
             # Fetch the article page
-            response = requests.get(article_url, timeout=10)
+            response = requests.get(article_url, timeout=10, headers=headers)
             response.raise_for_status()
 
             # Parse the HTML content
             soup = BeautifulSoup(response.text, 'html.parser')
-
-            # Extract metadata from meta tags
             meta_tags = {}
 
             # Get Open Graph and other meta tags
@@ -296,7 +378,7 @@ class News:
     def is_duplicate_news(self, news):
         """Check if the news item is a duplicate using database query."""
         from models import Article
-        
+
         # Allow accessing db passed from the caller, or use mock in case it's not provided
         if hasattr(self, 'db'):
             db = self.db
