@@ -602,6 +602,7 @@ async def handle_select_url_state(chatbot: ChatBot, phone_number: str, urls: lis
         for i, url in enumerate(urls, 1):
             # Truncate long URLs for display
             display_url = url if len(url) <= 60 else url[:57] + "..."
+            display_url = display_url.replace("'","")
             url_options += f"{i}. {display_url}\n"
         
         url_options += f"\n📝 Responda com o número (1-{len(urls)}) do link que deseja resumir."
