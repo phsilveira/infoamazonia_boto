@@ -214,6 +214,7 @@ async def delete_news_source(
 async def download_articles_for_source(
     request: Request,
     source_id: int,
+    page_limit: int = Form(2),
     db: Session = get_db_dependency(),
     current_admin: models.Admin = get_current_admin_dependency()
 ):
@@ -256,15 +257,15 @@ async def download_articles_for_source(
         sys.modules['app'] = app_module
         
         try:
-            logger.info(f"Attempting to get articles from source: {source.name} ({source.url})")
+            logger.info(f"Attempting to get articles from source: {source.name} ({source.url}) with page_limit={page_limit}")
             from services.news import News
             
             # Initialize the News class with our database session and specific source
             news = News(news_source=source)
             news.db = app_db
             
-            # Fetch news from configured sources
-            result = news.get_news()
+            # Fetch news from configured sources with the specified page limit
+            result = news.get_news(page_limit=page_limit)
             
             if not result.get('success', False):
                 logger.error("Failed to fetch articles from sources")

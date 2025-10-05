@@ -51,9 +51,20 @@
                     Edit Source
                 </button>
                 <form id="downloadArticlesForm" method="POST" action="/admin/news-sources/{{ source.id }}/download-articles" class="flex-grow-1">
-                    <button type="submit" id="downloadArticlesBtn" class="btn btn-success w-100">
-                        Download Articles
-                    </button>
+                    <div class="d-flex gap-2 align-items-center">
+                        <div class="flex-shrink-0">
+                            <label for="pageLimit" class="form-label mb-0 text-sm">Pages:</label>
+                        </div>
+                        <div class="flex-shrink-0" style="width: 80px;">
+                            <input type="number" class="form-control form-control-sm" id="pageLimit" name="page_limit" 
+                                   value="2" min="1" max="10" required>
+                        </div>
+                        <div class="flex-grow-1">
+                            <button type="submit" id="downloadArticlesBtn" class="btn btn-success w-100">
+                                Download Articles
+                            </button>
+                        </div>
+                    </div>
                 </form>
                 
                 <!-- Result Alert -->
@@ -164,12 +175,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear previous alerts
             alertDiv.style.display = 'none';
             
+            // Get the page limit value
+            const pageLimitInput = document.getElementById('pageLimit');
+            const pageLimit = pageLimitInput ? pageLimitInput.value : '2';
+            
             // Submit the form as AJAX to handle the response
             fetch(downloadForm.action, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                }
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `page_limit=${pageLimit}`
             })
             .then(response => {
                 if (!response.ok) {
