@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import logging
 from datetime import datetime
 
+
 pp = pprint.PrettyPrinter(indent=4)
 logging.basicConfig(level=logging.INFO)
 
@@ -39,59 +40,33 @@ class News:
         api_error_count = 0
         total_apis = len(self.api_sources)
 
-        # Add proper headers to avoid 406 errors
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-US,en;q=0.9,pt;q=0.8',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-        }
-
         for api in self.api_sources:
             news_source_name = api.get("news_source_name")
             api_source = api.get("api_source")
             api_url = api.get("api_url")
-            lang = api.get("lang")
+
+            logging.info(f"Starting to fetch news from {news_source_name} ({api_url})")
 
             try:
-                # First check if the API is accessible
-                response = requests.get(api_url, headers=headers)
-                response.raise_for_status()
-            except requests.exceptions.RequestException as e:
-                logging.error(f"Error connecting to {api_url}: {e}")
-                api_error_count += 1
-                continue
+                posts = self._fetch_posts_from_api(api_url, page_limit)
+                if not posts:
+                    logging.warning(f"No posts retrieved from {news_source_name}")
+                    api_error_count += 1
+                    continue
 
-            try:
-                # Determine page count
-                headers_resp = response.headers
-                if int(headers_resp.get("X-WP-TotalPages", 1)) > page_limit:
-                    number_of_pages = page_limit
-                else:
-                    number_of_pages = int(headers_resp.get("X-WP-TotalPages", 1))
+                logging.info(f"Retrieved {len(posts)} posts from {news_source_name}")
 
-                # Process each page
-                for page in range(1, number_of_pages + 1):  # Changed to start from 1 instead of 0
-                    api_url_page = f"{api_url}?per_page=10&page={page}"
-                    try:
-                        response = requests.get(api_url_page, headers=headers)
-                        response.raise_for_status()
+                # Process posts and stop if duplicates are found
+                for post in posts:
+                    news = self.process_news_item(post, api_source, news_source_name)
+                    if news:  # Only add if processing was successful
+                        if self.is_duplicate_news(news):
+                            logging.info(f"Duplicate found for {news['_id']}, stopping fetch for this source")
+                            break  # Stop processing more posts from this source
+                        documents.append(news)
 
-                        logging.info(f"API: {api_source}, Page {page}")
-                        for item in response.json():
-                            news = self.process_news_item(item, api_source, news_source_name)
-                            if news and not self.is_duplicate_news(news):
-                              documents.append(news)
-                    except requests.exceptions.RequestException as e:
-                        logging.error(f"Error fetching page {page} from {api_url}: {e}")
-                        continue
-                    except ValueError as e:
-                        # Handle JSON parsing errors
-                        logging.error(f"Error parsing JSON from {api_url}, page {page}: {e}")
-                        continue
             except Exception as e:
-                logging.error(f"Unexpected error processing {api_source}: {e}")
+                logging.error(f"Failed to fetch news from {news_source_name}: {e}")
                 api_error_count += 1
 
         # Return appropriate response based on results
@@ -102,19 +77,149 @@ class News:
                 "number_of_news": len(documents),
             }
         elif api_error_count == total_apis:
-            # All APIs failed
             return {
                 "success": False,
                 "message": "All news sources failed to respond"
             }
         else:
-            # No new articles found but APIs responded
             return {
                 "success": True,
                 "news": [],
                 "number_of_news": 0,
                 "message": "No new articles found"
             }
+
+    def _fetch_posts_from_api(self, api_url, page_limit):
+        """Fetch posts from a WordPress API with proper pagination and error handling."""
+        all_posts = []
+
+        # Standard headers for WordPress API requests - simplified to avoid compression issues
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9,pt;q=0.8',
+            'Connection': 'keep-alive',
+        }
+
+        # First, test if the API is accessible and get total pages
+        try:
+            response = self._make_api_request(api_url, headers)
+            if not response:
+                return []
+
+            # Get total pages from headers
+            total_pages = int(response.headers.get("X-WP-TotalPages", 1))
+            pages_to_fetch = min(total_pages, page_limit)
+
+            logging.info(f"API has {total_pages} total pages, fetching {pages_to_fetch} pages")
+
+        except Exception as e:
+            logging.error(f"Failed to connect to API {api_url}: {e}")
+            return []
+
+        # Fetch posts from each page
+        for page in range(1, pages_to_fetch + 1):
+            try:
+                page_posts = self._fetch_posts_from_page(api_url, page, headers)
+                if page_posts:
+                    all_posts.extend(page_posts)
+                    logging.info(f"Fetched {len(page_posts)} posts from page {page}")
+                else:
+                    logging.warning(f"No posts found on page {page}")
+
+            except Exception as e:
+                logging.error(f"Failed to fetch page {page} from {api_url}: {e}")
+                continue
+
+        return all_posts
+
+    def _make_api_request(self, url, headers, timeout=30):
+        """Make a single API request with proper error handling."""
+        try:
+            # Remove Accept-Encoding to avoid compression issues, or handle it properly
+            headers_copy = headers.copy()
+            headers_copy['Accept-Encoding'] = 'identity'  # Request uncompressed response
+
+            response = requests.get(url, headers=headers_copy, timeout=timeout)
+            response.raise_for_status()
+
+            # Set encoding explicitly if not set
+            if response.encoding is None:
+                response.encoding = 'utf-8'
+
+            # Validate JSON response
+            try:
+                # Try to decode the response text first
+                content = response.text
+                if not content.strip():
+                    logging.error(f"Empty response from {url}")
+                    return None
+
+                # Try to parse JSON
+                json_data = response.json()
+                return response
+
+            except UnicodeDecodeError as e:
+                logging.error(f"Unicode decode error from {url}: {e}")
+                # Try different encodings
+                for encoding in ['utf-8', 'latin-1', 'iso-8859-1']:
+                    try:
+                        response.encoding = encoding
+                        response.json()
+                        logging.info(f"Successfully decoded with {encoding} encoding")
+                        return response
+                    except (UnicodeDecodeError, ValueError):
+                        continue
+                return None
+
+            except ValueError as e:
+                logging.error(f"Invalid JSON response from {url}: {e}")
+                logging.error(f"Content type: {response.headers.get('content-type', 'unknown')}")
+                logging.error(f"Response encoding: {response.encoding}")
+
+                # Try to decode response with different methods
+                try:
+                    # Try raw content
+                    raw_text = response.content.decode('utf-8', errors='ignore')
+                    logging.error(f"Raw content preview: {raw_text[:200]}...")
+                except Exception as decode_error:
+                    logging.error(f"Could not decode raw content: {decode_error}")
+
+                return None
+
+        except requests.exceptions.Timeout:
+            logging.error(f"Timeout connecting to {url}")
+            return None
+        except requests.exceptions.ConnectionError:
+            logging.error(f"Connection error to {url}")
+            return None
+        except requests.exceptions.HTTPError as e:
+            logging.error(f"HTTP error {e.response.status_code} from {url}")
+            return None
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Request error to {url}: {e}")
+            return None
+
+    def _fetch_posts_from_page(self, api_url, page, headers):
+        """Fetch posts from a specific page."""
+        page_url = f"{api_url}?page={page}&per_page=10"
+
+        response = self._make_api_request(page_url, headers)
+        if not response:
+            return []
+
+        try:
+            posts_data = response.json()
+
+            if not isinstance(posts_data, list):
+                logging.error(f"Expected list response from {page_url}, got {type(posts_data)}")
+                return []
+
+            return posts_data
+
+        except ValueError as e:
+            logging.error(f"Failed to parse JSON from {page_url}: {e}")
+            return []
 
     def process_news_item(self, item, api_source, news_source_name):
         """Process a single news item."""
@@ -139,10 +244,11 @@ class News:
         news["collection_date"] = datetime.now(pytz.timezone("America/Sao_Paulo"))
 
         # No location data in new format
+        news["location"] = {"location": False}
         meta = item.get("meta")
         location = meta.get("_related_point") if meta else None
         location_dict = self.process_location(location)
-        news["location"] = location_dict
+        news["location"] = {"location": location_dict}
 
         # Extract basic fields from new format
         title_obj = item.get('title', {})
@@ -168,9 +274,10 @@ class News:
         news['Language'] = 'pt'  # Default to Portuguese
         news['site'] = news_source_name
 
-        # Categories and tags are arrays of IDs in new format
-        news['Keywords'] = []
-        news['Subtopics'] = []
+        # Fetch categories for Keywords
+        post_id = item.get('id')
+        news['Keywords'] = self.fetch_categories(post_id, news_source_name)
+        news['Subtopics'] = self.fetch_tags(post_id, news_source_name)
 
         # Validate required fields
         if not news['Title'] or not news['URL']:
@@ -182,6 +289,102 @@ class News:
             return news
 
         return None
+
+    def fetch_categories(self, post_id, news_source_name):
+        """Fetch categories for a post from WordPress API."""
+        if not post_id:
+            return []
+
+        try:
+            # Extract base URL from the api_sources
+            base_url = None
+            for api_source in self.api_sources:
+                if api_source.get("news_source_name") == news_source_name:
+                    api_url = api_source.get("api_url", "")
+                    # Extract base URL by removing the wp-json path
+                    if "/wp-json/wp/v2/posts" in api_url:
+                        base_url = api_url.replace("/wp-json/wp/v2/posts", "")
+                        break
+
+            if not base_url:
+                return []
+
+            categories_url = f"{base_url}/wp-json/wp/v2/categories?post={post_id}"
+
+            # Use the improved API request method
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.9,pt;q=0.8',
+                'Connection': 'keep-alive',
+            }
+
+            response = self._make_api_request(categories_url, headers, timeout=10)
+            if not response:
+                return []
+
+            categories_data = response.json()
+
+            # Extract category names
+            category_names = []
+            if isinstance(categories_data, list):
+                for category in categories_data:
+                    if isinstance(category, dict) and 'name' in category:
+                        category_names.append(category['name'])
+
+            return category_names
+
+        except Exception as e:
+            logging.error(f"Unexpected error fetching categories for post {post_id}: {e}")
+            return []
+
+    def fetch_tags(self, post_id, news_source_name):
+        """Fetch tags for a post from WordPress API."""
+        if not post_id:
+            return []
+
+        try:
+            # Extract base URL from the api_sources
+            base_url = None
+            for api_source in self.api_sources:
+                if api_source.get("news_source_name") == news_source_name:
+                    api_url = api_source.get("api_url", "")
+                    # Extract base URL by removing the wp-json path
+                    if "/wp-json/wp/v2/posts" in api_url:
+                        base_url = api_url.replace("/wp-json/wp/v2/posts", "")
+                        break
+
+            if not base_url:
+                return []
+
+            tags_url = f"{base_url}/wp-json/wp/v2/tags?post={post_id}"
+
+            # Use the improved API request method
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.9,pt;q=0.8',
+                'Connection': 'keep-alive',
+            }
+
+            response = self._make_api_request(tags_url, headers, timeout=10)
+            if not response:
+                return []
+
+            tags_data = response.json()
+
+            # Extract tag names
+            tag_names = []
+            if isinstance(tags_data, list):
+                for tag in tags_data:
+                    if isinstance(tag, dict) and 'name' in tag:
+                        tag_names.append(tag['name'])
+
+            return tag_names
+
+        except Exception as e:
+            logging.error(f"Unexpected error fetching tags for post {post_id}: {e}")
+            return []
 
     def process_old_format_item(self, item, api_source, news_source_name):
         """Process news item in old format (InfoAmazonia-style with yoast_head_json)."""
@@ -375,28 +578,6 @@ class News:
                 location_dict["location"] = False
         return location_dict
 
-    def is_duplicate_news(self, news):
-        """Check if the news item is a duplicate using database query."""
-        from models import Article
-
-        # Allow accessing db passed from the caller, or use mock in case it's not provided
-        if hasattr(self, 'db'):
-            db = self.db
-            # Use the provided db session
-            existing = db.session.query(Article).filter(
-                (Article.original_id == news["_id"]) |
-                (Article.url == news["URL"])
-            ).first()
-        else:
-            # Original approach - only works in Flask app context
-            from app import db
-            existing = Article.query.filter(
-                (Article.original_id == news["_id"]) |
-                (Article.url == news["URL"])
-            ).first()
-
-        return existing is not None
-
     def check_news_field(self, api_dict, news, field, field_name, empty):
         """Check and set a field in the news item."""
         try:
@@ -445,3 +626,25 @@ class News:
             if news_subtopics.intersection(keywords) or ("plenamata" in news["news_source"] and topic == "danos_ambientais")
         ]
         news["News_topics"] = news_topics
+
+    def is_duplicate_news(self, news):
+        """Check if the news item is a duplicate using database query."""
+        from models import Article
+
+        # Allow accessing db passed from the caller, or use mock in case it's not provided
+        if hasattr(self, 'db'):
+            db = self.db
+            # Use the provided db session
+            existing = db.session.query(Article).filter(
+                (Article.original_id == news["_id"]) |
+                (Article.url == news["URL"])
+            ).first()
+        else:
+            # Original approach - only works in Flask app context
+            from app import db
+            existing = Article.query.filter(
+                (Article.original_id == news["_id"]) |
+                (Article.url == news["URL"])
+            ).first()
+
+        return existing is not None
