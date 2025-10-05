@@ -19,6 +19,10 @@ async def messages_page(
     db: Session = get_db_dependency(),
     current_admin: models.Admin = get_current_admin_dependency()
 ):
+    # Define filter options
+    message_type_options = ['incoming', 'outgoing']
+    status_options = ['sent', 'delivered', 'read', 'received', 'failed']
+    
     # Start with base query
     query = db.query(models.Message)
     
@@ -63,7 +67,9 @@ async def messages_page(
             "page": page,
             "message_type": message_type,
             "status": status,
-            "phone_number": phone_number
+            "phone_number": phone_number,
+            "message_type_options": message_type_options,
+            "status_options": status_options
         }
     )
 

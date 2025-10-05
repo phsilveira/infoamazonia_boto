@@ -440,7 +440,7 @@ async def update_user_status():
             db.close()
 
 async def clean_old_messages():
-    """Remove messages older than 30 days to maintain database size"""
+    """Remove messages older than 90 days to maintain database size"""
     db = None
     scheduler_run = None
 
@@ -454,7 +454,7 @@ async def clean_old_messages():
         db.commit()
 
         # Calculate cutoff date (30 days ago)
-        cutoff_date = datetime.utcnow() - timedelta(days=30)
+        cutoff_date = datetime.utcnow() - timedelta(days=90)
 
         # Delete old messages
         deleted_count = db.query(Message).filter(
