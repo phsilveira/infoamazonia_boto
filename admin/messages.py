@@ -12,10 +12,12 @@ router = APIRouter()
 async def messages_page(
     request: Request,
     page: int = 1,
-    page_size: int = 10,
+    page_size: int = 50,
     message_type: str = None,
     status: str = None,
     phone_number: str = None,
+    date_from: str = None,
+    date_to: str = None,
     db: Session = get_db_dependency(),
     current_admin: models.Admin = get_current_admin_dependency()
 ):
@@ -35,6 +37,26 @@ async def messages_page(
     
     if phone_number:
         query = query.join(models.User).filter(models.User.phone_number.ilike(f"%{phone_number}%"))
+    
+    # Apply date range filter
+    if date_from:
+        try:
+            from datetime import datetime
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(models.Message.created_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            from datetime import datetime
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            # Add one day to include the entire end date
+            from datetime import timedelta
+            date_to_obj = date_to_obj + timedelta(days=1)
+            query = query.filter(models.Message.created_at < date_to_obj)
+        except ValueError:
+            pass
     
     # Order by creation date (newest first)
     query = query.order_by(desc(models.Message.created_at))
@@ -68,6 +90,8 @@ async def messages_page(
             "message_type": message_type,
             "status": status,
             "phone_number": phone_number,
+            "date_from": date_from,
+            "date_to": date_to,
             "message_type_options": message_type_options,
             "status_options": status_options
         }
