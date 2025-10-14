@@ -152,6 +152,19 @@ async def list_articles(
     languages = db.query(models.Article.language).distinct().all()
     languages = [lang[0] for lang in languages if lang[0]]
     
+    # Build pagination URL with current filters
+    pagination_params = []
+    if search:
+        pagination_params.append(f"search={search}")
+    if news_source:
+        pagination_params.append(f"news_source={news_source}")
+    if language:
+        pagination_params.append(f"language={language}")
+    if sort:
+        pagination_params.append(f"sort={sort}")
+    
+    pagination_url = "/admin/articles?" + "&".join(pagination_params) if pagination_params else "/admin/articles?"
+    
     return templates.TemplateResponse(
         "admin/articles.html",
         {
@@ -171,7 +184,8 @@ async def list_articles(
             "current_sort": sort,
             "news_sources": news_sources,
             "languages": languages,
-            "page": page
+            "page": page,
+            "pagination_url": pagination_url
         }
     )
 
