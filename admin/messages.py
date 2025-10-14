@@ -18,12 +18,21 @@ async def messages_page(
     phone_number: str = None,
     date_from: str = None,
     date_to: str = None,
+    sort: str = None,
     db: Session = get_db_dependency(),
     current_admin: models.Admin = get_current_admin_dependency()
 ):
     # Define filter options
     message_type_options = ['incoming', 'outgoing']
     status_options = ['sent', 'delivered', 'read', 'received', 'failed']
+    sort_options = [
+        ('created_at_desc', 'Criado Em (Mais Recente)'),
+        ('created_at_asc', 'Criado Em (Mais Antigo)'),
+        ('phone_number_asc', 'Número de Telefone (A-Z)'),
+        ('phone_number_desc', 'Número de Telefone (Z-A)'),
+        ('content_asc', 'Conteúdo (A-Z)'),
+        ('content_desc', 'Conteúdo (Z-A)')
+    ]
     
     # Start with base query
     query = db.query(models.Message)
@@ -58,8 +67,19 @@ async def messages_page(
         except ValueError:
             pass
     
-    # Order by creation date (newest first)
-    query = query.order_by(desc(models.Message.created_at))
+    # Apply sorting
+    if sort == 'created_at_asc':
+        query = query.order_by(models.Message.created_at.asc())
+    elif sort == 'phone_number_asc':
+        query = query.order_by(models.Message.phone_number.asc())
+    elif sort == 'phone_number_desc':
+        query = query.order_by(models.Message.phone_number.desc())
+    elif sort == 'content_asc':
+        query = query.order_by(models.Message.message_content.asc())
+    elif sort == 'content_desc':
+        query = query.order_by(models.Message.message_content.desc())
+    else:  # Default: created_at_desc
+        query = query.order_by(desc(models.Message.created_at))
     
     # Calculate pagination
     total_messages = query.count()
@@ -92,8 +112,10 @@ async def messages_page(
             "phone_number": phone_number,
             "date_from": date_from,
             "date_to": date_to,
+            "sort": sort,
             "message_type_options": message_type_options,
-            "status_options": status_options
+            "status_options": status_options,
+            "sort_options": sort_options
         }
     )
 

@@ -50,6 +50,22 @@
                                 <button type="submit" class="btn btn-primary w-100">Filtrar</button>
                             </div>
                         </form>
+                        <form method="get" action="/admin/messages" class="row mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Ordenar Por</label>
+                                <select class="form-select" name="sort" onchange="this.form.submit()">
+                                    <option value="">Selecione a ordem</option>
+                                    {% for sort_value, sort_label in sort_options %}
+                                        <option value="{{ sort_value }}" {% if sort == sort_value %}selected{% endif %}>{{ sort_label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="hidden" name="phone_number" value="{{ phone_number or '' }}">
+                                <input type="hidden" name="message_type" value="{{ message_type or '' }}">
+                                <input type="hidden" name="status" value="{{ status or '' }}">
+                                <input type="hidden" name="date_from" value="{{ date_from or '' }}">
+                                <input type="hidden" name="date_to" value="{{ date_to or '' }}">
+                            </div>
+                        </form>
                         <div class="row mb-3">
                             <div class="col-12">
                                 <a href="/admin/messages" class="btn btn-outline-secondary btn-sm">Limpar Filtros</a>
@@ -114,31 +130,31 @@
                         <nav aria-label="Navegação de página" class="mt-3">
                             <ul class="pagination justify-content-center">
                                 <li class="page-item {{ 'disabled' if page == 1 else '' }}">
-                                    <a class="page-link" href="?page={{ page - 1 }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}">Anterior</a>
+                                    <a class="page-link" href="?page={{ page - 1 }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}&sort={{ sort or '' }}">Anterior</a>
                                 </li>
                                 
                                 {% if page > 4 %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=1&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}">1</a>
+                                    <a class="page-link" href="?page=1&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}&sort={{ sort or '' }}">1</a>
                                 </li>
                                 <li class="page-item disabled"><span class="page-link">...</span></li>
                                 {% endif %}
                                 
                                 {% for pg in range(page - 1, page + 2) if pg > 0 and pg <= total_pages %}
                                 <li class="page-item {{ 'active' if pg == page else '' }}">
-                                    <a class="page-link" href="?page={{ pg }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}">{{ pg }}</a>
+                                    <a class="page-link" href="?page={{ pg }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}&sort={{ sort or '' }}">{{ pg }}</a>
                                 </li>
                                 {% endfor %}
                                 
                                 {% if page < total_pages - 3 %}
                                 <li class="page-item disabled"><span class="page-link">...</span></li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ total_pages }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}">{{ total_pages }}</a>
+                                    <a class="page-link" href="?page={{ total_pages }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}&sort={{ sort or '' }}">{{ total_pages }}</a>
                                 </li>
                                 {% endif %}
                                 
                                 <li class="page-item {{ 'disabled' if page == total_pages else '' }}">
-                                    <a class="page-link" href="?page={{ page + 1 }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}">Próximo</a>
+                                    <a class="page-link" href="?page={{ page + 1 }}&message_type={{ message_type or '' }}&status={{ status or '' }}&phone_number={{ phone_number or '' }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}&sort={{ sort or '' }}">Próximo</a>
                                 </li>
                             </ul>
                         </nav>
