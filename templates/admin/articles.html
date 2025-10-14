@@ -27,8 +27,8 @@
                             <div class="input-group me-2">
                                 <select name="news_source" class="form-select">
                                     <option value="">Todas as Fontes</option>
-                                    {% for source in sources %}
-                                    <option value="{{ source[0] }}" {% if news_source == source[0] %}selected{% endif %}>{{ source[0] }}</option>
+                                    {% for source in news_sources %}
+                                    <option value="{{ source }}" {% if news_source == source %}selected{% endif %}>{{ source }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -38,7 +38,7 @@
                                 <select name="language" class="form-select">
                                     <option value="">Todos os Idiomas</option>
                                     {% for lang in languages %}
-                                    <option value="{{ lang[0] }}" {% if language == lang[0] %}selected{% endif %}>{{ lang[0] }}</option>
+                                    <option value="{{ lang }}" {% if language == lang %}selected{% endif %}>{{ lang }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -114,8 +114,8 @@
                                             <label for="news_source" class="form-label">Fonte de Notícias</label>
                                             <select name="news_source" id="news_source" class="form-select">
                                                 <option value="">Todas as Fontes</option>
-                                                {% for source in sources %}
-                                                <option value="{{ source[0] }}" {% if news_source == source[0] %}selected{% endif %}>{{ source[0] }}</option>
+                                                {% for source in news_sources %}
+                                                <option value="{{ source }}" {% if news_source == source %}selected{% endif %}>{{ source }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
@@ -124,7 +124,7 @@
                                             <select name="language" id="language" class="form-select">
                                                 <option value="">Todos os Idiomas</option>
                                                 {% for lang in languages %}
-                                                <option value="{{ lang[0] }}" {% if language == lang[0] %}selected{% endif %}>{{ lang[0] }}</option>
+                                                <option value="{{ lang }}" {% if language == lang %}selected{% endif %}>{{ lang }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
