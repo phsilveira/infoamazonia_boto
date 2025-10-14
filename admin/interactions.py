@@ -149,9 +149,15 @@ async def list_interactions(
             category_counts[cat] = count
             
             # Get interactions for this category
-            cat_interactions = db.query(models.UserInteraction).filter(
-                models.UserInteraction.category == cat
-            ).order_by(desc(models.UserInteraction.created_at)).limit(10).all()
+            # Use pagination for current category, otherwise just show first 10
+            if cat == category:
+                # For current category, use the already paginated results
+                cat_interactions = interactions
+            else:
+                # For other categories, just show first 10
+                cat_interactions = db.query(models.UserInteraction).filter(
+                    models.UserInteraction.category == cat
+                ).order_by(desc(models.UserInteraction.created_at)).limit(10).all()
             
             # Calculate pagination for this category
             cat_total_pages = (count + page_size - 1) // page_size if count > 0 else 1
