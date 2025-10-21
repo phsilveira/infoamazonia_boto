@@ -285,7 +285,30 @@ async def redirect_to_url(short_id: str, request: Request):
         # Ensure original_url is a string
         if isinstance(original_url, bytes):
             original_url = original_url.decode()
-        return RedirectResponse(url=str(original_url), status_code=302)
+        
+        # Add UTM parameters to the redirect URL
+        from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+        parsed_url = urlparse(original_url)
+        query_params = parse_qs(parsed_url.query)
+        
+        # Add UTM parameters
+        query_params.update({
+            "utmSource": ["whatsapp"],
+            "utmMedium": ["news"]
+        })
+        
+        # Reconstruct the URL with UTM parameters
+        new_query = urlencode(query_params, doseq=True)
+        redirect_url = urlunparse((
+            parsed_url.scheme,
+            parsed_url.netloc,
+            parsed_url.path,
+            parsed_url.params,
+            new_query,
+            parsed_url.fragment
+        ))
+        
+        return RedirectResponse(url=redirect_url, status_code=302)
     else:
         raise HTTPException(status_code=404, detail="URL not found")
 
