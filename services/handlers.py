@@ -592,8 +592,8 @@ async def handle_select_url_state(chatbot: ChatBot, phone_number: str, urls: lis
             # Store URLs with phone number as key (use JSON for proper serialization)
             import json
             urls_key = f"urls:{phone_number}"
-            await chatbot.redis_client.setex(urls_key, 300, json.dumps(urls))  # 5 minutes expiration
-            await chatbot.redis_client.setex(f"original_message:{phone_number}", 300, original_message)
+            await chatbot.redis_client.setex(urls_key, 60*15, json.dumps(urls))  # 5 minutes expiration
+            await chatbot.redis_client.setex(f"original_message:{phone_number}", 60*15, original_message)
         
         # Create message with numbered URL options
         url_options = "🔗 *Múltiplos links encontrados!*\n\n"
