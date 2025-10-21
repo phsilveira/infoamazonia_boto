@@ -188,8 +188,7 @@ async def export_users(
         'Agendamento',
         'Última Mensagem',
         'Data Última Mensagem',
-        'Criado Em',
-        'Atualizado Em'
+        'Criado Em'
     ])
     
     # Write data rows
@@ -201,8 +200,7 @@ async def export_users(
             user.schedule or '-',
             last_message or '-',
             last_message_time.strftime('%d/%m/%Y %H:%M:%S') if last_message_time else '-',
-            user.created_at.strftime('%d/%m/%Y %H:%M:%S'),
-            user.updated_at.strftime('%d/%m/%Y %H:%M:%S') if user.updated_at else '-'
+            user.created_at.strftime('%d/%m/%Y %H:%M:%S')
         ])
     
     # Prepare the response
