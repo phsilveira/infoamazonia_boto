@@ -454,7 +454,7 @@ async def clean_old_messages():
         db.commit()
 
         # Calculate cutoff date (30 days ago)
-        cutoff_date = datetime.utcnow() - timedelta(days=90)
+        cutoff_date = datetime.utcnow() - timedelta(days=30*12)
 
         # Delete old messages
         deleted_count = db.query(Message).filter(

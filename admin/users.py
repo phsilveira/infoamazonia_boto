@@ -5,7 +5,10 @@ location and subject management, and status updates.
 """
 
 from fastapi import APIRouter, Form
+from fastapi.responses import StreamingResponse
 from .base import *
+import csv
+import io
 
 router = APIRouter()
 
@@ -342,3 +345,102 @@ async def delete_user(
             status_code=500,
             content={"success": False, "message": f"Error deleting user: {str(e)}"}
         )
+
+@router.get("/export")
+async def export_users(
+    request: Request,
+    phone_number: str = None,
+    status: str = None,
+    db: Session = get_db_dependency(),
+    current_admin: models.Admin = get_current_admin_dependency()
+):
+    """Export users to CSV file"""
+    from sqlalchemy import func, and_
+    from sqlalchemy.orm import aliased
+    from datetime import datetime
+    
+    # Subquery to get the latest incoming message for each phone number
+    latest_message_subquery = (
+        db.query(
+            models.Message.phone_number,
+            func.max(models.Message.created_at).label('max_created_at')
+        )
+        .filter(models.Message.message_type == 'incoming')
+        .group_by(models.Message.phone_number)
+        .subquery()
+    )
+    
+    # Alias for Message table to join with subquery
+    MessageAlias = aliased(models.Message)
+    
+    # Main query with left join to get last incoming message
+    query = db.query(
+        models.User,
+        MessageAlias.message_content.label('last_message'),
+        MessageAlias.created_at.label('last_message_time')
+    ).outerjoin(
+        latest_message_subquery,
+        models.User.phone_number == latest_message_subquery.c.phone_number
+    ).outerjoin(
+        MessageAlias,
+        and_(
+            MessageAlias.phone_number == latest_message_subquery.c.phone_number,
+            MessageAlias.created_at == latest_message_subquery.c.max_created_at,
+            MessageAlias.message_type == 'incoming'
+        )
+    )
+
+    # Apply filters
+    if phone_number:
+        query = query.filter(models.User.phone_number.ilike(f"%{phone_number}%"))
+    if status == 'active':
+        query = query.filter(models.User.is_active == True)
+    elif status == 'inactive':
+        query = query.filter(models.User.is_active == False)
+
+    # Get all results
+    results = query.all()
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        'ID',
+        'Número de Telefone',
+        'Status',
+        'Agendamento',
+        'Última Mensagem',
+        'Data Última Mensagem',
+        'Criado Em',
+        'Atualizado Em'
+    ])
+    
+    # Write data rows
+    for user, last_message, last_message_time in results:
+        writer.writerow([
+            user.id,
+            user.phone_number,
+            'Ativo' if user.is_active else 'Inativo',
+            user.schedule or '-',
+            last_message or '-',
+            last_message_time.strftime('%d/%m/%Y %H:%M:%S') if last_message_time else '-',
+            user.created_at.strftime('%d/%m/%Y %H:%M:%S'),
+            user.updated_at.strftime('%d/%m/%Y %H:%M:%S') if user.updated_at else '-'
+        ])
+    
+    # Prepare the response
+    output.seek(0)
+    
+    # Generate filename with timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"usuarios_boto_{timestamp}.csv"
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
