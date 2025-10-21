@@ -4,7 +4,10 @@ Handles message templates, scheduling, and message history operations.
 """
 
 from fastapi import APIRouter, Form
+from fastapi.responses import StreamingResponse
 from .base import *
+import csv
+import io
 
 router = APIRouter()
 
@@ -116,6 +119,99 @@ async def messages_page(
             "message_type_options": message_type_options,
             "status_options": status_options,
             "sort_options": sort_options
+        }
+    )
+
+@router.get("/export")
+async def export_messages(
+    request: Request,
+    message_type: str = None,
+    status: str = None,
+    phone_number: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    db: Session = get_db_dependency(),
+    current_admin: models.Admin = get_current_admin_dependency()
+):
+    """Export messages to CSV file"""
+    from datetime import datetime, timedelta
+    
+    # Start with base query
+    query = db.query(models.Message)
+    
+    # Apply filters
+    if message_type and message_type != "all":
+        query = query.filter(models.Message.message_type == message_type)
+    
+    if status and status != "all":
+        query = query.filter(models.Message.status == status)
+    
+    if phone_number:
+        query = query.join(models.User).filter(models.User.phone_number.ilike(f"%{phone_number}%"))
+    
+    # Apply date range filter
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(models.Message.created_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            date_to_obj = date_to_obj + timedelta(days=1)
+            query = query.filter(models.Message.created_at < date_to_obj)
+        except ValueError:
+            pass
+    
+    # Order by creation date (newest first)
+    query = query.order_by(desc(models.Message.created_at))
+    
+    # Get all results
+    messages = query.all()
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        'ID',
+        'ID WhatsApp',
+        'Número de Telefone',
+        'Tipo',
+        'Status',
+        'Conteúdo',
+        'Criado Em',
+        'Timestamp do Status'
+    ])
+    
+    # Write data rows
+    for message in messages:
+        writer.writerow([
+            message.id,
+            message.whatsapp_message_id or '-',
+            message.phone_number,
+            message.message_type,
+            message.status or 'desconhecido',
+            message.message_content,
+            message.created_at.strftime('%d/%m/%Y %H:%M:%S'),
+            message.status_timestamp.strftime('%d/%m/%Y %H:%M:%S') if message.status_timestamp else 'N/D'
+        ])
+    
+    # Prepare the response
+    output.seek(0)
+    
+    # Generate filename with timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"mensagens_boto_{timestamp}.csv"
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
         }
     )
 
