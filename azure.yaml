@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: infoamazonia-boto
+metadata:
+    template: azd-init@1.22.0
+services:
+    infoamazonia-boto:
+        project: .
+        host: appservice
+        language: python
+resources:
+    infoamazonia-boto:
+        type: host.appservice

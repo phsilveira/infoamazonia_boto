@@ -1,20 +1,47 @@
-from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 from typing import Optional
 from functools import lru_cache
 import redis.asyncio as redis
 import logging
 
+
+def _strip_wrapping_quotes(value: str | None) -> str | None:
+    """Remove surrounding single or double quotes if present."""
+    if value is None:
+        return None
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1]
+    return value
+
+
+def _sanitize_process_env():
+    """Strip wrapping quotes from all environment variables in-place."""
+    for key, value in list(os.environ.items()):
+        cleaned = _strip_wrapping_quotes(value)
+        if cleaned is not None and cleaned != value:
+            os.environ[key] = cleaned
+
+
+_sanitize_process_env()
+
 logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="allow"
+    )
     """Application settings."""
     # Environment
     ENV: str = os.getenv("ENV", "development")
     DEBUG: bool = os.getenv("DEBUG", "True") == "True"
 
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+    DATABASE_URL: str = _strip_wrapping_quotes(os.getenv("DATABASE_URL", "sqlite:///./app.db")) or "sqlite:///./app.db"
 
     # API Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
@@ -66,9 +93,14 @@ class Settings(BaseSettings):
     # InfoAmazonia Host url
     HOST_URL: str = os.getenv("HOST_URL", "https://boto.infoamazonia.org/")
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def _clean_database_url(cls, value: str | None):
+        cleaned = _strip_wrapping_quotes(value)
+        if not cleaned:
+            raise ValueError("DATABASE_URL cannot be empty")
+        return cleaned
+
 
 @lru_cache()
 def get_settings():

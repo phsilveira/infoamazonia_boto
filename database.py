@@ -1,21 +1,24 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
 from sqlalchemy.pool import QueuePool
 from urllib.parse import urlparse
-from sqlalchemy import text
+from config import settings
 
 
-# Get environment mode
-ENV_MODE = os.environ.get("ENV_MODE", "development")
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL or "postgresql://postgres:postgres@localhost/infoamazonia"
 
-# Set database URL based on environment
-# if ENV_MODE == "production":
-SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost/infoamazonia")
-# else:
-#     # Use SQLite for development
-#     SQLALCHEMY_DATABASE_URL = "sqlite:///./dev.db"
+parsed_url = urlparse(SQLALCHEMY_DATABASE_URL)
+
+connect_args = {}
+if parsed_url.scheme.startswith("postgres"):
+    connect_args = {
+        "connect_timeout": 10,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5
+    }
 
 # Configure engine based on database type
 # if ENV_MODE == "production":
