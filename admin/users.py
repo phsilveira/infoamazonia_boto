@@ -362,7 +362,7 @@ async def add_user_location(
 async def update_user_status(
     request: Request,
     user_id: int,
-    status: str = Form(...),
+    user_status: str = Form(..., alias="status"),
     db: Session = get_db_dependency(),
     current_admin: models.Admin = get_current_admin_dependency()
 ):
@@ -371,7 +371,7 @@ async def update_user_status(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        user.is_active = (status == 'active')
+        user.is_active = (user_status == 'active')
         db.commit()
         
         await invalidate_caches_and_log(request, "user status update", str(user_id))
@@ -387,7 +387,7 @@ async def update_user_status(
 async def update_user_schedule(
     request: Request,
     user_id: int,
-    schedule: str = Form(...),
+    user_schedule: str = Form(..., alias="schedule"),
     db: Session = get_db_dependency(),
     current_admin: models.Admin = get_current_admin_dependency()
 ):
@@ -396,7 +396,7 @@ async def update_user_schedule(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        user.schedule = schedule
+        user.schedule = user_schedule
         db.commit()
         
         await invalidate_caches_and_log(request, "user schedule update", str(user_id))
