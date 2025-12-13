@@ -479,7 +479,7 @@ async def logout():
     return response
 
 @app.get("/api/dashboard/stats")
-@cached(expire_seconds=60, prefix="dashboard")  # Cache for 1 minute
+@cached(expire_seconds=300, prefix="dashboard")  # Cache for 1 minute
 async def get_dashboard_stats(request: Request, db: Session = Depends(get_db)):
     try:
         # Get latest metrics
@@ -566,7 +566,7 @@ async def get_dashboard_stats(request: Request, db: Session = Depends(get_db)):
         )
 
 @app.get("/api/dashboard/recent-users")
-@cached(expire_seconds=60, prefix="dashboard")  # Cache for 1 minute
+@cached(expire_seconds=300, prefix="dashboard")  # Cache for 1 minute
 async def get_recent_users(request: Request, db: Session = Depends(get_db)):
     try:
         recent_users = db.query(models.User)\
@@ -587,7 +587,7 @@ async def get_recent_users(request: Request, db: Session = Depends(get_db)):
         )
 
 @app.get("/api/dashboard/news-sources")
-@cached(expire_seconds=60, prefix="dashboard")  # Cache for 1 minute
+@cached(expire_seconds=300, prefix="dashboard")  # Cache for 1 minute
 async def get_news_sources(request: Request, db: Session = Depends(get_db)):
     try:
         sources = db.query(models.NewsSource)\
