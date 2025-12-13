@@ -26,10 +26,10 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">Status</label>
-                <select class="form-select" name="status">
+                <select class="form-select" name="user_status">
                     <option value="">Todos</option>
-                    <option value="active" {% if request.query_params.get('status') == 'active' %}selected{% endif %}>Ativo</option>
-                    <option value="inactive" {% if request.query_params.get('status') == 'inactive' %}selected{% endif %}>Inativo</option>
+                    <option value="active" {% if user_status == 'active' %}selected{% endif %}>Ativo</option>
+                    <option value="inactive" {% if user_status == 'inactive' %}selected{% endif %}>Inativo</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -113,6 +113,49 @@
         </tbody>
     </table>
 </div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<nav aria-label="Page navigation" class="mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted">
+            Mostrando página {{ current_page }} de {{ total_pages }} ({{ total_users }} usuários no total)
+        </div>
+        <ul class="pagination mb-0">
+            <li class="page-item {% if not has_prev %}disabled{% endif %}">
+                <a class="page-link" href="/admin/users?page=1&page_size={{ page_size }}&phone_number={{ phone_number or '' }}&status={{ user_status or '' }}&sort={{ sort or '' }}">
+                    <i class="bi bi-chevron-double-left"></i>
+                </a>
+            </li>
+            <li class="page-item {% if not has_prev %}disabled{% endif %}">
+                <a class="page-link" href="/admin/users?page={{ prev_page or 1 }}&page_size={{ page_size }}&phone_number={{ phone_number or '' }}&status={{ user_status or '' }}&sort={{ sort or '' }}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            
+            {% set start_page = [1, current_page - 2]|max %}
+            {% set end_page = [total_pages, current_page + 2]|min %}
+            
+            {% for p in range(start_page, end_page + 1) %}
+            <li class="page-item {% if p == current_page %}active{% endif %}">
+                <a class="page-link" href="/admin/users?page={{ p }}&page_size={{ page_size }}&phone_number={{ phone_number or '' }}&status={{ user_status or '' }}&sort={{ sort or '' }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+            
+            <li class="page-item {% if not has_next %}disabled{% endif %}">
+                <a class="page-link" href="/admin/users?page={{ next_page or total_pages }}&page_size={{ page_size }}&phone_number={{ phone_number or '' }}&status={{ user_status or '' }}&sort={{ sort or '' }}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            <li class="page-item {% if not has_next %}disabled{% endif %}">
+                <a class="page-link" href="/admin/users?page={{ total_pages }}&page_size={{ page_size }}&phone_number={{ phone_number or '' }}&status={{ user_status or '' }}&sort={{ sort or '' }}">
+                    <i class="bi bi-chevron-double-right"></i>
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>
+{% endif %}
 
 <!-- Modal Adicionar Usuário -->
 <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">

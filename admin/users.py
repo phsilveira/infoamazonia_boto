@@ -46,10 +46,10 @@ async def create_user(
 async def list_users(
     request: Request,
     phone_number: str = None,
-    status: str = None,
+    user_status: str = None,
     sort: str = None,
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    page_size: int = 50,
     db: Session = get_db_dependency(),
     current_admin: models.Admin = get_current_admin_dependency()
 ):
@@ -92,9 +92,9 @@ async def list_users(
         query = query.filter(models.User.phone_number.ilike(f"%{phone_number}%"))
 
     # Apply status filter
-    if status == 'active':
+    if user_status == 'active':
         query = query.filter(models.User.is_active == True)
-    elif status == 'inactive':
+    elif user_status == 'inactive':
         query = query.filter(models.User.is_active == False)
 
     # Apply sorting
@@ -103,8 +103,17 @@ async def list_users(
     else:  # Default to newest first
         query = query.order_by(models.User.created_at.desc())
 
-    # Apply pagination and get results
-    results = query.offset(skip).limit(limit).all()
+    # Calculate pagination
+    total_users = query.count()
+    skip = (page - 1) * page_size
+    results = query.offset(skip).limit(page_size).all()
+    
+    # Calculate pagination info
+    total_pages = (total_users + page_size - 1) // page_size
+    has_prev = page > 1
+    has_next = page < total_pages
+    prev_page = page - 1 if has_prev else None
+    next_page = page + 1 if has_next else None
     
     # Get user IDs for subject lookup
     user_ids = [user.id for user, _, _ in results]
@@ -132,7 +141,21 @@ async def list_users(
 
     return templates.TemplateResponse(
         "admin/users.html",
-        {"request": request, "users": users_with_messages}
+        {
+            "request": request,
+            "users": users_with_messages,
+            "current_page": page,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
+            "prev_page": prev_page,
+            "next_page": next_page,
+            "page_size": page_size,
+            "total_users": total_users,
+            "phone_number": phone_number,
+            "user_status": user_status,
+            "sort": sort
+        }
     )
 
 @router.get("/export")
