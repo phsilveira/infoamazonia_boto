@@ -106,13 +106,27 @@ async def list_users(
     # Apply pagination and get results
     results = query.offset(skip).limit(limit).all()
     
-    # Create a list of user dictionaries with last_message and timestamp
+    # Get user IDs for subject lookup
+    user_ids = [user.id for user, _, _ in results]
+    
+    # Fetch subjects for all users in one query
+    subjects_query = db.query(models.Subject).filter(models.Subject.user_id.in_(user_ids)).all()
+    
+    # Group subjects by user_id
+    subjects_by_user = {}
+    for subject in subjects_query:
+        if subject.user_id not in subjects_by_user:
+            subjects_by_user[subject.user_id] = []
+        subjects_by_user[subject.user_id].append(subject.subject_name)
+    
+    # Create a list of user dictionaries with last_message, timestamp, and subjects
     users_with_messages = []
     for user, last_message, last_message_time in results:
         user_dict = {
             'user': user,
             'last_message': last_message,
-            'last_message_time': last_message_time
+            'last_message_time': last_message_time,
+            'subjects': subjects_by_user.get(user.id, [])
         }
         users_with_messages.append(user_dict)
 

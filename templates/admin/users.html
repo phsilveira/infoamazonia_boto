@@ -57,6 +57,7 @@
                 <th>Número de Telefone</th>
                 <th>Status</th>
                 <th>Agendamento</th>
+                <th>Assuntos</th>
                 <th>Última Mensagem</th>
                 <th>Criado Em</th>
                 <th>Ações</th>
@@ -85,6 +86,15 @@
                     <span class="badge bg-danger">Imediatamente</span>
                     {% else %}
                     <span class="badge bg-secondary">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if item.subjects %}
+                    {% for subject in item.subjects %}
+                    <span class="badge bg-secondary">{{ subject }}</span>
+                    {% endfor %}
+                    {% else %}
+                    <span class="text-muted">-</span>
                     {% endif %}
                 </td>
                 <td>
