@@ -54,11 +54,6 @@ class Settings(BaseSettings):
     WHATSAPP_API_URL: str = os.getenv("WHATSAPP_API_URL", "https://graph.facebook.com/v22.0/")
     WHATSAPP_ACCESS_TOKEN: str = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
     WHATSAPP_NUMBER_ID: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-    USE_OFFICIAL_API: bool = os.getenv("USE_OFFICIAL_API", "True") == "True"
-
-    # Unofficial API Configuration
-    EXTERNAL_SERVICE_URL: str = os.getenv("EXTERNAL_SERVICE_URL", "")
-    UNOFFICIAL_CLIENT_TOKEN: str = os.getenv("UNOFFICIAL_CLIENT_TOKEN", "")
 
     # OpenAI Configuration
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
@@ -78,6 +73,7 @@ class Settings(BaseSettings):
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
     REDIS_PASSWORD: Optional[str] = os.getenv("REDIS_PASSWORD")
+    REDIS_USE_TLS: bool = os.getenv("REDIS_USE_TLS", "False").lower() == "true"
 
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
@@ -85,10 +81,6 @@ class Settings(BaseSettings):
     # Mailgun Email Settings
     MAILGUN_API_KEY: str = os.getenv("MAILGUN_API_KEY", "")
     MAILGUN_DOMAIN: str = os.getenv("MAILGUN_DOMAIN", "")
-    
-    # Articles API
-    ARTICLES_API_URL: str = os.getenv("ARTICLES_API_URL", "https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev/api/v1/articles/list")
-    SEARCH_BASE_URL: str = os.getenv("SEARCH_BASE_URL", "https://aa109676-f2b5-40ce-9a8b-b7d95b3a219e-00-30gb0h9bugxba.spock.replit.dev")
 
     # InfoAmazonia Host url
     HOST_URL: str = os.getenv("HOST_URL", "https://boto.infoamazonia.org/")
@@ -119,11 +111,15 @@ async def get_redis():
     """
     # Log Redis connection details (without exposing passwords)
     logger.info(f"Initializing Redis connection to {settings.REDIS_HOST}:{settings.REDIS_PORT}")
-    logger.info(f"Redis decode_responses: True, DB: {settings.REDIS_DB}")
+    logger.info(f"Redis decode_responses: True, DB: {settings.REDIS_DB}, TLS: {settings.REDIS_USE_TLS}")
     logger.info(f"Redis password set: {settings.REDIS_PASSWORD is not None}")
     
     try:
         logger.info("Creating Redis client...")
+        redis_tls_kwargs = {}
+        if settings.REDIS_USE_TLS:
+            redis_tls_kwargs["ssl"] = True
+
         redis_client = redis.Redis(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
@@ -132,7 +128,8 @@ async def get_redis():
             decode_responses=True,
             socket_timeout=5,
             retry_on_timeout=True,
-            health_check_interval=30
+            health_check_interval=30,
+            **redis_tls_kwargs
         )
         
         # Test the connection with detailed logging

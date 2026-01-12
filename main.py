@@ -42,7 +42,7 @@ logger.info("=== Application Startup Information ===")
 logger.info(f"Python version: {sys.version}")
 logger.info(f"FastAPI app starting with debug mode: {settings.DEBUG}")
 logger.info(f"Log level: {settings.LOG_LEVEL}")
-logger.info(f"Database URL configured: {'Yes' if hasattr(settings, 'DATABASE_URL') and settings.DATABASE_URL else 'No'}")
+logger.info(f"Database URL configured: {settings.DATABASE_URL if hasattr(settings, 'DATABASE_URL') and settings.DATABASE_URL else 'No'}")
 logger.info(f"Redis configured: {'Yes' if settings.REDIS_HOST and settings.REDIS_PORT else 'No'}")
 logger.info(f"OpenAI configured: {'Yes' if hasattr(settings, 'OPENAI_API_KEY') and settings.OPENAI_API_KEY else 'No'}")
 logger.info("=====================================")
@@ -820,23 +820,6 @@ async def get_status_stats(request: Request, db: Session = Depends(get_db)):
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to fetch status statistics"}
-        )
-
-@app.get("/api/v1/analytics/ctr-stats")
-@cached(expire_seconds=600, prefix="analytics")  # Cache for 10 minutes since it's an external API call
-async def get_ctr_stats(request: Request):
-    """Get click-through rate statistics from external API"""
-    try:
-        # Using httpx for HTTP request
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{settings.SEARCH_BASE_URL}/api/v1/analytics/ctr-stats")
-            response.raise_for_status()  # Raise an exception for HTTP errors
-            return response.json()
-    except Exception as e:
-        logger.error(f"Error fetching CTR stats: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Failed to fetch click-through rate statistics"}
         )
 
 @app.get("/api/scheduler/runs")

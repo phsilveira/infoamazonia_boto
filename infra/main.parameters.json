@@ -1,0 +1,93 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "brazilsouth"
+    },
+    "environmentName": {
+      "value": "dev"
+    },
+    "serviceName": {
+      "value": "boto"
+    },
+    "azdServiceName": {
+      "value": "infoamazonia-boto"
+    },
+    "appServiceSkuName": {
+      "value": "B1"
+    },
+    "appServiceSkuTier": {
+      "value": "Basic"
+    },
+    "customDomainName": {
+      "value": ""
+    },
+    "appSettings": {
+      "value": {
+        "ENV": "production",
+        "DEBUG": "False"
+      }
+    },
+    "containerImage": {
+      "value": "${CONTAINER_IMAGE}"
+    },
+    "containerRegistryServer": {
+      "value": "${CONTAINER_REGISTRY_SERVER}"
+    },
+    "containerRegistryUsername": {
+      "value": "${CONTAINER_REGISTRY_USERNAME}"
+    },
+    "containerRegistryPassword": {
+      "value": "${CONTAINER_REGISTRY_PASSWORD}"
+    },
+    "startupCommand": {
+      "value": "${STARTUP_COMMAND}"
+    },
+    "redisSkuName": {
+      "value": "Basic"
+    },
+    "redisSkuFamily": {
+      "value": "C"
+    },
+    "redisCapacity": {
+      "value": 0
+    },
+    "redisEnableNonSslPort": {
+      "value": false
+    },
+    "redisMinimumTlsVersion": {
+      "value": "1.2"
+    },
+    "postgresAdminUsername": {
+      "value": "boto_admin"
+    },
+    "postgresAdminPassword": {
+      "value": "${POSTGRES_ADMIN_PASSWORD}"
+    },
+    "postgresDatabaseName": {
+      "value": "infoamazonia"
+    },
+    "postgresVersion": {
+      "value": "16"
+    },
+    "postgresSkuName": {
+      "value": "Standard_B1ms"
+    },
+    "postgresSkuTier": {
+      "value": "Burstable"
+    },
+    "postgresStorageSizeGB": {
+      "value": 64
+    },
+    "postgresBackupRetentionDays": {
+      "value": 7
+    },
+    "postgresAllowAzureServices": {
+      "value": true
+    },
+    "postgresFirewallRules": {
+      "value": []
+    }
+  }
+}
