@@ -1,5 +1,7 @@
 # API Documentation - FastAPI Endpoints
 
+> This reference sits alongside the other guides cataloged in [docs/README.md](README.md). Use it when you need precise request/response contracts for the `/api/*` routes.
+
 ## Overview
 This document provides comprehensive Swagger/OpenAPI documentation for the API endpoints in `api_endpoints.py`. The API provides advanced search capabilities with AI-powered features for article management.
 

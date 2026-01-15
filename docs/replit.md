@@ -2,7 +2,9 @@
 
 ## Overview
 
-This is a FastAPI-based admin panel application for the InfoAmazonia chatbot (BOTO) system. The application manages WhatsApp bot interactions, user management, article content, and news sources for providing Amazon-related news to users in Portuguese. It includes comprehensive admin features, AI-powered article search, and scheduled messaging capabilities.
+> For the full documentation map, start with [docs/README.md](README.md). Stay here when you specifically need hosted-IDE instructions.
+
+This guide is tailored for contributors working from hosted IDEs such as Replit, Codespaces, or GitHub.dev. It mirrors the core docs but highlights the workflows that matter when you are editing inside a browser. The FastAPI application powers the InfoAmazonia chatbot (BOTO) and handles WhatsApp interactions, admin tooling, article management, AI-assisted search, and scheduled messaging in Portuguese.
 
 ## System Architecture
 
@@ -67,18 +69,22 @@ The application follows a modular FastAPI architecture with the following key co
 
 ## Deployment Strategy
 
-The application is configured for deployment on Google Cloud Run with:
-- **Environment**: Production and development configurations via environment files
-- **Database**: PostgreSQL connection with connection pooling
-- **Static Files**: Served directly by FastAPI
-- **Port Configuration**: Runs on port 8000 (internal) exposed as port 80 (external)
-- **Auto-scaling**: Supported by Cloud Run infrastructure
+We deploy to **Azure App Service** via Azure Developer CLI (`azd`). Container images are built from the root `Dockerfile` and published automatically when you run `azd deploy` (or via CI). Supporting services (Azure Database for PostgreSQL with `pgvector`, Azure Cache for Redis) are described in `infra/main.bicep` and provisioned through `azd up`.
+
+- **Environment management** – Use `.env` + Replit secrets for local edits. When you need to sync values to Azure, run `python scripts/sync_env_to_azd.py --env dev` or `azd env set KEY VALUE`.
+- **Database** – Managed PostgreSQL Flexible Server; Bicep injects `DATABASE_URL`, `PG*`, and Redis settings as app settings so App Service can reach them securely.
+- **Static files & runtime** – FastAPI serves assets directly. App Service listens on port `8000` (`WEBSITES_PORT`), and the default startup command is `python -m uvicorn main:app --host 0.0.0.0 --port 8000` unless you override `STARTUP_COMMAND`.
+- **Scaling** – Default SKU is `B1`. Upgrade to General Purpose tiers when you need pgvector or more CPU. APScheduler jobs run inside the web process, so keep them idempotent before enabling multiple instances.
+
+When working from Replit/codespaces:
+1. Start Postgres + Redis locally (Docker Compose works well) and set `DATABASE_URL`, `REDIS_*`, and API keys via the IDE’s secrets UI.
+2. Install dependencies with `pip install -e .` then run `uvicorn main:app --reload --host 0.0.0.0 --port 8000`.
+3. Before deploying, ensure the `vector` extension is allowed on the managed Postgres tier (General Purpose+) and that Redis TLS settings (`REDIS_USE_TLS`) match the target environment.
 
 Key deployment considerations:
-- Database URL automatically set by Replit
-- Environment variables for API keys and external service configuration
-- Automatic database schema creation on startup
-- Background scheduler initialization for automated tasks
+- Schema creation + `CREATE EXTENSION IF NOT EXISTS vector` happen during startup; the App Service logs will show failures if the database tier is incompatible.
+- Background scheduler starts automatically. If you need to pause jobs (e.g., during maintenance), disable `start_scheduler()` via an environment flag or stop the site.
+- Use `az webapp log tail` for live diagnostics and `azd monitor` (or Azure Portal → Log Stream) when debugging remote issues.
 
 ## Changelog
 

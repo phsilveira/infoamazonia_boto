@@ -1,5 +1,7 @@
 # Next Steps after `azd init`
 
+> Need the bigger picture? See the [documentation hub](README.md) for the complete map of project guides.
+
 ## Table of Contents
 
 1. [Next Steps](#next-steps)
