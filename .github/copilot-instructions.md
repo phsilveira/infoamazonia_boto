@@ -11,7 +11,7 @@
 - PostgreSQL is accessed via SQLAlchemy (`database.py`) with `pgvector` (1536-dim embeddings, ivfflat index). `init_db()` enables the extension; you need superuser rights when resetting the DB.
 - Redis (async client) backs caching, chatbot/session state, password-reset tokens, and short-URL metrics; guard all cache calls for missing `app.state.redis` and fall back to TTL caches when absent.
 - LLM usage toggles through `config.Settings`: set `OPENAI_API_KEY` for standard OpenAI or flip `USE_AZURE_OPENAI` and provide `AZURE_*` vars; prompts are templated via `PromptLoader`.
-- External services: WhatsApp Cloud API (`WHATSAPP_*`), Mailgun (`MAILGUN_*`), Google Maps (`GOOGLEMAPS_API_KEY`), ingestion endpoints (`ARTICLES_API_URL`, `SEARCH_BASE_URL`). Missing keys should degrade gracefully or be mocked in tests.
+- External services: WhatsApp Cloud API (`WHATSAPP_*`), Mailgun (`MAILGUN_*`), Google Maps (`GOOGLEMAPS_API_KEY`). Missing keys should degrade gracefully or be mocked in tests.
 
 ## Setup & workflows
 - Install deps with `pip install -e .` (pyproject) or `pip install -r requirements.txt`; Docker builds rely on the editable install defined in `Dockerfile`.

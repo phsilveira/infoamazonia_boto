@@ -1,5 +1,7 @@
 # Next Steps after `azd init`
 
+> Need the bigger picture? See the [documentation hub](README.md) for the complete map of project guides.
+
 ## Table of Contents
 
 1. [Next Steps](#next-steps)
@@ -30,10 +32,12 @@ When needed, `azd` generates the required infrastructure as code in memory and u
 If you do this, some additional directories will be created:
 
 ```yaml
-- infra/            # Infrastructure as Code (bicep) files
-  - main.bicep      # main deployment module
-  - resources.bicep # resources shared across your application's services
-  - modules/        # Library modules
+- infra/                 # Infrastructure as Code (Bicep) files
+  - main.bicep           # orchestrates hosting + data modules
+  - modules/
+      - webapp.bicep     # App Service plan + Web App (container or code)
+      - postgres.bicep   # Azure Database for PostgreSQL Flexible Server
+      - redis.bicep      # Azure Cache for Redis
 ```
 
 *Note*: Once you have generated your infrastructure to disk, those files are the source of truth for azd. Any changes made to `azure.yaml` (such as through `azd add`) will not be reflected in the infrastructure until you regenerate it with `azd infra gen` again. It will prompt you before overwriting files. You can pass `--force` to force `azd infra gen` to overwrite the files without prompting.
@@ -50,14 +54,13 @@ Q: I visited the service endpoint listed, and I'm seeing a blank page, a generic
 
 A: Your service may have failed to start, or it may be missing some configuration settings. To investigate further:
 
-1. Run `azd show`. Click on the link under "View in Azure Portal" to open the resource group in Azure Portal.
-2. Navigate to the specific Container App service that is failing to deploy.
-3. Click on the failing revision under "Revisions with Issues".
-4. Review "Status details" for more information about the type of failure.
-5. Observe the log outputs from Console log stream and System log stream to identify any errors.
-6. If logs are written to disk, use *Console* in the navigation to connect to a shell within the running container.
+1. Run `azd show`. Click on the link under "View in Azure Portal" to open the resource group.
+2. Navigate to the App Service **Web App** resource associated with the deployment.
+3. Use **Diagnose and solve problems** or **Log stream** to inspect application/startup logs.
+4. Verify configuration under **Settings → Environment variables** to ensure required secrets were injected.
+5. Review the Redis and PostgreSQL resources for availability/connection issues if the app logs indicate database errors.
 
-For more troubleshooting information, visit [Container Apps troubleshooting](https://learn.microsoft.com/azure/container-apps/troubleshooting). 
+For more troubleshooting information, visit [App Service diagnostics](https://learn.microsoft.com/azure/app-service/overview-diagnostics). 
 
 ### Additional information
 
