@@ -236,6 +236,7 @@ async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str
         if confirmation_response is not None:
             if confirmation_response:
                 await send_message(phone_number, message_loader.get_message('subject.add_more'), db)
+                return chatbot.state
             else:
                 chatbot.proceed_to_schedule()
                 await send_message(phone_number, message_loader.get_message('schedule.request'), db)
@@ -735,8 +736,8 @@ async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message:
             return chatbot.state
 
         # Process the user's response
-        confirmation_response = message
-        if confirmation_response in ['1', '2', 'sim', 'não']:
+        confirmation_response = message.lower().strip()
+        if confirmation_response in ['1', '2', 'sim', 'não', 'nao']:
             if confirmation_response in ['1', 'sim']:
                 # Delete the user and all related data from database
                 try:
@@ -794,6 +795,48 @@ async def handle_unsubscribe_state(chatbot: ChatBot, phone_number: str, message:
 
     except Exception as e:
         logger.error(f"Error in unsubscribe handler: {str(e)}")
+        await send_message(phone_number, message_loader.get_message('error.process_message', error=str(e)), db)
+
+    return chatbot.state
+
+
+async def handle_winback_state(chatbot: ChatBot, phone_number: str, message: str, chatgpt_service: ChatGPTService) -> str:
+    """Handle the reply to the winback template message.
+
+    The winback template asks 'Deseja seguir recebendo os conteúdos normalmente?'
+    so Sim = keep subscription, Não = unsubscribe.
+    """
+    db = next(get_db())
+    user = chatbot.get_user(phone_number)
+    if not user:
+        await send_message(phone_number, message_loader.get_message('error.user_not_found'), db)
+        return chatbot.state
+
+    try:
+        response = message.lower().strip()
+        yes = {'sim', 's', '1'}
+        no  = {'não', 'nao', 'n', '2'}
+
+        if response in yes:
+            user.is_active = True
+            db.commit()
+            await send_message(phone_number, message_loader.get_message('winback.reactivated'), db)
+            chatbot.end_conversation()
+        elif response in no:
+            db.query(Location).filter(Location.user_id == user.id).delete()
+            db.query(Subject).filter(Subject.user_id == user.id).delete()
+            db.query(UserInteraction).filter(UserInteraction.user_id == user.id).delete()
+            db.query(Message).filter(Message.phone_number == phone_number).delete()
+            db.delete(user)
+            db.commit()
+            await send_message(phone_number, message_loader.get_message('unsubscribe.success'), db)
+            chatbot.end_conversation()
+        else:
+            await send_message(phone_number, message_loader.get_message('winback.invalid_option'), db)
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error in winback handler: {str(e)}")
         await send_message(phone_number, message_loader.get_message('error.process_message', error=str(e)), db)
 
     return chatbot.state

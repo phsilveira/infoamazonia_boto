@@ -403,9 +403,9 @@ async def update_user_status():
                                 await redis_client.setex(
                                     f"state:{user.phone_number}",
                                     6*60*60,  # 6 hours to expiry
-                                    "unsubscribe_state"
+                                    "winback_state"
                                 )
-                                logger.info(f"Set chatbot state to monthly_news_response for user {user.phone_number}")
+                                logger.info(f"Set chatbot state to winback_state for user {user.phone_number}")
                             except Exception as redis_error:
                                 logger.error(f"Failed to set Redis state for user {user.phone_number}: {str(redis_error)}")
 
