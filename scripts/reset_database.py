@@ -10,10 +10,16 @@ logger = logging.getLogger(__name__)
 def reset_database():
     """Reset the database by dropping all tables and recreating them."""
     try:
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm;"))
+            conn.commit()
+        logger.info("Extensions enabled (vector, pg_trgm)")
+
         # Drop all tables
         Base.metadata.drop_all(bind=engine)
         logger.info("Successfully dropped all tables")
-        
+
         # Recreate all tables
         Base.metadata.create_all(bind=engine)
         logger.info("Successfully recreated all tables")

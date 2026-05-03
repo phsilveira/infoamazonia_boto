@@ -1,13 +1,24 @@
 import logging
 from typing import Tuple, Dict, Optional, List
-from openai import OpenAI
 import googlemaps
 from fastapi import HTTPException
 from config import settings
 
 logger = logging.getLogger(__name__)
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+if settings.USE_AZURE_OPENAI:
+    from openai import AzureOpenAI
+    client = AzureOpenAI(
+        azure_endpoint=settings.AZURE_ENDPOINT_URL,
+        api_key=settings.AZURE_OPENAI_API_KEY,
+        api_version=settings.AZURE_API_VERSION,
+    )
+    _model = settings.AZURE_DEPLOYMENT_NAME
+else:
+    from openai import OpenAI
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    _model = "gpt-4"
+
 gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
 
 SYSTEM_PROMPT = """Você é um sistema responsável por validar e corrigir nomes de regiões e localidades brasileiras da Amazonia legal.
@@ -39,7 +50,7 @@ def validate_brazilian_location(user_input: str, system_prompt: str = SYSTEM_PRO
     """
     try:
         completion = client.chat.completions.create(
-            model="gpt-4",
+            model=_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_input}

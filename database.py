@@ -53,10 +53,10 @@ Base = declarative_base()
 def init_db():
     db = SessionLocal()
     try:
-        # Create the pgvector extension
         db.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+        db.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm;"))
         db.commit()
-        print("pgvector extension created successfully")
+        print("pgvector and pg_trgm extensions created successfully")
     except Exception as e:
         db.rollback()
         print(f"Failed to create extension: {str(e)}")
