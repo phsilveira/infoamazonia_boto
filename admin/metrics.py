@@ -74,6 +74,7 @@ async def get_metrics(
     }
     
     return templates.TemplateResponse(
+        request,
         "admin/metrics.html",
         {"request": request, "metrics": metrics}
     )

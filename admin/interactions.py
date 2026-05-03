@@ -173,7 +173,8 @@ async def list_interactions(
         feedback_options = ["positive", "negative", "none"]
         
         return templates.TemplateResponse(
-            "admin/interactions.html",
+            request,
+        "admin/interactions.html",
             {
                 "request": request,
                 "interactions": interactions,

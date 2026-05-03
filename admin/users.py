@@ -140,6 +140,7 @@ async def list_users(
         users_with_messages.append(user_dict)
 
     return templates.TemplateResponse(
+        request,
         "admin/users.html",
         {
             "request": request,
@@ -271,6 +272,7 @@ async def get_user(
     subjects = db.query(models.Subject).filter(models.Subject.user_id == user_id).all()
 
     return templates.TemplateResponse(
+        request,
         "admin/user_detail.html",
         {"request": request, "user": user, "locations": locations, "subjects": subjects}
     )
@@ -366,7 +368,8 @@ async def add_user_location(
             locations = db.query(models.Location).filter(models.Location.user_id == user_id).all()
             subjects = db.query(models.Subject).filter(models.Subject.user_id == user_id).all()
             return templates.TemplateResponse(
-                "admin/user_detail.html",
+                request,
+        "admin/user_detail.html",
                 {
                     "request": request,
                     "user": user,

@@ -97,6 +97,7 @@ async def messages_page(
     next_page = page + 1 if has_next else None
     
     return templates.TemplateResponse(
+        request,
         "admin/messages.html",
         {
             "request": request,

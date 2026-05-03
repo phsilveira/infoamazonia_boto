@@ -55,6 +55,7 @@ async def list_admin_users(
     admins = apply_pagination(query, skip, limit).all()
 
     return templates.TemplateResponse(
+        request,
         "admin/admin-users.html",
         {"request": request, "admins": admins}
     )
@@ -86,7 +87,8 @@ async def create_admin_user(
     if existing_admin:
         # Redirect back with error
         return templates.TemplateResponse(
-            "admin/admin-users.html",
+            request,
+        "admin/admin-users.html",
             {
                 "request": request,
                 "admins": all_admins,
@@ -97,7 +99,8 @@ async def create_admin_user(
     # Check if passwords match
     if password != confirm_password:
         return templates.TemplateResponse(
-            "admin/admin-users.html",
+            request,
+        "admin/admin-users.html",
             {
                 "request": request,
                 "admins": all_admins,
@@ -108,7 +111,8 @@ async def create_admin_user(
     # Check password length
     if len(password) < 6:
         return templates.TemplateResponse(
-            "admin/admin-users.html",
+            request,
+        "admin/admin-users.html",
             {
                 "request": request,
                 "admins": all_admins,
@@ -147,6 +151,7 @@ async def get_admin_user(
         raise HTTPException(status_code=404, detail="Admin user not found")
     
     return templates.TemplateResponse(
+        request,
         "admin/admin-user-detail.html",
         {"request": request, "admin_user": admin_user}
     )

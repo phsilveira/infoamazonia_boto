@@ -50,6 +50,7 @@ async def list_news_sources(
     sources = apply_pagination(query, skip, limit).all()
     
     return templates.TemplateResponse(
+        request,
         "admin/news-sources.html",
         {"request": request, "sources": sources}
     )
@@ -70,7 +71,8 @@ async def create_news_source(
             # Return error
             sources = db.query(models.NewsSource).order_by(desc(models.NewsSource.created_at)).all()
             return templates.TemplateResponse(
-                "admin/news-sources.html",
+                request,
+        "admin/news-sources.html",
                 {
                     "request": request, 
                     "sources": sources,
@@ -110,6 +112,7 @@ async def get_news_source(
         raise HTTPException(status_code=404, detail="News source not found")
     
     return templates.TemplateResponse(
+        request,
         "admin/news-source-detail.html",
         {"request": request, "source": source}
     )
@@ -163,7 +166,8 @@ async def edit_news_source(
         if existing_source:
             # Return with error
             return templates.TemplateResponse(
-                "admin/news-source-detail.html",
+                request,
+        "admin/news-source-detail.html",
                 {
                     "request": request,
                     "source": source,

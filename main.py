@@ -328,6 +328,7 @@ app.include_router(api_router)
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: Optional[str] = None):
     return templates.TemplateResponse(
+        request,
         "admin/login.html",
         {"request": request, "error": error}
     )
@@ -335,6 +336,7 @@ async def login_page(request: Request, error: Optional[str] = None):
 @app.get("/forgot-password", response_class=HTMLResponse)
 async def forgot_password_page(request: Request):
     return templates.TemplateResponse(
+        request,
         "admin/forgot_password.html",
         {"request": request}
     )
@@ -381,6 +383,7 @@ async def request_password_reset(
             # Still show success message to prevent user enumeration
     
     return templates.TemplateResponse(
+        request,
         "admin/forgot_password_confirmation.html",
         {"request": request, "message": message}
     )
@@ -397,6 +400,7 @@ async def reset_password_page(
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
     
     return templates.TemplateResponse(
+        request,
         "admin/reset_password.html",
         {"request": request, "token": token}
     )
@@ -412,7 +416,8 @@ async def reset_password_submit(
     # Check if passwords match
     if password != confirm_password:
         return templates.TemplateResponse(
-            "admin/reset_password.html",
+            request,
+        "admin/reset_password.html",
             {
                 "request": request, 
                 "token": token,
@@ -427,6 +432,7 @@ async def reset_password_submit(
     
     # Redirect to login with success message
     return templates.TemplateResponse(
+        request,
         "admin/login.html",
         {"request": request, "message": "Senha foi redefinida com sucesso. Você pode agora entrar."}
     )
@@ -449,7 +455,8 @@ async def login_for_access_token(
     if not admin or not auth.verify_password(form_data.password, admin.hashed_password):
         # Instead of raising an exception, return to login page with error
         return templates.TemplateResponse(
-            "admin/login.html",
+            request,
+        "admin/login.html",
             {
                 "request": request, 
                 "error": "Usuário ou senha incorretos"
@@ -468,6 +475,7 @@ async def login_for_access_token(
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request, current_admin: models.Admin = Depends(auth.get_current_admin)):
     return templates.TemplateResponse(
+        request,
         "admin/index.html",
         {"request": request, "admin": current_admin}
     )

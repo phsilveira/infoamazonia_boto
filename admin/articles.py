@@ -166,6 +166,7 @@ async def list_articles(
     pagination_url = "/admin/articles?" + "&".join(pagination_params) if pagination_params else "/admin/articles?"
     
     return templates.TemplateResponse(
+        request,
         "admin/articles.html",
         {
             "request": request,
@@ -203,6 +204,7 @@ async def get_article(
         raise HTTPException(status_code=404, detail="Article not found")
     
     return templates.TemplateResponse(
+        request,
         "admin/article-detail.html",
         {
             "request": request,

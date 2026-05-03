@@ -38,6 +38,7 @@ async def scheduler_runs_page(
         print(f"Error fetching scheduled messages: {e}")
     
     return templates.TemplateResponse(
+        request,
         "admin/scheduler.html",
         {
             "request": request,
