@@ -47,7 +47,8 @@ async def ctr_stats_page(
         ctr_data = await get_ctr_stats_service(redis_client, page=1, page_size=100)
         
         return templates.TemplateResponse(
-            "admin/ctr-stats.html",
+            request,
+        "admin/ctr-stats.html",
             {"request": request, "ctr_data": ctr_data}
         )
     except Exception as e:
@@ -64,7 +65,8 @@ async def ctr_stats_page(
             "stats": []
         }
         return templates.TemplateResponse(
-            "admin/ctr-stats.html",
+            request,
+        "admin/ctr-stats.html",
             {
                 "request": request, 
                 "ctr_data": dummy_data,
