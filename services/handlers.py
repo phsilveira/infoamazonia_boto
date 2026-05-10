@@ -8,7 +8,8 @@ from database import get_db
 from models import UserInteraction, Location, Subject, User, Message # Added
 from datetime import datetime, timedelta
 from config import settings
-from services.search import search_term_service, search_articles_service
+from services.search import search_term_service, search_articles_service, shorten_url_async
+import models
 
 logger = logging.getLogger(__name__)
 
@@ -379,15 +380,37 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
         # Display the Portuguese version in the confirmation
         display_text = schedule_display.get(schedule_key, schedule_key)
         await send_message(
-            phone_number, 
+            phone_number,
             message_loader.get_message(
-                'schedule.confirmation', 
+                'schedule.confirmation',
                 schedule=display_text,
                 location=location_names,
                 subject=subject_names
-            ), 
+            ),
             db
         )
+
+        # Send the latest available article automatically
+        latest_article = (
+            db.query(models.Article)
+            .filter(models.Article.summary_content.isnot(None), models.Article.summary_content != "")
+            .order_by(models.Article.published_date.desc())
+            .first()
+        )
+        if latest_article:
+            try:
+                short_url = await shorten_url_async(latest_article.url, settings.HOST_URL, redis_client=chatbot.redis_client)
+                article_message = chatgpt_service.generate_article_summary(
+                    latest_article.title,
+                    latest_article.summary_content,
+                    short_url,
+                    latest_article.news_source,
+                )
+                await send_message(phone_number, message_loader.get_message('post_registration_latest_article'), db)
+                await send_message(phone_number, article_message, db)
+            except Exception as article_err:
+                logger.warning(f"Could not send latest article after registration: {article_err}")
+
         await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), db)
 
     except Exception as e:

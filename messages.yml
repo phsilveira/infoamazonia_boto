@@ -141,6 +141,8 @@ return: "Obrigado, vamos utilizar esse feedback para melhorar o BOTO! Digite *ME
 
 return_to_menu_from_subscription: "Digite *MENU* para voltar a menu principal"
 
+post_registration_latest_article: "Enquanto isso, confira a última matéria disponível:"
+
 return_success: "Obrigado! Digite *MENU*, para ver outras opções"
 
 # Subscription modification
