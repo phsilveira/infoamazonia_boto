@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     # InfoAmazonia Host url
     HOST_URL: str = os.getenv("HOST_URL", "https://boto.infoamazonia.org/")
 
+    # Firecrawl (used to scrape full content from partner/external article URLs)
+    FIRECRAWL_API_KEY: str = os.getenv("FIRECRAWL_API_KEY", "")
+
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def _clean_database_url(cls, value: str | None):

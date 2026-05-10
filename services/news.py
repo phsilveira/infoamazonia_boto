@@ -239,7 +239,12 @@ class News:
         """Process news item in new format (title.rendered, content.rendered structure)."""
         news = {}
         news["success"] = True
-        news["news_source"] = news_source_name
+
+        # Resolve the real original source from the partner taxonomy
+        base_url = self._get_base_url(news_source_name)
+        partner_name = self.fetch_partner_name(item, base_url) if base_url else None
+        news["news_source"] = partner_name or news_source_name
+
         news["_id"] = f"{api_source}_{item.get('id')}"
         news["collection_date"] = datetime.now(pytz.timezone("America/Sao_Paulo"))
 
@@ -261,11 +266,18 @@ class News:
         news['Description'] = soup.get_text().strip()
         news['description'] = news['Description']  # Keep both for compatibility
 
-        # Extract content
+        # Extract content from WP API
         content_obj = item.get('content', {})
         content_html = content_obj.get('rendered', '') if isinstance(content_obj, dict) else str(content_obj)
         soup = BeautifulSoup(content_html, 'html.parser')
         news['content'] = soup.get_text().strip()
+
+        # For partner articles, WP returns empty content — use Firecrawl on the original URL
+        if partner_name and not news['content']:
+            from services.firecrawl import scrape_article
+            scraped = scrape_article(item.get('link', ''))
+            if scraped:
+                news['content'] = scraped
 
         # Set other required fields
         news['URL'] = item.get('link', '')
@@ -386,6 +398,36 @@ class News:
             logging.error(f"Unexpected error fetching tags for post {post_id}: {e}")
             return []
 
+    def _get_base_url(self, news_source_name):
+        """Return the site base URL for a given news source name."""
+        for src in self.api_sources:
+            if src.get("news_source_name") == news_source_name:
+                api_url = src.get("api_url", "")
+                if "/wp-json/wp/v2/posts" in api_url:
+                    return api_url.replace("/wp-json/wp/v2/posts", "")
+        return None
+
+    def fetch_partner_name(self, post_item, base_url):
+        """Return the partner/original source name from the WP partner taxonomy, or None."""
+        partner_ids = post_item.get('partner', [])
+        if not partner_ids:
+            return None
+        partner_id = partner_ids[0]
+        try:
+            url = f"{base_url}/wp-json/wp/v2/partner/{partner_id}"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.9,pt;q=0.8',
+                'Connection': 'keep-alive',
+            }
+            response = self._make_api_request(url, headers, timeout=10)
+            if response:
+                return response.json().get('name') or None
+        except Exception as e:
+            logging.error(f"Error fetching partner {partner_id} from {base_url}: {e}")
+        return None
+
     def process_old_format_item(self, item, api_source, news_source_name):
         """Process news item in old format (InfoAmazonia-style with yoast_head_json)."""
         news = {}
@@ -394,7 +436,12 @@ class News:
         location_dict = self.process_location(location)
 
         news["success"] = True
-        news["news_source"] = news_source_name
+
+        # Resolve the real original source from the partner taxonomy
+        base_url = self._get_base_url(news_source_name)
+        partner_name = self.fetch_partner_name(item, base_url) if base_url else None
+        news["news_source"] = partner_name or news_source_name
+
         news["_id"] = f"{api_source}_{item.get('id')}"
         news["collection_date"] = datetime.now(pytz.timezone("America/Sao_Paulo"))
         news["location"] = location_dict
@@ -418,6 +465,13 @@ class News:
             content = item.get('content', {}).get('rendered', '')
             soup = BeautifulSoup(content, 'html.parser')
             news['content'] = soup.get_text()
+
+            # For partner articles, WP returns empty content — use Firecrawl on the original URL
+            if partner_name and not news['content'].strip():
+                from services.firecrawl import scrape_article
+                scraped = scrape_article(item.get('link', ''))
+                if scraped:
+                    news['content'] = scraped
 
             if news["success"]:
                 self.get_topics(news)
