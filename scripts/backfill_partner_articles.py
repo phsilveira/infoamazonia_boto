@@ -87,7 +87,7 @@ def regenerate_summary_and_embedding(title: str, content: str):
 def main():
     parser = argparse.ArgumentParser(description="Backfill partner source names and content")
     parser.add_argument("--dry-run", action="store_true", help="Print changes without writing to DB")
-    parser.add_argument("--page-limit", type=int, default=50, help="Max WP pages to scan (10 posts each)")
+    parser.add_argument("--page-limit", type=int, default=10000, help="Max WP pages to scan (10 posts each, default: all)")
     args = parser.parse_args()
 
     db = SessionLocal()
