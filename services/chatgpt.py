@@ -7,6 +7,18 @@ from utils.prompt_loader import prompt_loader
 
 logger = logging.getLogger(__name__)
 
+# Fixed subject menu shown in messages.yml ('subject.request').
+# Numeric replies (2-6) are mapped here so we never persist the raw number.
+# Option "1" (Todos os temas) is handled separately as "Todos temas".
+# Keep this in sync with the list in messages.yml and prompts.yml.
+SUBJECT_MENU = {
+    "2": "Biodiversidade e saúde ambiental",
+    "3": "Conservação e clima",
+    "4": "Política e economia amazônica",
+    "5": "Povos originários e territórios",
+    "6": "Saúde e educação na Amazônia",
+}
+
 class ChatGPTService:
     def __init__(self):
         try:
@@ -249,9 +261,9 @@ class ChatGPTService:
                 params["model"] = "gpt-4"
                 
             completion = self.client.chat.completions.create(**params)
-            result = completion.choices[0].message.content.split('|')
+            result = [part.strip() for part in completion.choices[0].message.content.split('|')]
             is_valid = result[0] == 'VALID'
-            corrected_location = result[1] if len(result) > 2 else location
+            corrected_location = result[1] if len(result) > 1 and result[1] else location
             return is_valid, corrected_location
         except Exception as e:
             logger.error(f"Error validating location: {str(e)}")
@@ -259,14 +271,22 @@ class ChatGPTService:
 
     async def validate_subject(self, subject: str) -> tuple[bool, str]:
         """Validate and categorize a subject related to Amazon"""
-        # Check for "all locations" variations
-        all_locations_variations = [
+        normalized = subject.lower().strip()
+
+        # Check for "all topics" variations (menu option 1)
+        all_topics_variations = [
             "todas", "todos", "todas as", "all",
             "todas as localizações", "todas localizações", "all locations", "1"
         ]
 
-        if any(subject.lower().strip().startswith(v) for v in all_locations_variations):
+        if any(normalized.startswith(v) for v in all_topics_variations):
             return True, "Todos temas"
+
+        # Map the fixed menu options (2-6) directly to their category names so a
+        # numeric reply is never saved literally (e.g. "4").
+        menu_subject = SUBJECT_MENU.get(normalized)
+        if menu_subject:
+            return True, menu_subject
 
         try:
             # Get the validate_subject prompt from the prompt loader
@@ -289,9 +309,11 @@ class ChatGPTService:
                 params["model"] = "gpt-4"
                 
             completion = self.client.chat.completions.create(**params)
-            result = completion.choices[0].message.content.split('|')
+            result = [part.strip() for part in completion.choices[0].message.content.split('|')]
             is_valid = result[0] == 'VALID'
-            corrected_subject = result[1] if len(result) > 2 else subject
+            # Use the model's normalized subject name whenever it provided one;
+            # only fall back to the raw input if the response had no name field.
+            corrected_subject = result[1] if len(result) > 1 and result[1] else subject
             return is_valid, corrected_subject
         except Exception as e:
             logger.error(f"Error validating subject: {str(e)}")

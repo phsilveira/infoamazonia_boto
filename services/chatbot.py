@@ -229,6 +229,23 @@ class ChatBot:
             self.db.rollback()
             raise e
 
+    def clear_subjects(self, user_id: int):
+        """Remove all stored subjects for the user.
+
+        Called when (re)entering the subject-selection step so it always starts
+        fresh, preventing stale or duplicated topics from accumulating across
+        registrations and subscription edits.
+        """
+        try:
+            deleted = self.db.query(models.Subject).filter(
+                models.Subject.user_id == user_id
+            ).delete()
+            self.db.commit()
+            return deleted
+        except Exception as e:
+            self.db.rollback()
+            raise e
+
     def save_schedule(self, user_id: int, schedule: str):
         """Save the user's preferred schedule"""
         try:

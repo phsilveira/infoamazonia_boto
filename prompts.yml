@@ -84,22 +84,24 @@ gpt-4:
     user: |
       Is '{subject}' a valid subject related to the Amazon rainforest?
       • Examples of valid subjects:
-      1. Todos assuntos
-      2. Conservação e clima
-      3. Povos originários e territórios
-      4. Política e economia amazônica
-      5. Biodiversidade e saúde ambiental
-      6. Saúde e educação na Amazônia
-      7. Mineração em terras indígenas
+      1 Todos os temas
+      2 Biodiversidade e saúde ambiental
+      3 Conservação e clima
+      4 Política e economia amazônica
+      5 Povos originários e territórios
+      6 Saúde e educação na Amazônia
       etc.
       • Instructions for validation:
       • If the input is a number (1-7), map it to the corresponding example subject above.
       • If the input is a subject text, check its relevance to the examples provided.
       • If valid but needs correction, provide the corrected version of the subject.
       • If invalid, explain why it does not match any valid subject.
-      
-      Response format:
-      VALID|INVALID|subject_name|explanation
+
+      Response format (always 3 fields separated by '|'):
+      <STATUS>|<subject_name>|<explanation>
+      • <STATUS> is exactly VALID or INVALID.
+      • <subject_name> must be the full category/subject name in Portuguese — never a number. For valid input repeat the (corrected) subject name; for invalid input leave it empty.
+      • Examples: `VALID|Política e economia amazônica|matches example 4` or `INVALID||not related to the Amazon`
     temperature: 0.1
     max_tokens: 150
   

@@ -132,6 +132,8 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
                 return "get_user_location"
             else:
                 chatbot.proceed_to_subjects()
+                # Start the subject step fresh so old/duplicated topics don't pile up.
+                chatbot.clear_subjects(user.id)
                 await send_message(phone_number, message_loader.get_message('subject.request'), db)
                 return "get_user_subject"
 
@@ -150,10 +152,12 @@ async def handle_location_state(chatbot: ChatBot, phone_number: str, message: st
                 db.add(location)
                 db.commit()
                 await send_message(
-                    phone_number, 
-                    message_loader.get_message('location.saved_all'), 
+                    phone_number,
+                    message_loader.get_message('location.saved_all'),
                     db
                 )
+                # Start the subject step fresh so old/duplicated topics don't pile up.
+                chatbot.clear_subjects(user.id)
                 await send_message(phone_number, message_loader.get_message('subject.request'), db)
                 return "get_user_subject"
             except Exception as e:
@@ -243,12 +247,9 @@ async def handle_subject_state(chatbot: ChatBot, phone_number: str, message: str
                 await send_message(phone_number, message_loader.get_message('schedule.request'), db)
                 return "get_user_schedule"
 
-        # db.query(Subject).filter(
-        #     Subject.user_id == user.id,
-        #     Subject.created_at <= datetime.utcnow() - timedelta(hours=1)
-        # ).delete()
-        # db.flush()
-        
+        # Existing subjects are cleared once when the user enters this step
+        # (see proceed_to_subjects / select_subject_modification), so here we
+        # only append the topics chosen during this session.
         is_valid, corrected_subject = await chatgpt_service.validate_subject(message)
         if not is_valid:
             await send_message(phone_number, message_loader.get_message('subject.invalid', message=corrected_subject), db)
@@ -299,6 +300,8 @@ async def handle_modify_subscription_state(chatbot: ChatBot, phone_number: str, 
         await send_message(phone_number, message_loader.get_message('location.request'), db)
     elif message in ['2', 'tema', 'assunto', 'subject']:
         chatbot.select_subject_modification()
+        # Replace the existing topics instead of appending to them.
+        chatbot.clear_subjects(user.id)
         await send_message(phone_number, message_loader.get_message('subject.request'), db)
     elif message in ['3', 'frequência', 'schedule', 'programação']:
         chatbot.select_schedule_modification()
