@@ -105,9 +105,14 @@ about:
     
     🎯 Nosso objetivo é ampliar o acesso à informação e fortalecer a compreensão, o debate e a ação em torno dos desafios e da *importância global da Amazônia*.
     
-    👉 Compartilhe essa iniciativa com sua rede: https://wa.me/?text=%F0%9F%90%AC%20Conhe%C3%A7a%20o%20BOTO%20da%20InfoAmazonia%3A%20not%C3%ADcias%20personalizadas%20da%20Amaz%C3%B4nia%2C%20de%20gra%C3%A7a%2C%20direto%20no%20WhatsApp%21%20Inscreva-se%3A%20https%3A%2F%2Finfoamazonia.org%2Fwhatsapp
-    
-    Esse projeto foi financiado pelo ICFJ. 
+    👉 Compartilhe essa iniciativa com sua rede: {share_url}
+
+    Esse projeto foi financiado pelo ICFJ.
+
+# WhatsApp share link (opens the contact picker with a pre-filled invitation).
+# Shortened at send time via the /r/ shortener so the message stays clean.
+share:
+  whatsapp_url: "https://wa.me/?text=%F0%9F%90%AC%20Conhe%C3%A7a%20o%20BOTO%20da%20InfoAmazonia%3A%20not%C3%ADcias%20personalizadas%20da%20Amaz%C3%B4nia%2C%20de%20gra%C3%A7a%2C%20direto%20no%20WhatsApp%21%20Inscreva-se%3A%20https%3A%2F%2Finfoamazonia.org%2Fwhatsapp"
 
 # Unsubscribe messages
 unsubscribe:

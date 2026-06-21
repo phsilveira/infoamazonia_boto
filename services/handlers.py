@@ -70,7 +70,16 @@ async def handle_menu_state(chatbot: ChatBot, phone_number: str, message: str) -
         await send_message(phone_number, message_loader.get_message('menu.news_suggestion'), db)
     elif message in ['6', 'about', 'sobre', 'info']:
         chatbot.select_about()
-        await send_message(phone_number, message_loader.get_message('about.info'), db)
+        # Shorten the WhatsApp share link (via the /r/ shortener) so the about
+        # message stays clean instead of showing the long wa.me/?text= URL.
+        share_target = message_loader.get_message('share.whatsapp_url')
+        try:
+            share_url = await shorten_url_async(share_target, settings.HOST_URL, redis_client=chatbot.redis_client)
+        except Exception as share_err:
+            logger.warning(f"Could not shorten share link: {share_err}")
+            share_url = share_target
+        about_message = message_loader.get_message('about.info').replace('{share_url}', share_url)
+        await send_message(phone_number, about_message, db)
         await send_message(phone_number, message_loader.get_message('return_to_menu_from_subscription'), next(get_db()))
         chatbot.end_conversation()
     elif message in ['5', 'desinscrever', 'cancelar']:
