@@ -403,14 +403,18 @@ async def handle_schedule_state(chatbot: ChatBot, phone_number: str, message: st
         if latest_article:
             try:
                 short_url = await shorten_url_async(latest_article.url, settings.HOST_URL, redis_client=chatbot.redis_client)
-                article_message = chatgpt_service.generate_article_summary(
-                    latest_article.title,
-                    latest_article.summary_content,
-                    short_url,
-                    latest_article.news_source,
-                )
                 await send_message(phone_number, message_loader.get_message('post_registration_latest_article'), db)
-                await send_message(phone_number, article_message, db)
+                # Send the article in the standard card format (title + source + link)
+                # instead of pushing the full summary; the user can ask for a summary
+                # via the menu. Use str.replace (not .format) so braces in the title
+                # don't break formatting.
+                article_card = (
+                    message_loader.get_message('article_card')
+                    .replace('{title}', latest_article.title or '')
+                    .replace('{news_source}', latest_article.news_source or 'InfoAmazonia')
+                    .replace('{url}', short_url)
+                )
+                await send_message(phone_number, article_card, db)
             except Exception as article_err:
                 logger.warning(f"Could not send latest article after registration: {article_err}")
 
